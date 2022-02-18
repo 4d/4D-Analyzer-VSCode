@@ -6,8 +6,10 @@
 import * as path from 'path';
 import { workspace, ExtensionContext } from 'vscode';
 import * as net from 'net'
-import { ChildProcess, spawn } from 'mz/child_process'
+import {Config} from "./config"
 import * as vscode from 'vscode';
+import { env } from 'process';
+import * as child_process from 'child_process'
 
 import {
 	LanguageClient,
@@ -19,25 +21,23 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
+let config : Config
 
 export function activate(context: ExtensionContext) {
-	// The server is implemented in node
-	const serverModule = context.asAbsolutePath(
-		path.join('server', 'out', 'server.js')
-	);
-
-
-	// The debug options for the server
-	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
-	let sockectTransport : SocketTransport = {
-		kind : TransportKind.socket,
-		port : 1500
+	
+	//console.log(env)
+	config = new Config(context);
+	let port : number = config.serverPort
+	if(port == 0) {
+		port = 1800;
 	}
+	let serverPath : string = config.serverPath
+	serverPath = ''//debug
+
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
     const serverOptions = () =>
-        new Promise<ChildProcess | StreamInfo>((resolve, reject) => {
+        new Promise<child_process.ChildProcess | StreamInfo>((resolve, reject) => {
             // Use a TCP socket because of problems with blocking STDIO
             const server = net.createServer(socket => {
                 // 'connection' listener
@@ -49,34 +49,34 @@ export function activate(context: ExtensionContext) {
                 resolve({ reader: socket, writer: socket })
             })
             // Listen on random port
-            server.listen(1800, '127.0.0.1', () => {
+            server.listen(port, '127.0.0.1', () => {
 				console.log("Listens")
-				/*
-                // The server is implemented in 4D
-                const childProcess = spawn(executablePath, [
-                    context.asAbsolutePath(
-                        path.join('vendor', 'felixfbecker', 'language-server', 'bin', '4D-language-server.4D')
-                    ),
-                    '--tcp=127.0.0.1:' + server.address().port,
-                    '--memory-limit=' + memoryLimit,
-                ])
-                childProcess.stderr.on('data', (chunk: Buffer) => {
-                    const str = chunk.toString()
-                    console.log('4D Language Server:', str)
-                    client.outputChannel.appendLine(str)
-                })
-                // childProcess.stdout.on('data', (chunk: Buffer) => {
-                //     console.log('4D Language Server:', chunk + '');
-                // });
-                childProcess.on('exit', (code, signal) => {
-                    client.outputChannel.appendLine(
-                        `Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
-                    )
-                    if (code !== 0) {
-                        client.outputChannel.show()
-                    }
-                })
-                return childProcess*/
+				
+				if(serverPath != '') {
+					 // The server is implemented in 4D
+					 const childProcess = child_process.spawn(serverPath, [
+
+						'--lsp=' + port,
+					])
+					childProcess.stderr.on('data', (chunk: Buffer) => {
+						const str = chunk.toString()
+						console.log('4D Language Server:', str)
+						client.outputChannel.appendLine(str)
+					})
+					// childProcess.stdout.on('data', (chunk: Buffer) => {
+					//     console.log('4D Language Server:', chunk + '');
+					// });
+					childProcess.on('exit', (code, signal) => {
+						client.outputChannel.appendLine(
+							`Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
+						)
+						if (code !== 0) {
+							client.outputChannel.show()
+						}
+					})
+					return childProcess
+				}
+               
             })
 			
         })
@@ -87,14 +87,14 @@ export function activate(context: ExtensionContext) {
 		documentSelector: [{ scheme: 'file', language: '4d' }],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.4dm')
+			fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
 		}
 	};
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
+		'4D-Analyzer',
+		'4D-LSP',
 		serverOptions,
 		clientOptions
 	);

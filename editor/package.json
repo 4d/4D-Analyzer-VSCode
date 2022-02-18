@@ -1,6 +1,6 @@
 {
 	"name": "4d-analyzer-vscode",
-	"description": "A language server example",
+	"description": "4D LSP",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
 	"version": "1.0.0",
@@ -18,30 +18,41 @@
 	"activationEvents": [
 		"onLanguage:4d"
 	],
-	"main": "./client/out/extension",
+	"main": "./out/extension",
 	"contributes": {
         "languages": [{
             "id": "4d",
             "aliases": ["4D", "4d"],
             "extensions": [".4dm"],
-            "configuration": "./client/language-configuration.json"
+            "configuration": "./language-configuration.json"
         }],
         "grammars": [{
             "language": "4d",
             "scopeName": "source.4dm",
-            "path": "./client/syntaxes/4d.tmLanguage.json"
+            "path": "./syntaxes/4d.tmLanguage.json"
         }],
+		"semanticTokenTypes": [
+			{
+			  "id": "command",
+			  "superType": "function",
+			  "description": "A command type."
+			}
+		  ],
+		  "semanticTokenScopes": [
+            {
+                "language": "4d",
+                "scopes": {
+                    "command": [
+                        "entity.name.function.4d"
+                    ]
+                }
+            }
+        ],
 		"configuration": {
 			"type": "object",
-			"title": "Example configuration",
+			"title": "Debug config",
 			"properties": {
-				"languageServerExample.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
-				"languageServerExample.trace.server": {
+				"4D-Analyzer.trace.server": {
 					"scope": "window",
 					"type": "string",
 					"enum": [
@@ -49,9 +60,22 @@
 						"messages",
 						"verbose"
 					],
+					
 					"default": "verbose",
 					"description": "Traces the communication between VS Code and the language server."
-				}
+				},
+				"4D-Analyzer.server.path": {
+                    "type":"string",
+					"scope":"machine",
+                    "default": "",
+                    "markdownDescription": "Path to 4D-Analyzer executable."
+                },
+				"4D-Analyzer.server.port": {
+                    "type": "integer",
+					"scope":"machine",
+                    "default": 1800,
+                    "markdownDescription": "Port used by the 4D-Analyzer"
+                }
 			}
 		}
 	},
@@ -59,18 +83,23 @@
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
-		"lint": "eslint ./client/src",
-		"postinstall": "cd client && npm install && cd ..",
+		"lint": "eslint ./src",
 		"test": "sh ./scripts/e2e.sh"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/mocha": "^8.2.2",
 		"@types/node": "^12.12.0",
+		"@types/vscode": "^1.52.0",
+		"@vscode/test-electron": "^1.6.1",
 		"@typescript-eslint/eslint-plugin": "^4.23.0",
 		"@typescript-eslint/parser": "^4.23.0",
 		"@types/mz": "0.0.32",
 		"eslint": "^7.26.0",
 		"mocha": "^8.3.2",
 		"typescript": "^4.4.3"
+
 	}
 }
