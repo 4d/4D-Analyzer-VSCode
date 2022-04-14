@@ -7,9 +7,8 @@ export class Config {
 
 
     private readonly requiresReloadOpts = [
-        "serverPath",
-        "serverPort"
-    ]
+        "serverPath"
+        ]
         .map(opt => `${this.rootSection}.${opt}`);
 
     constructor(ctx: vscode.ExtensionContext) {
@@ -26,10 +25,6 @@ export class Config {
 
     get serverPath() {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
-    }
-
-    get serverPort() {
-        return this.get<null | number>("server.port") ?? this.get<null | number>("serverPort");
     }
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {

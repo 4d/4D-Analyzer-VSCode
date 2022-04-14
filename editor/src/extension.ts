@@ -3,21 +3,15 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as path from 'path';
 import { workspace, ExtensionContext } from 'vscode';
 import * as net from 'net'
 import {Config} from "./config"
-import * as vscode from 'vscode';
-import { env } from 'process';
 import * as child_process from 'child_process'
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
-	ServerOptions,
-	SocketTransport,
-	StreamInfo,
-	TransportKind
+	StreamInfo
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
@@ -27,12 +21,9 @@ export function activate(context: ExtensionContext) {
 	
 	//console.log(env)
 	config = new Config(context);
-	let port : number = config.serverPort
-	if(port == 0) {
-		port = 1800;
-	}
+
 	let serverPath : string = config.serverPath
-	serverPath = ''//debug
+	//serverPath = ''//debug
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -44,28 +35,35 @@ export function activate(context: ExtensionContext) {
                 console.log('4D process connected')
                 socket.on('end', () => {
                     console.log('4D process disconnected')
+					server.close()
                 })
-                server.close()
+				socket.on('close', () => {
+                    console.log('4D process disconnected')
+					server.close()
+                })
+				socket.on('error', (e) => {
+                    console.log(e)
+					//server.close()
+                })
+                //server.close()
                 resolve({ reader: socket, writer: socket })
             })
+
+
             // Listen on random port
-            server.listen(port, '127.0.0.1', () => {
-				console.log("Listens")
+            server.listen(0, '127.0.0.1', () => {
+				console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`)
 				
 				if(serverPath != '') {
-					 // The server is implemented in 4D
 					 const childProcess = child_process.spawn(serverPath, [
-
-						'--lsp=' + port,
+						'--lsp=' + (server.address() as net.AddressInfo).port,
 					])
 					childProcess.stderr.on('data', (chunk: Buffer) => {
 						const str = chunk.toString()
 						console.log('4D Language Server:', str)
 						client.outputChannel.appendLine(str)
 					})
-					// childProcess.stdout.on('data', (chunk: Buffer) => {
-					//     console.log('4D Language Server:', chunk + '');
-					// });
+
 					childProcess.on('exit', (code, signal) => {
 						client.outputChannel.appendLine(
 							`Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
@@ -74,11 +72,16 @@ export function activate(context: ExtensionContext) {
 							client.outputChannel.show()
 						}
 					})
+
+					server.on('close', function() {
+						console.log("KILL")
+						childProcess.kill()
+					});
+
 					return childProcess
 				}
                
             })
-			
         })
 
 	// Options to control the language client

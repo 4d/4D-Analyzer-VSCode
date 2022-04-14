@@ -13,41 +13,50 @@
 		"multi-root ready"
 	],
 	"engines": {
-		"vscode": "^1.43.0"
+		"vscode": "^1.64.0"
 	},
 	"activationEvents": [
 		"onLanguage:4d"
 	],
 	"main": "./out/extension",
 	"contributes": {
-        "languages": [{
-            "id": "4d",
-            "aliases": ["4D", "4d"],
-            "extensions": [".4dm"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "4d",
-            "scopeName": "source.4dm",
-            "path": "./syntaxes/4d.tmLanguage.json"
-        }],
+		"languages": [
+			{
+				"id": "4d",
+				"aliases": [
+					"4D",
+					"4d"
+				],
+				"extensions": [
+					".4dm"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "4d",
+				"scopeName": "source.4dm",
+				"path": "./syntaxes/4d.tmLanguage.json"
+			}
+		],
 		"semanticTokenTypes": [
 			{
-			  "id": "command",
-			  "superType": "function",
-			  "description": "A command type."
+				"id": "command",
+				"superType": "function",
+				"description": "A command type."
 			}
-		  ],
-		  "semanticTokenScopes": [
-            {
-                "language": "4d",
-                "scopes": {
-                    "command": [
-                        "entity.name.function.4d"
-                    ]
-                }
-            }
-        ],
+		],
+		"semanticTokenScopes": [
+			{
+				"language": "4d",
+				"scopes": {
+					"command": [
+						"entity.name.function.4d"
+					]
+				}
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "Debug config",
@@ -60,22 +69,15 @@
 						"messages",
 						"verbose"
 					],
-					
 					"default": "verbose",
 					"description": "Traces the communication between VS Code and the language server."
 				},
 				"4D-Analyzer.server.path": {
-                    "type":"string",
-					"scope":"machine",
-                    "default": "",
-                    "markdownDescription": "Path to 4D-Analyzer executable."
-                },
-				"4D-Analyzer.server.port": {
-                    "type": "integer",
-					"scope":"machine",
-                    "default": 1800,
-                    "markdownDescription": "Port used by the 4D-Analyzer"
-                }
+					"type": "string",
+					"scope": "machine",
+					"default": "",
+					"markdownDescription": "Path to 4D-Analyzer executable."
+				}
 			}
 		}
 	},
@@ -90,16 +92,15 @@
 		"vscode-languageclient": "^7.0.0"
 	},
 	"devDependencies": {
-		"@types/mocha": "^8.2.2",
-		"@types/node": "^12.12.0",
-		"@types/vscode": "^1.52.0",
-		"@vscode/test-electron": "^1.6.1",
-		"@typescript-eslint/eslint-plugin": "^4.23.0",
-		"@typescript-eslint/parser": "^4.23.0",
-		"@types/mz": "0.0.32",
-		"eslint": "^7.26.0",
-		"mocha": "^8.3.2",
-		"typescript": "^4.4.3"
-
+		"@types/mocha": "^9.1.0",
+		"@types/mz": "2.7.4",
+		"@types/node": "^17.0.24",
+		"@types/vscode": "^1.64.0",
+		"@typescript-eslint/eslint-plugin": "^5.19.0",
+		"@typescript-eslint/parser": "^5.19.0",
+		"@vscode/test-electron": "^2.1.3",
+		"eslint": "^8.13.0",
+		"mocha": "^9.2.2",
+		"typescript": "^4.6.3"
 	}
 }
