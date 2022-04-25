@@ -42,4 +42,4 @@ jobs:
       with:
         name: package
         path: |
-          dist
+          ./editor/dist
