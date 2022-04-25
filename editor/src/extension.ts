@@ -7,6 +7,7 @@ import { workspace, ExtensionContext } from 'vscode';
 import * as net from 'net'
 import {Config} from "./config"
 import * as child_process from 'child_process'
+import * as vscode from 'vscode';
 
 import {
 	LanguageClient,
@@ -23,7 +24,22 @@ export function activate(context: ExtensionContext) {
 	config = new Config(context);
 
 	let serverPath : string = config.serverPath
-	//serverPath = ''//debug
+
+	// Options to control the language client
+	const clientOptions: LanguageClientOptions = {
+		// Register the server for plain text documents
+		documentSelector: [{ scheme: 'file', language: '4d' }],
+		synchronize: {
+			// Notify the server about file changes to '.clientrc files contained in the workspace
+			fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+		}
+	};
+	let isDebug = false;
+	let port = 0;
+	if(isDebug) {
+		serverPath = ''//debug
+		port = 1800;
+	}
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -43,21 +59,22 @@ export function activate(context: ExtensionContext) {
                 })
 				socket.on('error', (e) => {
                     console.log(e)
-					//server.close()
+					server.close()
                 })
                 //server.close()
-                resolve({ reader: socket, writer: socket })
+                resolve({ reader: socket, writer: socket, detached : false })
             })
 
 
             // Listen on random port
-            server.listen(0, '127.0.0.1', () => {
+            server.listen(port, '127.0.0.1', () => {
 				console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`)
 				
 				if(serverPath != '') {
 					 const childProcess = child_process.spawn(serverPath, [
 						'--lsp=' + (server.address() as net.AddressInfo).port,
 					])
+
 					childProcess.stderr.on('data', (chunk: Buffer) => {
 						const str = chunk.toString()
 						console.log('4D Language Server:', str)
@@ -84,15 +101,7 @@ export function activate(context: ExtensionContext) {
             })
         })
 
-	// Options to control the language client
-	const clientOptions: LanguageClientOptions = {
-		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: '4d' }],
-		synchronize: {
-			// Notify the server about file changes to '.clientrc files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
-		}
-	};
+
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
@@ -110,5 +119,6 @@ export function deactivate(): Thenable<void> | undefined {
 	if (!client) {
 		return undefined;
 	}
+
 	return client.stop();
 }
