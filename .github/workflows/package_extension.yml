@@ -35,6 +35,7 @@ jobs:
     - run: |
         npm i
         npm install --global vsce
+        mkdir dist
         vsce package --out "dist/"
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
