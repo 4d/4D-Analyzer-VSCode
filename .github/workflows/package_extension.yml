@@ -18,6 +18,10 @@ jobs:
       matrix:
         node-version: [16.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        
+    defaults:
+      run:
+        working-directory: 'editor' # Here the path to the folder where package-lock.json is located.
 
     steps:
     - uses: actions/checkout@v3
@@ -27,7 +31,6 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: |
-        cd editor
         npm i
         npm install --global vsce
         vsce package . --out "dist/"
