@@ -16,12 +16,12 @@ export let platformEol: string;
  */
 export async function activate(docUri: vscode.Uri) {
 	// The extensionId is `publisher.name` from package.json
-	const ext = vscode.extensions.getExtension('vscode-samples.lsp-sample')!;
+	const ext = vscode.extensions.getExtension('4D.4d-analyzer-vscode')!;
 	await ext.activate();
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		await sleep(2000); // Wait for server activation
+		await sleep(10000); // Wait for server activation
 	} catch (e) {
 		console.error(e);
 	}

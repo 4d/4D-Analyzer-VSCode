@@ -7,10 +7,10 @@ import * as vscode from 'vscode';
 import * as assert from 'assert';
 import { getDocUri, activate } from './helper';
 
-suite('Should get diagnostics', () => {
-	const docUri = getDocUri('diagnostics.txt');
+suite('Semantic tokens', () => {
+	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_to_test_semantic_token.4dm');
 
-	test('Diagnoses uppercase texts', async () => {
+	test('Semantic tokens', async () => {
 		await testDiagnostics(docUri, [
 			{ message: 'ANY is all uppercase.', range: toRange(0, 0, 0, 3), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
 			{ message: 'ANY is all uppercase.', range: toRange(0, 14, 0, 17), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
@@ -26,16 +26,14 @@ function toRange(sLine: number, sChar: number, eLine: number, eChar: number) {
 }
 
 async function testDiagnostics(docUri: vscode.Uri, expectedDiagnostics: vscode.Diagnostic[]) {
+
 	await activate(docUri);
-
-	const actualDiagnostics = vscode.languages.getDiagnostics(docUri);
-
-	assert.equal(actualDiagnostics.length, expectedDiagnostics.length);
-
-	expectedDiagnostics.forEach((expectedDiagnostic, i) => {
-		const actualDiagnostic = actualDiagnostics[i];
-		assert.equal(actualDiagnostic.message, expectedDiagnostic.message);
-		assert.deepEqual(actualDiagnostic.range, expectedDiagnostic.range);
-		assert.equal(actualDiagnostic.severity, expectedDiagnostic.severity);
-	});
-}
+	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+	const semanticTokens = (await vscode.commands.executeCommand(
+		'vscode.provideDocumentSemanticTokens',
+		docUri
+	)) as vscode.SemanticTokens
+	console.log(semanticTokens)
+	assert(semanticTokens.data.length > 0)
+	
+} 

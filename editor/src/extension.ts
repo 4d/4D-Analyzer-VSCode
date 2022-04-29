@@ -36,6 +36,21 @@ export function activate(context: ExtensionContext) {
 	};
 	let isDebug = false;
 	let port = 0;
+	if(process.env.ANALYZER_4D_PORT)
+	{
+		port = parseInt(process.env.ANALYZER_4D_PORT);
+	}
+	if(process.env.ANALYZER_4D_PATH)
+	{
+		serverPath = process.env.ANALYZER_4D_PATH;
+	}
+
+	console.log("SERVER PATH", serverPath)
+	if(process.env.ANALYZER_4D_DEBUG)
+	{
+		isDebug = true;
+	}
+	
 	if(isDebug) {
 		serverPath = ''//debug
 		port = 1800;

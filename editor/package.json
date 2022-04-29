@@ -3,6 +3,7 @@
 	"description": "4D LSP",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
+	"publisher": "4D",
 	"version": "1.0.0",
 	"repository": {
 		"type": "git",
