@@ -1,11 +1,7 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-
+import * as fs from "fs"
 export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
 export let documentEol: string;
@@ -14,14 +10,20 @@ export let platformEol: string;
 /**
  * Activates the vscode.lsp-sample extension
  */
-export async function activate(docUri: vscode.Uri) {
+export async function activate(docUri: vscode.Uri, inFolder? : vscode.Uri) {
 	// The extensionId is `publisher.name` from package.json
 	const ext = vscode.extensions.getExtension('4D.4d-analyzer-vscode')!;
 	await ext.activate();
 	try {
+		if(inFolder && fs.lstatSync(inFolder.fsPath).isDirectory()) {
+			vscode.commands.executeCommand( 'vscode.openFolder', inFolder, false );
+		}
+		
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		await sleep(10000); // Wait for server activation
+		
+
+		await sleep(5000); // Wait for server activation
 	} catch (e) {
 		console.error(e);
 	}

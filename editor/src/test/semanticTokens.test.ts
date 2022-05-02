@@ -9,13 +9,11 @@ import { getDocUri, activate } from './helper';
 
 suite('Semantic tokens', () => {
 	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_to_test_semantic_token.4dm');
+	const folder = getDocUri('LanguageServerProtocol/Project/Sources/');
 
 	test('Semantic tokens', async () => {
-		await testDiagnostics(docUri, [
-			{ message: 'ANY is all uppercase.', range: toRange(0, 0, 0, 3), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
-			{ message: 'ANY is all uppercase.', range: toRange(0, 14, 0, 17), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' },
-			{ message: 'OS is all uppercase.', range: toRange(0, 18, 0, 20), severity: vscode.DiagnosticSeverity.Warning, source: 'ex' }
-		]);
+		await testSemanticFile(docUri);
+		await testSemanticFolder(docUri, folder);
 	});
 });
 
@@ -25,7 +23,7 @@ function toRange(sLine: number, sChar: number, eLine: number, eChar: number) {
 	return new vscode.Range(start, end);
 }
 
-async function testDiagnostics(docUri: vscode.Uri, expectedDiagnostics: vscode.Diagnostic[]) {
+async function testSemanticFile(docUri: vscode.Uri) {
 
 	await activate(docUri);
 	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
@@ -33,7 +31,18 @@ async function testDiagnostics(docUri: vscode.Uri, expectedDiagnostics: vscode.D
 		'vscode.provideDocumentSemanticTokens',
 		docUri
 	)) as vscode.SemanticTokens
-	console.log(semanticTokens)
+	assert(semanticTokens.data.length > 0)
+	
+} 
+
+async function testSemanticFolder(docUri: vscode.Uri, inFolder: vscode.Uri) {
+
+	await activate(docUri, inFolder);
+	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+	const semanticTokens = (await vscode.commands.executeCommand(
+		'vscode.provideDocumentSemanticTokens',
+		docUri
+	)) as vscode.SemanticTokens
 	assert(semanticTokens.data.length > 0)
 	
 } 
