@@ -87,7 +87,7 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint ./src",
-		"test": "sh ./scripts/e2e.sh"
+		"test": "tsc -b && sh ./scripts/e2e.sh"
 	},
 	"dependencies": {
 		"vscode-languageclient": "^7.0.0"
