@@ -105,6 +105,15 @@ export function activate(context: ExtensionContext) {
 						}
 					})
 
+					function cleanUpServer(signal) {
+						server.close();
+						console.log("CLOSE SERVER")
+					}
+					let array = ['exit', 'SIGINT', 'SIGUSR1', 'SIGUSR2', 'uncaughtException', 'SIGTERM'];
+					array.forEach((eventType) => {
+						process.on(eventType, cleanUpServer.bind(eventType));
+					  })
+
 					server.on('close', function() {
 						console.log("KILL")
 						childProcess.kill()
