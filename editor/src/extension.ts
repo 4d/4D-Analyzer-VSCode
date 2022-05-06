@@ -45,7 +45,6 @@ export function activate(context: ExtensionContext) {
 		serverPath = process.env.ANALYZER_4D_PATH;
 	}
 
-	console.log("SERVER PATH", serverPath)
 	if(process.env.ANALYZER_4D_DEBUG)
 	{
 		isDebug = true;
@@ -55,6 +54,7 @@ export function activate(context: ExtensionContext) {
 		serverPath = ''//debug
 		port = 1800;
 	}
+	console.log("SERVER PATH", serverPath)
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
