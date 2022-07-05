@@ -47,3 +47,8 @@ export async function setTestContent(content: string): Promise<boolean> {
 	);
 	return editor.edit(eb => eb.replace(all, content));
 }
+
+export async function setContentAtpos(content: string, inPosition : vscode.Position): Promise<boolean> {
+	return editor.edit(eb => eb.insert(inPosition, content));
+}
+

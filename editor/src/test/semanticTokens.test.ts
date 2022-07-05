@@ -26,7 +26,7 @@ function toRange(sLine: number, sChar: number, eLine: number, eChar: number) {
 async function testSemanticFile(docUri: vscode.Uri) {
 
 	await activate(docUri);
-	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+	
 	const semanticTokens = (await vscode.commands.executeCommand(
 		'vscode.provideDocumentSemanticTokens',
 		docUri
@@ -38,7 +38,7 @@ async function testSemanticFile(docUri: vscode.Uri) {
 async function testSemanticFolder(docUri: vscode.Uri, inFolder: vscode.Uri) {
 
 	await activate(docUri, inFolder);
-	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+
 	const semanticTokens = (await vscode.commands.executeCommand(
 		'vscode.provideDocumentSemanticTokens',
 		docUri
