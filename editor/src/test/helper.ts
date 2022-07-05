@@ -23,7 +23,7 @@ export async function activate(docUri: vscode.Uri, inFolder? : vscode.Uri) {
 		editor = await vscode.window.showTextDocument(doc);
 		
 
-		await sleep(5000); // Wait for server activation
+		await sleep(15000); // Wait for server activation
 	} catch (e) {
 		console.error(e);
 	}

@@ -60,7 +60,7 @@
 		],
 		"configuration": {
 			"type": "object",
-			"title": "Debug config",
+			"title": "4D Analyzer",
 			"properties": {
 				"4D-Analyzer.trace.server": {
 					"scope": "window",
@@ -70,7 +70,7 @@
 						"messages",
 						"verbose"
 					],
-					"default": "verbose",
+					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
 				},
 				"4D-Analyzer.server.path": {

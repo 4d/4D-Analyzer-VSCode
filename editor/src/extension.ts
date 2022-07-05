@@ -80,7 +80,6 @@ export function activate(context: ExtensionContext) {
                 resolve({ reader: socket, writer: socket, detached : false })
             })
 
-
             // Listen on random port
             server.listen(port, '127.0.0.1', () => {
 				console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`)
