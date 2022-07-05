@@ -19,7 +19,7 @@ suite('Go To Def', () => {
 
 async function testGoToDef(docUri: vscode.Uri) {
 
-	let pos = new vscode.Position(2,0)
+	let pos = new vscode.Position(35,0)
 
 	await activate(docUri);
 	await setContentAtpos("__method_goToDef_1()", pos);
