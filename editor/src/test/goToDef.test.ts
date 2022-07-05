@@ -25,10 +25,10 @@ async function testGoToDef(docUri: vscode.Uri) {
 	await setContentAtpos("__method_goToDef_1()", pos);
 
 	const definition = (await vscode.commands.executeCommand(
-		'vscode.provideDefinition',
+		'vscode.executeDefinitionProvider',
 		docUri,
-		pos
-	)) as vscode.Definition
-	assert(definition)
+		new vscode.Position(pos.line, 1)
+	)) as vscode.Location[]
+	assert(definition.length > 0)
 	
 } 
