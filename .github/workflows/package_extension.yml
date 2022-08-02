@@ -37,7 +37,12 @@ jobs:
         npm install --global vsce
         mkdir dist
         vsce package --out "dist/"
-    - name: Archive production artifacts
+
+
+  create_artifact:
+    name: create_artifact
+    runs-on: ubuntu-latest
+    needs: ["build"]
       uses: actions/upload-artifact@v3
       with:
         name: package
@@ -55,5 +60,5 @@ jobs:
           node-version: 16.x
 
       - name: Publish Extension (Code Marketplace, release)
-        working-directory: ./editor
+        working-directory: editor
         run: npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
