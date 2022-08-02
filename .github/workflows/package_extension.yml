@@ -45,7 +45,7 @@ jobs:
           ./editor/dist
 
   publish:
-    name:publish
+    name: publish
     runs-on: ubuntu-latest
     defaults:
       run:
