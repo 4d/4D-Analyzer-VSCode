@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.1.0",
+	"version": "0.1.0.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d-depot/4D-Analyzer-VSCode"
