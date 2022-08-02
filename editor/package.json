@@ -1,18 +1,19 @@
 {
 	"name": "4d-analyzer",
+	"displayName": "4D-Analyzer",
 	"description": "LSP connector for 4D code",
-	"author": "Microsoft Corporation",
 	"license": "MIT",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.1.1",
+	"version": "0.1.2",
+	"preview": true,
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d-depot/4D-Analyzer-VSCode"
 	},
-	"categories": [],
+	"categories": ["Programming Languages"],
 	"keywords": [
-		"multi-root ready"
+		"4D", "LSP", "4DM"
 	],
 	"engines": {
 		"vscode": "^1.64.0"
