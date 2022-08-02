@@ -1,9 +1,10 @@
 {
 	"name": "4d-analyzer",
-	"description": "4D LSP",
+	"description": "LSP connector for 4D code",
 	"author": "Microsoft Corporation",
 	"license": "MIT",
 	"publisher": "4D",
+	"icon": "images/4D-icon.png",
 	"version": "0.1.0",
 	"repository": {
 		"type": "git",
@@ -77,7 +78,7 @@
 					"type": "string",
 					"scope": "machine",
 					"default": "",
-					"markdownDescription": "Path to 4D-Analyzer executable."
+					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
 				}
 			}
 		}
