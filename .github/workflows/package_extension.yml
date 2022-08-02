@@ -43,11 +43,12 @@ jobs:
     name: create_artifact
     runs-on: ubuntu-latest
     needs: ["build"]
-      uses: actions/upload-artifact@v3
+    steps:
+    - uses: actions/upload-artifact@v3
       with:
-        name: package
-        path: |
-          ./editor/dist
+          name: package
+          path: |
+            ./editor/dist
 
   publish:
     name: publish
