@@ -47,9 +47,6 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: 'editor' # Here the path to the folder where package-lock.json is located.
     needs: ["build"]
     steps:
       - name: Install Nodejs
@@ -58,4 +55,5 @@ jobs:
           node-version: 16.x
 
       - name: Publish Extension (Code Marketplace, release)
+        working-directory: ./editor
         run: npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
