@@ -1,8 +1,9 @@
-.vscode/**
-**/*.ts
-**/*.map
-.gitignore
-**/tsconfig.json
-**/tsconfig.base.json
-contributing.md
-.travis.yml
+**
+!images
+!language-configuration.json
+!LICENSE.md
+!out/extension.js
+!package-lock.json
+!package.json
+!syntaxes/
+!README.md
