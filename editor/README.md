@@ -5,7 +5,6 @@ This extension provides support for the 4D language.
 ## Features
 
 * Syntax Coloring
-* Go to definition
 
 More are coming... 
 
