@@ -22,6 +22,8 @@ export function activate(context: ExtensionContext) {
 	
 	//console.log(env)
 	config = new Config(context);
+	config.checkSettings();
+
 
 	let serverPath : string = config.serverPath
 
