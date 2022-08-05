@@ -11,7 +11,7 @@ More are coming...
 
 ## Quick start
 
-1. Install a 4D or 4D Server if not already installed.
+1. Install a 4D or 4D Server if not already installed (at least a 19R6)
 1. Install the 4D Analyzer extension.
 1. Set the path of the executable to 4D-Analyzer.Server.path
 

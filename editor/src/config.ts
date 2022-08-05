@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-
+import * as fs from 'fs';
+import * as path from 'path'
+import * as os from 'os'
 
 export class Config {
 
@@ -7,7 +9,7 @@ export class Config {
 
 
     private readonly requiresReloadOpts = [
-        "serverPath"
+        "server.path"
         ]
         .map(opt => `${this.rootSection}.${opt}`);
 
@@ -23,9 +25,41 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
-    get serverPath() {
+    private get _serverPath() {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
     }
+
+    get serverPath() {
+        let serverPath = this._serverPath;
+        const type = os.type();
+        const dirname = path.basename(serverPath);
+        if(type === "Darwin" && dirname.endsWith(".app")) {
+            const name = path.parse(serverPath).name;
+            serverPath= path.join(serverPath, "Contents", "MacOS", name)
+        }
+        return serverPath;
+    }
+
+    private _checkServerPath() : boolean{
+        return fs.existsSync(this.serverPath);
+    }
+    
+    public async checkSettings() {
+        if(!this._checkServerPath())
+        {
+            const userResponse = await vscode.window.showErrorMessage(
+                `The 4D path is not valid`,
+                "Show Settings",
+                "Continue"
+            );
+    
+            if(userResponse === "Show Settings")
+            {
+                vscode.commands.executeCommand( 'workbench.action.openSettings', '4D-Analyzer.server.path' );
+            }
+        }
+    }
+
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
 
