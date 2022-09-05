@@ -34,8 +34,20 @@ export class Config {
         const type = os.type();
         const dirname = path.basename(serverPath);
         if(type === "Darwin" && dirname.endsWith(".app")) {
-            const name = path.parse(serverPath).name;
-            serverPath= path.join(serverPath, "Contents", "MacOS", name)
+            let nameExecutable = ""
+            const infoPlistPath = path.join(serverPath, "Contents", "Info.plist")
+            if(fs.existsSync(infoPlistPath)) {
+                const content : string = fs.readFileSync(infoPlistPath).toString();
+                let match = content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi)
+                if(match.length > 1) {
+                    nameExecutable = match[1];
+                }
+            }
+            
+            if(nameExecutable === "") {
+                nameExecutable = path.parse(serverPath).name;
+            }
+            serverPath= path.join(serverPath, "Contents", "MacOS", nameExecutable)
         }
         return serverPath;
     }
