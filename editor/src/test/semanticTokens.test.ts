@@ -11,8 +11,10 @@ suite('Semantic tokens', () => {
 	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_to_test_semantic_token.4dm');
 	const folder = getDocUri('LanguageServerProtocol/Project/Sources/');
 
-	test('Semantic tokens', async () => {
+	test('Semantic tokens File', async () => {
 		await testSemanticFile(docUri);
+	});
+	test('Semantic tokens Folder', async () => {
 		await testSemanticFolder(docUri, folder);
 	});
 });

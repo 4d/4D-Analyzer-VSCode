@@ -12,11 +12,11 @@ export let platformEol: string;
  */
 export async function activate(docUri: vscode.Uri, inFolder? : vscode.Uri) {
 	// The extensionId is `publisher.name` from package.json
-	const ext = vscode.extensions.getExtension('4D.4d-analyzer-vscode')!;
+	const ext = vscode.extensions.getExtension('4D.4d-analyzer')!;
 	await ext.activate();
 	try {
 		if(inFolder && fs.lstatSync(inFolder.fsPath).isDirectory()) {
-			vscode.commands.executeCommand( 'vscode.openFolder', inFolder, false );
+			await vscode.commands.executeCommand( 'vscode.openFolder', inFolder, false );
 		}
 		
 		doc = await vscode.workspace.openTextDocument(docUri);
