@@ -10,7 +10,7 @@ import { getDocUri, activate, setTestContent, setContentAtpos } from './helper';
 suite('Go To Def', () => {
 	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_goToDef_1.4dm');
 
-	test('Go To Def', async () => {
+	test('Definition', async () => {
 		await testGoToDef(docUri);
 	});
 });
@@ -20,7 +20,7 @@ suite('Go To Def', () => {
 async function testGoToDef(docUri: vscode.Uri) {
 
 	let pos = new vscode.Position(35,0)
-
+	//console.log(activate)
 	await activate(docUri);
 	await setContentAtpos("__method_goToDef_1()", pos);
 
