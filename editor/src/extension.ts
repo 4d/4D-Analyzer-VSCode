@@ -4,10 +4,9 @@
  * ------------------------------------------------------------------------------------------ */
 
 import { workspace, ExtensionContext } from 'vscode';
-import * as net from 'net'
-import {Config} from "./config"
-import * as child_process from 'child_process'
-import * as vscode from 'vscode';
+import * as net from 'net';
+import {Config} from "./config";
+import * as child_process from 'child_process';
 
 import {
 	LanguageClient,
@@ -16,7 +15,7 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
-let config : Config
+let config : Config;
 
 export function activate(context: ExtensionContext) {
 	
@@ -25,7 +24,7 @@ export function activate(context: ExtensionContext) {
 	config.checkSettings();
 
 
-	let serverPath : string = config.serverPath
+	let serverPath : string = config.serverPath;
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
@@ -53,10 +52,10 @@ export function activate(context: ExtensionContext) {
 	}
 	
 	if(isDebug) {
-		serverPath = ''//debug
+		serverPath = '';//debug
 		port = 1800;
 	}
-	console.log("SERVER PATH", serverPath)
+	console.log("SERVER PATH", serverPath);
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -65,58 +64,58 @@ export function activate(context: ExtensionContext) {
             // Use a TCP socket because of problems with blocking STDIO
             const server = net.createServer(socket => {
                 // 'connection' listener
-                console.log('4D process connected')
+                console.log('4D process connected');
                 socket.on('end', () => {
-                    console.log('4D process disconnected')
-					server.close()
-                })
+                    console.log('4D process disconnected');
+					server.close();
+                });
 				socket.on('close', () => {
-                    console.log('4D process disconnected')
-					server.close()
-                })
+                    console.log('4D process disconnected');
+					server.close();
+                });
 				socket.on('error', (e) => {
-                    console.log(e)
-					server.close()
-                })
+                    console.log(e);
+					server.close();
+                });
                 //server.close()
-                resolve({ reader: socket, writer: socket, detached : false })
-            })
+                resolve({ reader: socket, writer: socket, detached : false });
+            });
 
             // Listen on random port
             server.listen(port, '127.0.0.1', () => {
-				console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`)
+				console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
 				
 				if(serverPath != '') {
-					 const childProcess = child_process.spawn(serverPath, [
+					const childProcess = child_process.spawn(serverPath, [
 						'--lsp=' + (server.address() as net.AddressInfo).port,
-					])
+					]);
 
 					childProcess.stderr.on('data', (chunk: Buffer) => {
-						const str = chunk.toString()
-						console.log('4D Language Server:', str)
-						client.outputChannel.appendLine(str)
-					})
+						const str = chunk.toString();
+						console.log('4D Language Server:', str);
+						client.outputChannel.appendLine(str);
+					});
 
 					childProcess.on('exit', (code, signal) => {
 						client.outputChannel.appendLine(
 							`Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
-						)
+						);
 						if (code !== 0) {
-							client.outputChannel.show()
+							client.outputChannel.show();
 						}
-					})
+					});
 
 
 					server.on('close', function() {
-						console.log("KILL")
-						childProcess.kill()
+						console.log("KILL");
+						childProcess.kill();
 					});
 
-					return childProcess
+					return childProcess;
 				}
                
-            })
-        })
+            });
+        });
 
 
 
