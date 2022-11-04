@@ -1,11 +1,12 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from "fs"
+import * as fs from "fs";
 export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
 export let documentEol: string;
 export let platformEol: string;
+export let isExeLaunched = false;
 
 /**
  * Activates the vscode.lsp-sample extension
@@ -22,8 +23,13 @@ export async function activate(docUri: vscode.Uri, inFolder? : vscode.Uri) {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
 		
+		if(isExeLaunched)
+			await sleep(1000); // Wait for server activation
+		else
+			await sleep(5000); // Wait for server activation
 
-		await sleep(15000); // Wait for server activation
+
+		isExeLaunched = true;
 	} catch (e) {
 		console.error(e);
 	}

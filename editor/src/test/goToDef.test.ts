@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { getDocUri, activate, setTestContent, setContentAtpos } from './helper';
+import { getDocUri, activate, setContentAtpos } from './helper';
 
 suite('Go To Def', () => {
 	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_goToDef_1.4dm');
