@@ -16,7 +16,7 @@ async function main() {
 		// Passed to --extensionTestsPath
 		const extensionTestsPath = path.resolve(__dirname, './index');
 		//console.log("ENV " + process.env["ANALYZER_4D_PATH"])
-		process.env.ANALYZER_4D_PATH=process.env["ANALYZER_4D_PATH"]
+		//process.env.ANALYZER_4D_PATH=process.env["ANALYZER_4D_PATH"]
 		// Download VS Code, unzip it and run the integration test
 		await runTests({ extensionDevelopmentPath, extensionTestsPath });
 	} catch (err) {
