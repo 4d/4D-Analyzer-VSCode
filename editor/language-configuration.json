@@ -26,16 +26,16 @@
             "open": "Repeat" , "close": "Until"
         },
         {
-            "open": "Case of" , "close": "End Case"
+            "open": "Case of" , "close": "\nEnd Case"
         },
         {
-            "open": "While" , "close": "End While"
+            "open": "While" , "close": "\nEnd While"
         },
         {
-            "open": "For each" , "close": "End for each"
+            "open": "For each" , "close": "\nEnd for each"
         },
         {
-            "open": "Use" , "close": "End Use"
+            "open": "Use" , "close": "\nEnd Use"
         },
         {
             "open": "(" , "close": ")"
@@ -49,11 +49,10 @@
         { "open": "`", "close": "`", "notIn": ["string", "comment"] },
         { "open": "/**", "close": " **/", "notIn": ["string"] }
     ],
-    "autoCloseBefore": ";:.,=}])>` \n\t",
+    "autoCloseBefore": ";:.,=}])>` \n\t", 
+    "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\r\\n\\t\\f\\v ]+)|(?<=[a-zA-Z]) ?(?=[a-zA-Z])",
     "indentationRules": {
-        "increaseIndentPattern": "^((?!\\/\\/).)*(\\{[^}\"'`]*|\\([^)\"'`]*|\\[[^\\]\"'`]*)$",
-        "decreaseIndentPattern": "^((?!.*?\\/\\*).*\\*/)?\\s*[\\)\\}\\]].*$"
-      },
-     
-      
+        "increaseIndentPattern": "(If|For|For each|While|Function).*$",
+        "decreaseIndentPattern": "(End If|End For|End for each|End While|Function)$"
+      }
 }
