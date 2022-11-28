@@ -42,8 +42,8 @@
         },
         { "open": "{" , "close": "}"},
         { "open": "[" , "close": "]"},
-        { "open": "For" , "close": "End For","notIn": ["string", "comment"]},
-        { "open": "Begin SQL" , "close": "End SQL"},
+        { "open": "For" , "close": "\nEnd For","notIn": ["string", "comment"]},
+        { "open": "Begin SQL" , "close": "\nEnd SQL"},
         { "open": "'", "close": "'", "notIn": ["string", "comment"] },
         { "open": "\"", "close": "\"", "notIn": ["string"] },
         { "open": "`", "close": "`", "notIn": ["string", "comment"] },
@@ -52,7 +52,7 @@
     "autoCloseBefore": ";:.,=}])>` \n\t", 
     "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\r\\n\\t\\f\\v ]+)|(?<=[a-zA-Z]) ?(?=[a-zA-Z])",
     "indentationRules": {
-        "increaseIndentPattern": "(If|For|For each|While|Function).*$",
-        "decreaseIndentPattern": "(End If|End For|End for each|End While|Function)$"
+        "increaseIndentPattern": "(If|For|For each|While|Function|Begin SQL|Case of|Use|Repeat).*$",
+        "decreaseIndentPattern": "(End If|End For|End for each|End While|End SQL|End case|End use|Until)$"
       }
 }
