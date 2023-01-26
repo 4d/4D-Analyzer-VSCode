@@ -4,6 +4,20 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+      {
+        "name": "Extension Tests",
+        "type": "extensionHost",
+        "request": "launch",
+        "runtimeExecutable": "${execPath}",
+        "env": {
+         // "ANALYZER_4D_PATH":""
+        },
+        "args": [
+          "--extensionDevelopmentPath=${workspaceFolder}/editor",
+          "--extensionTestsPath=${workspaceFolder}/editor/out/test/index"
+        ],
+        "outFiles": ["${workspaceFolder}/out/test/**/*.js"]
+      },
         {
         "name": "Launch Extension Debug",
         "type": "extensionHost",

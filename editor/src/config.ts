@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path'
-import * as os from 'os'
+import * as path from 'path';
+import * as os from 'os';
 
 export class Config {
 
@@ -26,7 +26,7 @@ export class Config {
     }
 
     private get _serverPath() {
-        return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
+        return this.get<string>("server.path") ?? this.get<string>("serverPath");
     }
 
     get serverPath() {
@@ -34,12 +34,12 @@ export class Config {
         const type = os.type();
         const dirname = path.basename(serverPath);
         if(type === "Darwin" && dirname.endsWith(".app")) {
-            let nameExecutable = ""
-            const infoPlistPath = path.join(serverPath, "Contents", "Info.plist")
+            let nameExecutable = "";
+            const infoPlistPath = path.join(serverPath, "Contents", "Info.plist");
             if(fs.existsSync(infoPlistPath)) {
                 const content : string = fs.readFileSync(infoPlistPath).toString();
-                let match = content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi)
-                if(match.length > 1) {
+                const match = content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi);
+                if(match !== null && match.length > 1) {
                     nameExecutable = match[1];
                 }
             }
@@ -47,7 +47,7 @@ export class Config {
             if(nameExecutable === "") {
                 nameExecutable = path.parse(serverPath).name;
             }
-            serverPath= path.join(serverPath, "Contents", "MacOS", nameExecutable)
+            serverPath= path.join(serverPath, "Contents", "MacOS", nameExecutable);
         }
         return serverPath;
     }

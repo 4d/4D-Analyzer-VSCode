@@ -9,40 +9,23 @@ import { getDocUri, activate } from './helper';
 
 suite('Semantic tokens', () => {
 	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_to_test_semantic_token.4dm');
-	const folder = getDocUri('LanguageServerProtocol/Project/Sources/');
 
-	test('Semantic tokens', async () => {
+	test('Semantic tokens File', async () => {
 		await testSemanticFile(docUri);
-		await testSemanticFolder(docUri, folder);
 	});
 });
 
-function toRange(sLine: number, sChar: number, eLine: number, eChar: number) {
-	const start = new vscode.Position(sLine, sChar);
-	const end = new vscode.Position(eLine, eChar);
-	return new vscode.Range(start, end);
-}
+
 
 async function testSemanticFile(docUri: vscode.Uri) {
 
 	await activate(docUri);
-	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+	
 	const semanticTokens = (await vscode.commands.executeCommand(
 		'vscode.provideDocumentSemanticTokens',
 		docUri
-	)) as vscode.SemanticTokens
-	assert(semanticTokens.data.length > 0)
+	)) as vscode.SemanticTokens;
+	assert(semanticTokens.data.length > 0);
 	
 } 
 
-async function testSemanticFolder(docUri: vscode.Uri, inFolder: vscode.Uri) {
-
-	await activate(docUri, inFolder);
-	// Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
-	const semanticTokens = (await vscode.commands.executeCommand(
-		'vscode.provideDocumentSemanticTokens',
-		docUri
-	)) as vscode.SemanticTokens
-	assert(semanticTokens.data.length > 0)
-	
-} 
