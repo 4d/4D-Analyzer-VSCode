@@ -20,30 +20,10 @@
     ],
     "autoClosingPairs" :[
         {
-            "open": "If" , "close": "\nEnd if"
-        },
-        {
-            "open": "Repeat" , "close": "Until"
-        },
-        {
-            "open": "Case of" , "close": "\nEnd Case"
-        },
-        {
-            "open": "While" , "close": "\nEnd While"
-        },
-        {
-            "open": "For each" , "close": "\nEnd for each"
-        },
-        {
-            "open": "Use" , "close": "\nEnd Use"
-        },
-        {
             "open": "(" , "close": ")"
         },
         { "open": "{" , "close": "}"},
         { "open": "[" , "close": "]"},
-        { "open": "For" , "close": "\nEnd For","notIn": ["string", "comment"]},
-        { "open": "Begin SQL" , "close": "\nEnd SQL"},
         { "open": "'", "close": "'", "notIn": ["string", "comment"] },
         { "open": "\"", "close": "\"", "notIn": ["string"] },
         { "open": "`", "close": "`", "notIn": ["string", "comment"] },
