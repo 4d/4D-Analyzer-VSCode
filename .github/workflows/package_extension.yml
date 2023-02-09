@@ -4,8 +4,6 @@
 name: publish_extension
 
 on:
-  push:
-    branches: [ main ]
   workflow_run:
     workflows: ["build"]
     types:
@@ -16,7 +14,6 @@ jobs:
     name: publish
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    needs: ["build"]
     steps:
       - name: Install Nodejs
         uses: actions/setup-node@v1
