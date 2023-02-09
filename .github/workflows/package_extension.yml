@@ -13,7 +13,7 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} && endsWith(github.ref, 'main')
     steps:
       - name: Install Nodejs
         uses: actions/setup-node@v1
