@@ -2,14 +2,14 @@
 	"name": "4d-analyzer",
 	"displayName": "4D-Analyzer",
 	"description": "LSP connector for 4D code",
-	"license": "MIT",
+	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
 	"version": "0.1.5",
 	"preview": true,
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/4d-depot/4D-Analyzer-VSCode"
+		"url": "https://github.com/4d/4D-Analyzer-VSCode"
 	},
 	"categories": [
 		"Programming Languages"
