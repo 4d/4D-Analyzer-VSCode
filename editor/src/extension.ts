@@ -33,7 +33,9 @@ export function activate(context: ExtensionContext) {
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
-		}
+		},
+		initializationOptions: config.cfg
+		
 	};
 	let isDebug = false;
 	let port = 0;
@@ -127,6 +129,7 @@ export function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
+	config.setClient(client);
 	// Start the client. This will also launch the server
 	client.start();
 }

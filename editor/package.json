@@ -84,6 +84,23 @@
 					"scope": "machine",
 					"default": "",
 					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
+				},
+				"4D-Analyzer.diagnostics.enable": {
+					"type": "boolean",
+					"scope": "machine",
+					"default": true,
+					"markdownDescription": "Enable/disable diagnostics"
+				},
+				"4D-Analyzer.diagnostics.mode": {
+                    "type": "string",
+                    "enum": [
+                        "currentDocument"
+                    ],
+                    "enumDescriptions": [
+                        "Analyses and reports errors on current document only"
+                    ],
+                    "default": "currentDocument",
+                    "description": "Diagnostic mode"
 				}
 			}
 		}
