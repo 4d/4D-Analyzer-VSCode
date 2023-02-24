@@ -4,12 +4,12 @@
 name: publish_extension
 
 on:
-  push:
-    branches: [ main ]
   workflow_run:
     workflows: ["build"]
     types:
       - completed
+    branches:
+      - main
     
 jobs:
   publish:
