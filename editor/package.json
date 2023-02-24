@@ -90,17 +90,6 @@
 					"scope": "machine",
 					"default": true,
 					"markdownDescription": "Enable/disable diagnostics"
-				},
-				"4D-Analyzer.diagnostics.mode": {
-                    "type": "string",
-                    "enum": [
-                        "currentDocument"
-                    ],
-                    "enumDescriptions": [
-                        "Analyses and reports errors on current document only"
-                    ],
-                    "default": "currentDocument",
-                    "description": "Diagnostic mode"
 				}
 			}
 		}

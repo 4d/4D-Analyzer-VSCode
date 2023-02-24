@@ -84,7 +84,7 @@ export class Config {
         const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
-
+            
         await this._client.sendNotification(lc.DidChangeConfigurationNotification.type, {
             settings: this.cfg,
         });
