@@ -1,0 +1,12 @@
+name: publish_workflow
+
+on:
+  push:
+    branches:
+      - main
+
+  jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml
+  call-publish:
+    uses: ./.github/workflows/publish.yml
