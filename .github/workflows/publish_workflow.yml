@@ -5,7 +5,7 @@ on:
     branches:
       - main
 
-  jobs:
+jobs:
   call-build:
     uses: ./.github/workflows/build.yml
   call-publish:

@@ -8,6 +8,6 @@ on:
     branches:
       - "*"
 
-  jobs:
+jobs:
   call-build:
     uses: ./.github/workflows/build.yml
