@@ -4,11 +4,12 @@ import * as path from 'path';
 import * as os from 'os';
 
 import * as lc from "vscode-languageclient/node";
+import {Ctx } from "./ctx";
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
 
-    _client : lc.LanguageClient;
+    _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
         "diagnostics.enable"
@@ -19,8 +20,9 @@ export class Config {
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
-    setClient(inClient : lc.LanguageClient) {
-        this._client = inClient;
+    init(ctx : Ctx) {
+        this._ctx = ctx;
+        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.extensionContext.subscriptions);
     }
 
     get cfg(): vscode.WorkspaceConfiguration {
@@ -85,7 +87,7 @@ export class Config {
             opt => event.affectsConfiguration(opt)
         );
             
-        await this._client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+        await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
             settings: this.cfg,
         });
 
