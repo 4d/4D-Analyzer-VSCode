@@ -8,7 +8,7 @@ import {Ctx } from "./ctx";
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
-
+    _tool4DPath : string;
     _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
@@ -29,12 +29,21 @@ export class Config {
         return vscode.workspace.getConfiguration(this.rootSection);
     }
 
+    public setTool4DPath(inPath : string)
+    {
+        this._tool4DPath = inPath;
+    }
+
     private get<T>(path: string): T {
         return this.cfg.get<T>(path)!;
     }
 
     private get _serverPath() {
-        return this.get<string>("server.path") ?? this.get<string>("serverPath");
+        const p = this.get<string>("server.path") ?? this.get<string>("serverPath");
+        if(!p) {
+            return this._tool4DPath;
+        }
+        return p;
     }
 
     get serverPath() {
