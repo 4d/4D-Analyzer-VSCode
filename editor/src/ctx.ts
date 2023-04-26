@@ -19,7 +19,7 @@ import * as child_process from 'child_process';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
-import { untar } from '@gkotulski/fast-decompress';
+//import { untar } from '@gkotulski/fast-decompress';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
 
 export type CommandCallback = {
@@ -83,85 +83,89 @@ export class Ctx
         return port;
     }
 
-    public prepareTool4D() 
+    public async prepareTool4D() : Promise<string>
     {
-        
-        const globalStoragePath = this.extensionContext.globalStorageUri.fsPath;
-        if (!existsSync(globalStoragePath)) {
-            mkdirSync(globalStoragePath);
-        }
-        const zipPath = path.join(globalStoragePath, "tool4D.tar.xz")
-        const tool4D = path.join(globalStoragePath, "tool4D")
-        var http = require('http');
-        var https = require('https');
-
-        async function download(url, filePath) : Promise<String>{
-            const proto = !url.charAt(4).localeCompare('s') ? https : http;
-          
-            return new Promise((resolve, reject) => {
-              const file = fs.createWriteStream(filePath);
-              let fileInfo = null;
-          
-              const request = proto.get(url, response => {
-                if(response.statusCode == 302)
-                {
-                    download(response.headers.location, filePath).then((r)=> {
-                        resolve(r);
-                    }).catch((err)=> {
-                        reject(err);
-                    })
-                }
-                else if (response.statusCode !== 200) {
-                  fs.unlink(filePath, () => {
-                    reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+        return new Promise(async (resolve, reject)=> {
+            const globalStoragePath = this.extensionContext.globalStorageUri.fsPath;
+            if (!existsSync(globalStoragePath)) {
+                mkdirSync(globalStoragePath);
+            }
+            const zipPath = path.join(globalStoragePath, "tool4D.tar.xz")
+            const tool4D = path.join(globalStoragePath, "tool4D")
+            const http = require('http');
+            const https = require('https');
+    
+            async function download(url, filePath) : Promise<String>{
+                const proto = !url.charAt(4).localeCompare('s') ? https : http;
+              
+                return new Promise((resolve, reject) => {
+                  const file = fs.createWriteStream(filePath);
+                  let fileInfo = null;
+              
+                  const request = proto.get(url, response => {
+                    if(response.statusCode == 302)
+                    {
+                        download(response.headers.location, filePath).then((r)=> {
+                            resolve(r);
+                        }).catch((err)=> {
+                            reject(err);
+                        })
+                    }
+                    else if (response.statusCode !== 200) {
+                      fs.unlink(filePath, () => {
+                        reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+                      });
+                      return;
+                    }
+              
+                    fileInfo = {
+                      mime: response.headers['content-type'],
+                      size: parseInt(response.headers['content-length'], 10),
+                    };
+              
+                    response.pipe(file);
                   });
-                  return;
-                }
-          
-                fileInfo = {
-                  mime: response.headers['content-type'],
-                  size: parseInt(response.headers['content-length'], 10),
-                };
-          
-                response.pipe(file);
-              });
-          
-              // The destination stream is ended by the time it's called
-              file.on('finish', () => resolve(fileInfo));
-          
-              request.on('error', err => {
-                fs.unlink(filePath, () => reject(err));
-              });
-          
-              file.on('error', err => {
-                fs.unlink(filePath, () => reject(err));
-              });
-          
-              request.end();
-            });
-          }
-        let url = "http://i3.ytimg.com/vi/J---aiyznGQ/mqdefault.jpg"
-        url="https://resources-download.4d.com/release/20.x/20/100174/win/tool4d_v20.0_win.tar.xz"
-        
-        //download(url, zipPath).then(()=> {
-//
-        //})
-
-
-        if(untar(zipPath, tool4D))
-        {
-            //TODO improve
-        }
-        this._config.setTool4DPath(path.join(tool4D, "tool4d", "tool4d.exe"))
-
-
+              
+                  // The destination stream is ended by the time it's called
+                  file.on('finish', () => resolve(fileInfo));
+              
+                  request.on('error', err => {
+                    fs.unlink(filePath, () => reject(err));
+                  });
+              
+                  file.on('error', err => {
+                    fs.unlink(filePath, () => reject(err));
+                  });
+              
+                  request.end();
+                });
+              }
+            let url="https://resources-download.4d.com/release/20.x/20/100174/win/tool4d_v20.0_win.tar.xz"
+            
+            if(!existsSync(tool4D))
+            {
+                if(!existsSync(zipPath))
+                    await download(url, zipPath);
+    
+                const bz2 = require('unbzip2-stream');
+                const tarfs = require('tar-fs');
+                    //TODO improve to know which tool4D to download
+                fs.createReadStream(zipPath).pipe(bz2()).pipe(tarfs.extract(tool4D))
+                .on("finish", async ()=> {
+                    resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
+                })
+                .on("close", async ()=> {
+                    resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
+                });
+            }
+            else
+            {
+                resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
+            }
+        })
     }
 
-    public start()
-    {
-        this._config = new Config(this._extensionContext);
-
-        this.prepareTool4D();
+    private _launch4D() {
         const client = this._client;
         this._config.checkSettings();
         let isDebug : boolean;
@@ -235,42 +239,7 @@ export class Ctx
                    
                 });
             });
-        const provideWorkspaceDiagnostics = (resultIds : vsdiag.PreviousResultId[], token, resultReporter): vscode.ProviderResult<vsdiag.WorkspaceDiagnosticReport> => {
-                const provideWorkspaceDiagnostics: ProvideWorkspaceDiagnosticSignature = (resultIds :vsdiag.PreviousResultId[], token): vscode.ProviderResult<vsdiag.WorkspaceDiagnosticReport> => {
-                  const partialResultToken = uuid();
-                  const disposable = this.client.onProgress(WorkspaceDiagnosticRequest.partialResult, partialResultToken, partialResult => {
-                    if (partialResult == undefined) {
-                      resultReporter(null);
-                      return;
-                    }
-                    resultReporter(partialResult as ls.WorkspaceDiagnosticReportPartialResult);
-                  });
-                  let uri : TextDocumentIdentifier = null;
-                  if(vscode.window.activeTextEditor.document)
-                  {
-                    uri = client.code2ProtocolConverter.asTextDocumentIdentifier(
-                        vscode.window.activeTextEditor.document
-                    );
-                  }
-                  const params: ls.WorkspaceDiagnosticParams & { uri?: TextDocumentIdentifier } = {
-                    identifier: "this.options.identifier",
-                    previousResultIds: [],
-                    partialResultToken,
-                    uri
-                  };
-                  return this.client.sendRequest(WorkspaceDiagnosticRequest.type, params, token).then(async (result): Promise<vsdiag.WorkspaceDiagnosticReport> => {
-                    resultReporter(result);
-                    return { items: [] };
-                  }).finally(() => {
-                    disposable.dispose();
-                  });
-                };
-                const middleware: DiagnosticProviderMiddleware = this.client.middleware!;
-                return middleware.provideWorkspaceDiagnostics
-                  ? middleware.provideWorkspaceDiagnostics(resultIds, token, resultReporter, provideWorkspaceDiagnostics)
-                  : provideWorkspaceDiagnostics(resultIds, token, resultReporter);
-              };
-    
+
             // Options to control the language client
             const clientOptions: LanguageClientOptions = {
                 // Register the server for plain text documents
@@ -291,6 +260,17 @@ export class Ctx
         );
 
         this._client.start();
+    }
+
+    public start()
+    {
+        this._config = new Config(this._extensionContext);
+
+        this.prepareTool4D().then(path => {
+            this._config.setTool4DPath(path);
+            this._launch4D();
+        })
+
     }
 
     public registerCommands()
