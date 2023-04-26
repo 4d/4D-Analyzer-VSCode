@@ -17,8 +17,10 @@ import * as ls from 'vscode-languageserver-protocol';
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import { checkSyntax } from "./lsp_ext";
-
+import * as fs from 'fs';
+import * as path from 'path';
+import { untar } from '@gkotulski/fast-decompress';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -81,10 +83,86 @@ export class Ctx
         return port;
     }
 
+    public prepareTool4D() 
+    {
+        
+        const globalStoragePath = this.extensionContext.globalStorageUri.fsPath;
+        if (!existsSync(globalStoragePath)) {
+            mkdirSync(globalStoragePath);
+        }
+        const zipPath = path.join(globalStoragePath, "tool4D.tar.xz")
+        const tool4D = path.join(globalStoragePath, "tool4D")
+        var http = require('http');
+        var https = require('https');
+
+        async function download(url, filePath) : Promise<String>{
+            const proto = !url.charAt(4).localeCompare('s') ? https : http;
+          
+            return new Promise((resolve, reject) => {
+              const file = fs.createWriteStream(filePath);
+              let fileInfo = null;
+          
+              const request = proto.get(url, response => {
+                if(response.statusCode == 302)
+                {
+                    download(response.headers.location, filePath).then((r)=> {
+                        resolve(r);
+                    }).catch((err)=> {
+                        reject(err);
+                    })
+                }
+                else if (response.statusCode !== 200) {
+                  fs.unlink(filePath, () => {
+                    reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+                  });
+                  return;
+                }
+          
+                fileInfo = {
+                  mime: response.headers['content-type'],
+                  size: parseInt(response.headers['content-length'], 10),
+                };
+          
+                response.pipe(file);
+              });
+          
+              // The destination stream is ended by the time it's called
+              file.on('finish', () => resolve(fileInfo));
+          
+              request.on('error', err => {
+                fs.unlink(filePath, () => reject(err));
+              });
+          
+              file.on('error', err => {
+                fs.unlink(filePath, () => reject(err));
+              });
+          
+              request.end();
+            });
+          }
+        let url = "http://i3.ytimg.com/vi/J---aiyznGQ/mqdefault.jpg"
+        url="https://resources-download.4d.com/release/20.x/20/100174/win/tool4d_v20.0_win.tar.xz"
+        
+        //download(url, zipPath).then(()=> {
+//
+        //})
+
+
+        if(untar(zipPath, tool4D))
+        {
+            //TODO improve
+        }
+        this._config.setTool4DPath(path.join(tool4D, "tool4d", "tool4d.exe"))
+
+
+    }
+
     public start()
     {
-        const client = this._client;
         this._config = new Config(this._extensionContext);
+
+        this.prepareTool4D();
+        const client = this._client;
         this._config.checkSettings();
         let isDebug : boolean;
         isDebug = false;
