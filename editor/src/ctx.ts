@@ -2,24 +2,18 @@ import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import {Config} from "./config";
 import {
-    DiagnosticProviderMiddleware,
 	LanguageClient,
 	LanguageClientOptions,
-	ProvideWorkspaceDiagnosticSignature,
-	StreamInfo,
-    WorkspaceDiagnosticRequest,
-    WorkspaceDiagnosticReport,
-    vsdiag,
-    TextDocumentIdentifier,
+	StreamInfo
 } from 'vscode-languageclient/node';
 
-import * as ls from 'vscode-languageserver-protocol';
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
-//import { untar } from '@gkotulski/fast-decompress';
+import * as os from 'os';
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
 
 export type CommandCallback = {
@@ -83,84 +77,164 @@ export class Ctx
         return port;
     }
 
+    private _download(url : string, filePath : string) : Promise<string> 
+    {
+        const http = require('http');
+        const https = require('https');
+
+        async function download(url, filePath) : Promise<string>{
+            const proto = !url.charAt(4).localeCompare('s') ? https : http;
+          
+            return new Promise((resolve, reject) => {
+
+          
+              const request = proto.get(url, response => {
+                if(response.statusCode == 302)
+                {
+                    console.log(response.headers.location)
+                    download(response.headers.location, filePath).then(r => {
+                        resolve(r);
+                    })
+                }
+                else if (response.statusCode === 200) {
+                    const file = fs.createWriteStream(filePath);
+                    let fileInfo = null;
+
+                    fileInfo = {
+                        mime: response.headers['content-type'],
+                        size: parseInt(response.headers['content-length'], 10),
+                      };
+                
+                    response.pipe(file);
+
+                    // The destination stream is ended by the time it's called
+                    file.on('finish', () => resolve(fileInfo));
+                        
+                    request.on('error', err => {
+                      fs.unlink(filePath, () => reject(err));
+                    });
+                
+                    file.on('error', err => {
+                      fs.unlink(filePath, () => reject(err));
+                    });
+          
+                }
+                else if (response.statusCode !== 200) {
+                  fs.unlink(filePath, () => {
+                    reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+                  });
+                  return;
+                }
+                request.end();
+
+              });
+            });
+        }
+        return new Promise((resolve, reject) => {
+            download(url, filePath).then((p)=> {
+                resolve(p)
+            }).catch(e=> {
+                reject(e);
+            })
+        }); 
+    }
+
+    private _getURLTool4D() : string | undefined {
+        const type = os.type();
+        let url="https://resources-download.4d.com/release/20.x/20/"
+        url+="100174/";
+        if(type == "Linux")
+        {
+            return undefined;
+        }
+        else if(type == "Darwin")
+        {
+            const arch = os.arch();
+            url+="mac/tool4d_v20.0_mac";
+            if(arch === "arm" || arch === "arm64")
+                url+="_arm";
+            else
+                url+="_x86";
+
+            url+=".tar.xz"
+        }
+        else if(type == "Windows_NT")
+        {
+            url+="win/tool4d_v20.0_win.tar.xz"
+        }
+        return url;
+    }
+
+    private async _decompress(input : string, output : string) : Promise<void> {
+        return new Promise(async (resolve, reject)=> {
+        if(!existsSync(input))
+            reject();
+
+        const bz2 = require('unbzip2-stream');
+        const tarfs = require('tar-fs');
+            //TODO improve to know which tool4D to download
+        fs.createReadStream(input).pipe(bz2()).pipe(tarfs.extract(output))
+        .on("finish", async ()=> {
+            resolve();
+        })
+        .on("error", async ()=> {
+            reject();
+        })
+        .on("close", async ()=> {
+            resolve();
+        });
+        });
+    }
+
     public async prepareTool4D() : Promise<string>
     {
         return new Promise(async (resolve, reject)=> {
+
             const globalStoragePath = this.extensionContext.globalStorageUri.fsPath;
+            
             if (!existsSync(globalStoragePath)) {
                 mkdirSync(globalStoragePath);
             }
             const zipPath = path.join(globalStoragePath, "tool4D.tar.xz")
             const tool4D = path.join(globalStoragePath, "tool4D")
-            const http = require('http');
-            const https = require('https');
-    
-            async function download(url, filePath) : Promise<String>{
-                const proto = !url.charAt(4).localeCompare('s') ? https : http;
-              
-                return new Promise((resolve, reject) => {
-                  const file = fs.createWriteStream(filePath);
-                  let fileInfo = null;
-              
-                  const request = proto.get(url, response => {
-                    if(response.statusCode == 302)
-                    {
-                        download(response.headers.location, filePath).then((r)=> {
-                            resolve(r);
-                        }).catch((err)=> {
-                            reject(err);
-                        })
-                    }
-                    else if (response.statusCode !== 200) {
-                      fs.unlink(filePath, () => {
-                        reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
-                      });
-                      return;
-                    }
-              
-                    fileInfo = {
-                      mime: response.headers['content-type'],
-                      size: parseInt(response.headers['content-length'], 10),
-                    };
-              
-                    response.pipe(file);
-                  });
-              
-                  // The destination stream is ended by the time it's called
-                  file.on('finish', () => resolve(fileInfo));
-              
-                  request.on('error', err => {
-                    fs.unlink(filePath, () => reject(err));
-                  });
-              
-                  file.on('error', err => {
-                    fs.unlink(filePath, () => reject(err));
-                  });
-              
-                  request.end();
-                });
-              }
-            let url="https://resources-download.4d.com/release/20.x/20/100174/win/tool4d_v20.0_win.tar.xz"
-            
-            if(!existsSync(tool4D))
+            let tool4DExecutable = "";
+            const osType = os.type();
+            if(osType === "Windows_NT")
             {
-                if(!existsSync(zipPath))
-                    await download(url, zipPath);
-    
-                const bz2 = require('unbzip2-stream');
-                const tarfs = require('tar-fs');
-                    //TODO improve to know which tool4D to download
-                fs.createReadStream(zipPath).pipe(bz2()).pipe(tarfs.extract(tool4D))
-                .on("finish", async ()=> {
-                    resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
-                })
-                .on("close", async ()=> {
-                    resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
-                });
+                tool4DExecutable = path.join(tool4D, "tool4d", "tool4d.exe");
+            }
+            else if(osType == "Darwin")
+            {
+                tool4DExecutable = path.join(tool4D, "tool4d.app");
             }
             else
             {
-                resolve(path.join(tool4D, "tool4d", "tool4d.exe"));
+                tool4DExecutable = path.join(tool4D, "tool4d", "tool4d");
+            }
+
+            if(!existsSync(tool4D))
+            {
+                const url : string = this._getURLTool4D();
+                console.log(url);
+
+                if(url)
+                {
+                    if(!existsSync(zipPath))
+                    {
+                        await this._download(url, zipPath);
+                    }
+                }
+
+                this._decompress(zipPath, tool4D).then(()=> {
+                    resolve(tool4DExecutable);
+                })
+                .catch(()=> {
+                    reject();
+                })
+            }
+            else
+            {
+                resolve(tool4DExecutable);
             }
         })
     }
@@ -265,11 +339,17 @@ export class Ctx
     public start()
     {
         this._config = new Config(this._extensionContext);
-
-        this.prepareTool4D().then(path => {
-            this._config.setTool4DPath(path);
+        if(this._config.shouldPrepareTool4D()) {
+            this.prepareTool4D().then(path => {
+                this._config.setTool4DPath(path);
+                this._launch4D();
+            })
+        }
+        else
+        {
             this._launch4D();
-        })
+        }
+
 
     }
 
