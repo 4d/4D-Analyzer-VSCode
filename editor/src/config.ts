@@ -38,8 +38,20 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
+    public shouldPrepareTool4D() :boolean {
+        const p = this._serverPathFromSettings;
+
+        if(!p)
+            return true;
+        return false;
+    }
+
+    private get _serverPathFromSettings() {
+        return this.get<string>("server.path") ?? this.get<string>("serverPath");
+    }
+
     private get _serverPath() {
-        const p = this.get<string>("server.path") ?? this.get<string>("serverPath");
+        const p = this._serverPathFromSettings;
         if(!p) {
             return this._tool4DPath;
         }
@@ -96,10 +108,12 @@ export class Config {
             opt => event.affectsConfiguration(opt)
         );
             
-        await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
-            settings: this.cfg,
-        });
-
+        if(this._ctx.client) {
+            await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+                settings: this.cfg,
+            });
+        }
+        
         if (!requiresReloadOpt) return;
 
         const userResponse = await vscode.window.showInformationMessage(
