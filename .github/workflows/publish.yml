@@ -29,5 +29,4 @@ jobs:
         working-directory: editor
         run: |         
           npm install --global @vscode/vsce
-          vsce --version
-#          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
+          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
