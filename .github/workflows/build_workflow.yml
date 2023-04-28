@@ -1,0 +1,13 @@
+name: build_workflow
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml

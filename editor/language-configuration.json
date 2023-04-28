@@ -32,7 +32,13 @@
     "autoCloseBefore": ";:.,=}])>` \n\t", 
     "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\r\\n\\t\\f\\v ]+)|(?<=[a-zA-Z]) ?(?=[a-zA-Z])",
     "indentationRules": {
-        "increaseIndentPattern": "(If|For|For each|While|Function|Begin SQL|Case of|Use|Repeat).*$",
-        "decreaseIndentPattern": "(End If|End For|End for each|End While|End SQL|End case|End use|Until)$"
+        "increaseIndentPattern":{
+            "pattern":"(^(?![^\\s])*\\s*(class constructor))|(^(?![^\\s])*\\s*(exposed|local|\\s*){1}\\s*function{1}\\s*\\w)|(^(?![^\\s])*\\s*(If|Else|For|For each|While|Begin SQL|Case of|Use|Repeat|: *\\(.*)).*$",
+            "flags": "i",
+        } ,
+        "decreaseIndentPattern": {
+            "pattern":"(^(?![^\\s])*\\s*(exposed|local|\\s*){1}\\s*function{1}\\s*\\w)|(End If|End For|Else|End for each|End While|End SQL|End case|End use|Until|: *\\(.*).*$",
+            "flags": "i",
+        }
       }
 }

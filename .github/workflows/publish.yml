@@ -1,19 +1,16 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
 
-name: publish_extension
+name: publish
 
 on:
-  workflow_run:
-    workflows: ["build"]
-    types:
-      - completed
-    
+  workflow_call:
+
 jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} && endsWith(github.ref, 'main')
+
     steps:
       - name: Install Nodejs
         uses: actions/setup-node@v1

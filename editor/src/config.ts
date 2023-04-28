@@ -3,13 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+import * as lc from "vscode-languageclient/node";
+import {Ctx } from "./ctx";
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
 
-
+    _ctx : Ctx;
     private readonly requiresReloadOpts = [
-        "server.path"
+        "server.path",
+        "diagnostics.enable"
         ]
         .map(opt => `${this.rootSection}.${opt}`);
 
@@ -17,7 +20,12 @@ export class Config {
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
-    private get cfg(): vscode.WorkspaceConfiguration {
+    init(ctx : Ctx) {
+        this._ctx = ctx;
+        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.extensionContext.subscriptions);
+    }
+
+    get cfg(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration(this.rootSection);
     }
 
@@ -78,6 +86,10 @@ export class Config {
         const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
+            
+        await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: this.cfg,
+        });
 
         if (!requiresReloadOpt) return;
 
