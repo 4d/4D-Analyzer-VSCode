@@ -26,4 +26,4 @@ jobs:
           mkdir dist
           npx vsce package --out "dist/"
           mv dist/4d-analyzer-0.1.7.vsix dist/4d_analyzer-0.1.7.vsix
-          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath 4d-analyzer ./dist/*.vsix
+          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
