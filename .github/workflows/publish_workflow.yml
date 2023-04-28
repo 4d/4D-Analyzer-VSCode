@@ -3,7 +3,7 @@ name: publish_workflow
 on:
   push:
     branches:
-      - main
+      - develop
 
 jobs:
   call-build:
