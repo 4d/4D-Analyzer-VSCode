@@ -18,12 +18,17 @@ jobs:
         with:
           node-version: 16.x
 
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build_workflow.yml
+          name: package
+          path: ./editor/dist
+
       - name: Publish Extension (Code Marketplace, release)
         working-directory: editor
         run: |
           npm i
           npm install --global @vscode/vsce
-          mkdir dist
-          npx vsce package --out "dist/"
-          mv dist/4d-analyzer-0.1.7.vsix dist/4d_analyzer-0.1.7.vsix
           npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
