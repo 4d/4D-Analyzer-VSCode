@@ -31,5 +31,4 @@ jobs:
         run: |
           npm i
           npm install --global @vscode/vsce
-          npx vsce ls ./dist/*.vsix
-#          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
+          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
