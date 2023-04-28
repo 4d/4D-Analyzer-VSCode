@@ -11,3 +11,4 @@ jobs:
   call-publish:
     needs: call-build
     uses: ./.github/workflows/publish.yml
+    secrets: inherit
