@@ -23,5 +23,6 @@ jobs:
         run: |
           npm i
           npm install --global @vscode/vsce
+          mkdir dist
           npx vsce package --out "dist/"
           npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/$(find . -iname *.vsix)
