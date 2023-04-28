@@ -3,11 +3,8 @@ name: publish_workflow
 on:
   push:
     branches:
-      - main
+      - develop
 
 jobs:
-  call-build:
-    uses: ./.github/workflows/build.yml
   call-publish:
-    needs: call-build
     uses: ./.github/workflows/publish.yml
