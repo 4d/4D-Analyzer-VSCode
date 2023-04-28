@@ -19,12 +19,14 @@ jobs:
 
       - name: Download artifact
         id: download-artifact
-        uses: dawidd6/action-download-artifact@v2        
+        uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build.yml
+          workflow: build_workflow.yml
           name: package
           path: ./editor/dist
 
       - name: Publish Extension (Code Marketplace, release)
         working-directory: editor
-        run: npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
+        run: |         
+          npm install --global @vscode/vsce
+          npx vsce publish --pat ${{ secrets.VS_MARKETPLACE_TOKEN }} --packagePath ./dist/*.vsix
