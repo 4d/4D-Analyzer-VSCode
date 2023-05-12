@@ -47,12 +47,11 @@ jobs:
         npm_config_arch: ${{ matrix.npm_config_arch }}
     - run: |
         npm install --global vsce
-        mkdir dist
         echo "target=${{ matrix.platform }}-${{ matrix.arch }}" >> $env:GITHUB_ENV
-        vsce package --target ${{ env.target }} --out "dist/"
+        vsce package --target ${{ env.target }}
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
       with:
         name: ${{ env.target }}
         path: |
-          ./editor/dist/*.vsix
+          ./editor/*.vsix
