@@ -13,7 +13,7 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-
+import { untarLzma } from '@gkotulski/fast-decompress';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
 
 export type CommandCallback = {
@@ -142,7 +142,7 @@ export class Ctx
     private _getURLTool4D() : string | undefined {
         const type = os.type();
         let url="https://resources-download.4d.com/release/20.x/20/"
-        url+="100174/";
+        url+="100252/";
         if(type == "Linux")
         {
             return undefined;
@@ -169,20 +169,9 @@ export class Ctx
         return new Promise(async (resolve, reject)=> {
         if(!existsSync(input))
             reject();
-
-        const bz2 = require('unbzip2-stream');
-        const tarfs = require('tar-fs');
-            //TODO improve to know which tool4D to download
-        fs.createReadStream(input).pipe(bz2()).pipe(tarfs.extract(output))
-        .on("finish", async ()=> {
+            console.log(input, output);
+            untarLzma(input, output);
             resolve();
-        })
-        .on("error", async ()=> {
-            reject();
-        })
-        .on("close", async ()=> {
-            resolve();
-        });
         });
     }
 

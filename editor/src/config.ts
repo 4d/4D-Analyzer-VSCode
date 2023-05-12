@@ -40,7 +40,7 @@ export class Config {
 
     public shouldPrepareTool4D() :boolean {
         const p = this._serverPathFromSettings;
-
+        console.log(p)
         if(!p)
             return true;
         return false;

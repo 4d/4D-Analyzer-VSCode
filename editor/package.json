@@ -106,8 +106,7 @@
 		"test": "tsc -b && sh ./scripts/e2e.sh"
 	},
 	"dependencies": {
-		"tar-fs": "^2.1.1",
-		"unbzip2-stream": "^1.4.3",
+		"@gkotulski/fast-decompress": "^0.0.6",
 		"vscode-languageclient": "^8.0.2"
 	},
 	"devDependencies": {
