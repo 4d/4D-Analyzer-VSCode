@@ -1,6 +1,7 @@
 **
 !images
 !language-configuration.json
+!out/node_modules/@gkotulski/
 !LICENSE.md
 !out/extension.js
 !package-lock.json
