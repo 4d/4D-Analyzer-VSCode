@@ -142,7 +142,7 @@ export class Ctx
     private _getURLTool4D() : string | undefined {
         const type = os.type();
         let url="https://resources-download.4d.com/release/20.x/20/"
-        url+="100252/";
+        url+="latest/";
         if(type == "Linux")
         {
             return undefined;
@@ -173,6 +173,11 @@ export class Ctx
             untarLzma(input, output);
             resolve();
         });
+    }
+
+    private _getVersion4D(inPath : string)
+    {
+        
     }
 
     public async prepareTool4D() : Promise<string>
