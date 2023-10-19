@@ -11,6 +11,8 @@ This extension provides support for the **[4D](https://www.4d.com/)** language.
 * [Document syntax checking](https://blog.4d.com/new-vs-code-editor-features-with-4d-v20/) (v20)
 * [Code Folding](https://blog.4d.com/new-vs-code-editor-features-with-4d-v20/) (v20)
 * [Indentation](https://blog.4d.com/new-vs-code-editor-features-with-4d-v20/) (v20)
+* [Code formatting](https://blog.4d.com/format-your-4d-code-in-visual-studio-code/) (v20 R2)
+* [Show Documentation](https://blog.4d.com/vs-code-extension-show-4d-documentation/) (v20 R3)
 
 ## Quick start
 
