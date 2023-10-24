@@ -8,7 +8,7 @@ import * as assert from 'assert';
 import { getDocUri, activate } from './helper';
 
 suite('Semantic tokens', () => {
-	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_to_test_semantic_token.4dm');
+	const docUri = getDocUri('LanguageServerProtocol/Project/Sources/Methods/__method_semantic_token.4dm');
 
 	test('Semantic tokens File', async () => {
 		await testSemanticFile(docUri);
