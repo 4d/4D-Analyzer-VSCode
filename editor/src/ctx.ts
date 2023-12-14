@@ -50,12 +50,11 @@ export class Ctx
 
     private _getServerPath(config : Config, isDebug : boolean) : string {
         let serverPath : string = this._config.serverPath;
-
-        if(process.env.ANALYZER_4D_PATH)
-        {
+        
+        if(process.env.ANALYZER_4D_PATH) {
             serverPath = process.env.ANALYZER_4D_PATH;
         }
-    
+
         if(isDebug) {
             serverPath = '';//debug
         }
@@ -162,27 +161,36 @@ export class Ctx
         {
             url+="win/tool4d_v20.0_win.tar.xz"
         }
+        console.log("Download", url)
         return url;
     }
 
-    private async _decompress(input : string, output : string) : Promise<void> {
+    private async _decompress(input : string, inDirectory : string) : Promise<void> {
         return new Promise(async (resolve, reject)=> {
         if(!existsSync(input))
             reject();
+        console.log("Untar", input)
+        const childProcess = child_process.spawn("tar", [
+            '-xf', input, '-C', inDirectory
+        ]);
 
-        const bz2 = require('unbzip2-stream');
-        const tarfs = require('tar-fs');
-            //TODO improve to know which tool4D to download
-        fs.createReadStream(input).pipe(bz2()).pipe(tarfs.extract(output))
-        .on("finish", async ()=> {
-            resolve();
-        })
-        .on("error", async ()=> {
-            reject();
-        })
-        .on("close", async ()=> {
-            resolve();
+        childProcess.stderr.on('data', (chunk: Buffer) => {
+            //const str = chunk.toString();
+            //console.log('4D Language Server:', str);
+            //this._client.outputChannel.appendLine(str);
         });
+
+        childProcess.on('exit', (code, signal) => {
+            if(code == 0)
+            {
+                resolve()
+            }
+            else
+            {
+                reject()
+            }
+        });
+        
         });
     }
 
@@ -195,13 +203,13 @@ export class Ctx
             if (!existsSync(globalStoragePath)) {
                 mkdirSync(globalStoragePath);
             }
-            const zipPath = path.join(globalStoragePath, "tool4D.tar.xz")
-            const tool4D = path.join(globalStoragePath, "tool4D")
+            const zipPath = path.join(globalStoragePath, "tool4d.tar.xz")
+            const tool4D = path.join(globalStoragePath, "tool4d")
             let tool4DExecutable = "";
             const osType = os.type();
             if(osType === "Windows_NT")
             {
-                tool4DExecutable = path.join(tool4D, "tool4d", "tool4d.exe");
+                tool4DExecutable = path.join(tool4D, "tool4d.exe");
             }
             else if(osType == "Darwin")
             {
@@ -209,9 +217,9 @@ export class Ctx
             }
             else
             {
-                tool4DExecutable = path.join(tool4D, "tool4d", "tool4d");
+                tool4DExecutable = path.join(tool4D, "tool4d");
             }
-
+            
             if(!existsSync(tool4D))
             {
                 const url : string = this._getURLTool4D();
@@ -225,7 +233,7 @@ export class Ctx
                     }
                 }
 
-                this._decompress(zipPath, tool4D).then(()=> {
+                this._decompress(zipPath, globalStoragePath).then(()=> {
                     resolve(tool4DExecutable);
                 })
                 .catch(()=> {
@@ -240,7 +248,6 @@ export class Ctx
     }
 
     private _launch4D() {
-        const client = this._client;
         this._config.checkSettings();
         let isDebug : boolean;
         isDebug = false;
@@ -341,6 +348,7 @@ export class Ctx
         this._config = new Config(this._extensionContext);
         if(this._config.shouldPrepareTool4D()) {
             this.prepareTool4D().then(path => {
+                console.log("Tool4D path", path)
                 this._config.setTool4DPath(path);
                 this._launch4D();
             })

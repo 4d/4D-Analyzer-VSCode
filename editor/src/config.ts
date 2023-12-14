@@ -40,7 +40,6 @@ export class Config {
 
     public shouldPrepareTool4D() :boolean {
         const p = this._serverPathFromSettings;
-
         if(!p)
             return true;
         return false;
@@ -108,7 +107,7 @@ export class Config {
             opt => event.affectsConfiguration(opt)
         );
             
-        if(this._ctx.client) {
+        if(this._ctx?.client) {
             await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
                 settings: this.cfg,
             });
