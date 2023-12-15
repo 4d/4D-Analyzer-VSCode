@@ -38,7 +38,7 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
-    public shouldPrepareTool4D() :boolean {
+    public shouldPrepareTool4D() : boolean {
         const p = this._serverPathFromSettings;
         if(!p)
             return true;
@@ -75,7 +75,7 @@ export class Config {
             if(nameExecutable === "") {
                 nameExecutable = path.parse(serverPath).name;
             }
-            serverPath= path.join(serverPath, "Contents", "MacOS", nameExecutable);
+            serverPath = path.join(serverPath, "Contents", "MacOS", nameExecutable);
         }
         return serverPath;
     }
@@ -93,8 +93,7 @@ export class Config {
                 "Continue"
             );
     
-            if(userResponse === "Show Settings")
-            {
+            if(userResponse === "Show Settings") {
                 vscode.commands.executeCommand( 'workbench.action.openSettings', '4D-Analyzer.server.path' );
             }
         }
@@ -107,11 +106,10 @@ export class Config {
             opt => event.affectsConfiguration(opt)
         );
             
-        if(this._ctx?.client) {
-            await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
-                settings: this.cfg,
-            });
-        }
+        await this._ctx?.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: this.cfg,
+        });
+        
         
         if (!requiresReloadOpt) return;
 

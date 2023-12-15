@@ -90,7 +90,6 @@ export class Ctx
               const request = proto.get(url, response => {
                 if(response.statusCode == 302)
                 {
-                    console.log(response.headers.location)
                     download(response.headers.location, filePath).then(r => {
                         resolve(r);
                     })
@@ -229,6 +228,7 @@ export class Ctx
                 {
                     if(!existsSync(zipPath))
                     {
+                        console.log("Download", url)
                         await this._download(url, zipPath);
                     }
                 }
@@ -261,8 +261,6 @@ export class Ctx
 
         console.log("SERVER PATH", serverPath);
     
-        // If the extension is launched in debug mode then the debug server options are used
-        // Otherwise the run options are used
         const serverOptions = () =>
             new Promise<child_process.ChildProcess | StreamInfo>((resolve, reject) => {
                 // Use a TCP socket because of problems with blocking STDIO
@@ -281,7 +279,6 @@ export class Ctx
                         console.log(e);
                         server.close();
                     });
-                    //server.close()
                     resolve({ reader: socket, writer: socket, detached : false });
                 });
     
@@ -348,17 +345,13 @@ export class Ctx
         this._config = new Config(this._extensionContext);
         if(this._config.shouldPrepareTool4D()) {
             this.prepareTool4D().then(path => {
-                console.log("Tool4D path", path)
                 this._config.setTool4DPath(path);
                 this._launch4D();
             })
         }
-        else
-        {
+        else {
             this._launch4D();
         }
-
-
     }
 
     public registerCommands()
@@ -392,8 +385,4 @@ export class Ctx
 
 export interface Disposable {
     dispose(): void;
-}
-
-function uuid() : string{
-    return "";
 }
