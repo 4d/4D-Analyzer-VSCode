@@ -20,6 +20,12 @@ export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
 
+interface LabeledVersion {
+    version: number;
+    releaseVersion : number;
+    subVersion : number;
+}
+
 export class Ctx
 {
     private _client : LanguageClient;
@@ -137,10 +143,54 @@ export class Ctx
         }); 
     }
 
-    private _getURLTool4D() : string | undefined {
+
+    private _getVersion(inVersion : string) : LabeledVersion
+    {
+        let obj : LabeledVersion = {
+            version: 0,
+            releaseVersion: 0,
+            subVersion: 0,
+        }
+        if(inVersion.includes("R")){
+            const temp = inVersion.split("R");
+            obj.version = Number(temp[0])
+            obj.releaseVersion = Number(temp[1])
+        }
+        else if(inVersion.includes(".")) {
+            const temp = inVersion.split(".");
+            obj.version = Number(temp[0])
+            obj.subVersion = Number(temp[1])
+        }
+        else{
+            obj.version = Number(inVersion);
+        }
+        return obj;
+    }
+
+    //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
+    //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
+    private _getURLTool4D(inVersion : string) : string | undefined 
+    {
+        let url ="https://resources-download.4d.com/release/"
+        const labeledVersion : LabeledVersion = this._getVersion(inVersion)
+
+        const version :string = String(labeledVersion.version)
+        const releaseVersion :string = String(labeledVersion.releaseVersion)
+        const subVersion :string = String(labeledVersion.subVersion)
+
+        if(labeledVersion.releaseVersion > 0){
+            url += `${version} Rx/${version} R${releaseVersion}`
+        }
+        else if(labeledVersion.subVersion > 0) {
+            url += `${version}.x/${version}.${subVersion}`
+        }
+        else {
+            url += `${version}.x/${version}`
+        }
+        url +="/latest/"
+
         const type = os.type();
-        let url="https://resources-download.4d.com/release/20.x/20/"
-        url+="100174/";
+
         if(type == "Linux")
         {
             return undefined;
@@ -148,19 +198,25 @@ export class Ctx
         else if(type == "Darwin")
         {
             const arch = os.arch();
-            url+="mac/tool4d_v20.0_mac";
+            if(labeledVersion.releaseVersion > 0)
+                url+=`mac/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_mac`;
+            else
+                url+=`mac/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_mac`;
             if(arch === "arm" || arch === "arm64")
                 url+="_arm";
             else
                 url+="_x86";
-
-            url+=".tar.xz"
         }
         else if(type == "Windows_NT")
         {
-            url+="win/tool4d_v20.0_win.tar.xz"
+            if(labeledVersion.releaseVersion > 0)
+                url+=`win/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_win`;
+            else
+                url+=`win/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_win`;
         }
-        console.log("Download", url)
+        url+=".tar.xz"
+
+        
         return url;
     }
 
@@ -221,7 +277,7 @@ export class Ctx
             
             if(!existsSync(tool4D))
             {
-                const url : string = this._getURLTool4D();
+                const url : string = this._getURLTool4D("20R3");
                 console.log(url);
 
                 if(url)
