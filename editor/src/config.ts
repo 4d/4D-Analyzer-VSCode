@@ -38,11 +38,15 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
-    public shouldPrepareTool4D() : boolean {
-        const p = this._serverPathFromSettings;
-        if(!p)
-            return true;
-        return false;
+    private _isAVersion(inText : string) {
+        return /^[0-9]{2}((R|\.)[0-9])?$/.test(inText)
+    }
+
+    public tool4DVersionWanted() : string {       
+        if(this._isAVersion(this._serverPathFromSettings)) {
+            return this._serverPathFromSettings;
+        }
+        return undefined;
     }
 
     private get _serverPathFromSettings() {
@@ -50,8 +54,8 @@ export class Config {
     }
 
     private get _serverPath() {
-        const p = this._serverPathFromSettings;
-        if(!p) {
+        const p = this._serverPathFromSettings
+        if(this._isAVersion(p)) {
             return this._tool4DPath;
         }
         return p;

@@ -82,7 +82,7 @@
 				"4D-Analyzer.server.path": {
 					"type": "string",
 					"scope": "machine",
-					"default": "",
+					"default": "20R3",
 					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
 				},
 				"4D-Analyzer.diagnostics.enable": {

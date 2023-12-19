@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import {Config} from "./config";
+import {ToolPreparator} from "./toolPreparator"
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -10,21 +11,11 @@ import {
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-
-import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
 
-interface LabeledVersion {
-    version: number;
-    releaseVersion : number;
-    subVersion : number;
-}
 
 export class Ctx
 {
@@ -54,7 +45,7 @@ export class Ctx
         this._client = inClient;
     }
 
-    private _getServerPath(config : Config, isDebug : boolean) : string {
+    private _getServerPath(isDebug : boolean) : string {
         let serverPath : string = this._config.serverPath;
         
         if(process.env.ANALYZER_4D_PATH) {
@@ -68,7 +59,7 @@ export class Ctx
         return serverPath;
     }
 
-    private _getPort(config : Config, isDebug : boolean) : number {
+    private _getPort(isDebug : boolean) : number {
         let port = 0;
         if(process.env.ANALYZER_4D_PORT)
         {
@@ -82,225 +73,12 @@ export class Ctx
         return port;
     }
 
-    private _download(url : string, filePath : string) : Promise<string> 
+
+
+    public async prepareTool4D(inVersion : string) : Promise<string>
     {
-        const http = require('http');
-        const https = require('https');
-
-        async function download(url, filePath) : Promise<string>{
-            const proto = !url.charAt(4).localeCompare('s') ? https : http;
-          
-            return new Promise((resolve, reject) => {
-
-          
-              const request = proto.get(url, response => {
-                if(response.statusCode == 302)
-                {
-                    download(response.headers.location, filePath).then(r => {
-                        resolve(r);
-                    })
-                }
-                else if (response.statusCode === 200) {
-                    const file = fs.createWriteStream(filePath);
-                    let fileInfo = null;
-
-                    fileInfo = {
-                        mime: response.headers['content-type'],
-                        size: parseInt(response.headers['content-length'], 10),
-                      };
-                
-                    response.pipe(file);
-
-                    // The destination stream is ended by the time it's called
-                    file.on('finish', () => resolve(fileInfo));
-                        
-                    request.on('error', err => {
-                      fs.unlink(filePath, () => reject(err));
-                    });
-                
-                    file.on('error', err => {
-                      fs.unlink(filePath, () => reject(err));
-                    });
-          
-                }
-                else if (response.statusCode !== 200) {
-                  fs.unlink(filePath, () => {
-                    reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
-                  });
-                  return;
-                }
-                request.end();
-
-              });
-            });
-        }
-        return new Promise((resolve, reject) => {
-            download(url, filePath).then((p)=> {
-                resolve(p)
-            }).catch(e=> {
-                reject(e);
-            })
-        }); 
-    }
-
-
-    private _getVersion(inVersion : string) : LabeledVersion
-    {
-        let obj : LabeledVersion = {
-            version: 0,
-            releaseVersion: 0,
-            subVersion: 0,
-        }
-        if(inVersion.includes("R")){
-            const temp = inVersion.split("R");
-            obj.version = Number(temp[0])
-            obj.releaseVersion = Number(temp[1])
-        }
-        else if(inVersion.includes(".")) {
-            const temp = inVersion.split(".");
-            obj.version = Number(temp[0])
-            obj.subVersion = Number(temp[1])
-        }
-        else{
-            obj.version = Number(inVersion);
-        }
-        return obj;
-    }
-
-    //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
-    //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
-    private _getURLTool4D(inVersion : string) : string | undefined 
-    {
-        let url ="https://resources-download.4d.com/release/"
-        const labeledVersion : LabeledVersion = this._getVersion(inVersion)
-
-        const version :string = String(labeledVersion.version)
-        const releaseVersion :string = String(labeledVersion.releaseVersion)
-        const subVersion :string = String(labeledVersion.subVersion)
-
-        if(labeledVersion.releaseVersion > 0){
-            url += `${version} Rx/${version} R${releaseVersion}`
-        }
-        else if(labeledVersion.subVersion > 0) {
-            url += `${version}.x/${version}.${subVersion}`
-        }
-        else {
-            url += `${version}.x/${version}`
-        }
-        url +="/latest/"
-
-        const type = os.type();
-
-        if(type == "Linux")
-        {
-            return undefined;
-        }
-        else if(type == "Darwin")
-        {
-            const arch = os.arch();
-            if(labeledVersion.releaseVersion > 0)
-                url+=`mac/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_mac`;
-            else
-                url+=`mac/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_mac`;
-            if(arch === "arm" || arch === "arm64")
-                url+="_arm";
-            else
-                url+="_x86";
-        }
-        else if(type == "Windows_NT")
-        {
-            if(labeledVersion.releaseVersion > 0)
-                url+=`win/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_win`;
-            else
-                url+=`win/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_win`;
-        }
-        url+=".tar.xz"
-
-        
-        return url;
-    }
-
-    private async _decompress(input : string, inDirectory : string) : Promise<void> {
-        return new Promise(async (resolve, reject)=> {
-        if(!existsSync(input))
-            reject();
-        console.log("Untar", input)
-        const childProcess = child_process.spawn("tar", [
-            '-xf', input, '-C', inDirectory
-        ]);
-
-        childProcess.stderr.on('data', (chunk: Buffer) => {
-            //const str = chunk.toString();
-            //console.log('4D Language Server:', str);
-            //this._client.outputChannel.appendLine(str);
-        });
-
-        childProcess.on('exit', (code, signal) => {
-            if(code == 0)
-            {
-                resolve()
-            }
-            else
-            {
-                reject()
-            }
-        });
-        
-        });
-    }
-
-    public async prepareTool4D() : Promise<string>
-    {
-        return new Promise(async (resolve, reject)=> {
-
-            const globalStoragePath = this.extensionContext.globalStorageUri.fsPath;
-            
-            if (!existsSync(globalStoragePath)) {
-                mkdirSync(globalStoragePath);
-            }
-            const zipPath = path.join(globalStoragePath, "tool4d.tar.xz")
-            const tool4D = path.join(globalStoragePath, "tool4d")
-            let tool4DExecutable = "";
-            const osType = os.type();
-            if(osType === "Windows_NT")
-            {
-                tool4DExecutable = path.join(tool4D, "tool4d.exe");
-            }
-            else if(osType == "Darwin")
-            {
-                tool4DExecutable = path.join(tool4D, "tool4d.app");
-            }
-            else
-            {
-                tool4DExecutable = path.join(tool4D, "tool4d");
-            }
-            
-            if(!existsSync(tool4D))
-            {
-                const url : string = this._getURLTool4D("20R3");
-                console.log(url);
-
-                if(url)
-                {
-                    if(!existsSync(zipPath))
-                    {
-                        console.log("Download", url)
-                        await this._download(url, zipPath);
-                    }
-                }
-
-                this._decompress(zipPath, globalStoragePath).then(()=> {
-                    resolve(tool4DExecutable);
-                })
-                .catch(()=> {
-                    reject();
-                })
-            }
-            else
-            {
-                resolve(tool4DExecutable);
-            }
-        })
+        let toolPreparator : ToolPreparator = new ToolPreparator(inVersion);
+        return toolPreparator.prepareTool4D(this.extensionContext.globalStorageUri.fsPath)
     }
 
     private _launch4D() {
@@ -312,8 +90,8 @@ export class Ctx
             isDebug = true;
         }
     
-        const serverPath : string = this._getServerPath(this._config, isDebug);
-        const port : number= this._getPort(this._config, isDebug);
+        const serverPath : string = this._getServerPath(isDebug);
+        const port : number= this._getPort(isDebug);
 
         console.log("SERVER PATH", serverPath);
     
@@ -399,10 +177,17 @@ export class Ctx
     public start()
     {
         this._config = new Config(this._extensionContext);
-        if(this._config.shouldPrepareTool4D()) {
-            this.prepareTool4D().then(path => {
+        const tool4DVersion = this._config.tool4DVersionWanted();
+        if(tool4DVersion) {
+            this.prepareTool4D(tool4DVersion).then(path => {
                 this._config.setTool4DPath(path);
                 this._launch4D();
+            })
+            .catch((error)=> {
+                console.log("Error", error)
+                const userResponse = vscode.window.showErrorMessage(
+                    error
+                );
             })
         }
         else {
