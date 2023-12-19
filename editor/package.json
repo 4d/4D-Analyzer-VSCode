@@ -82,7 +82,7 @@
 				"4D-Analyzer.server.path": {
 					"type": "string",
 					"scope": "machine",
-					"default": "20R3",
+					"default": "",
 					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
 				},
 				"4D-Analyzer.diagnostics.enable": {
@@ -90,6 +90,25 @@
 					"scope": "machine",
 					"default": true,
 					"markdownDescription": "Enable/disable diagnostics"
+				},
+				"4D-Analyzer.server.tool4d.enable": {
+					"type": "boolean",
+					"scope": "machine",
+					"default": true,
+					"markdownDescription": "Download Tool4D"
+				},
+				"4D-Analyzer.server.tool4d.version": {
+					"type": "string",
+					"scope": "machine",
+					"default": "20",
+					"pattern": "^[0-9]{2}((R|\\.)[0-9])?$",
+					"markdownDescription": "Tool4D version: 20R3, 20, ..."
+				},
+				"4D-Analyzer.server.tool4d.location": {
+					"type": "string",
+					"scope": "machine",
+					"default": "",
+					"markdownDescription": "Tool4D location after download. `#4D-Analyzer.server.tool4d.enable#` should be enabled"
 				}
 			}
 		}

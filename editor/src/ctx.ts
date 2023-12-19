@@ -75,10 +75,11 @@ export class Ctx
 
 
 
-    public async prepareTool4D(inVersion : string) : Promise<string>
+    public async prepareTool4D(inVersion : string, inLocation : string) : Promise<string>
     {
         let toolPreparator : ToolPreparator = new ToolPreparator(inVersion);
-        return toolPreparator.prepareTool4D(this.extensionContext.globalStorageUri.fsPath)
+        const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation
+        return toolPreparator.prepareTool4D(outLocation)
     }
 
     private _launch4D() {
@@ -177,14 +178,13 @@ export class Ctx
     public start()
     {
         this._config = new Config(this._extensionContext);
-        const tool4DVersion = this._config.tool4DVersionWanted();
-        if(tool4DVersion) {
-            this.prepareTool4D(tool4DVersion).then(path => {
+        if(this._config.tool4DEnabled()) {
+            const tool4DVersion = this._config.tool4DWanted();
+            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation()).then(path => {
                 this._config.setTool4DPath(path);
                 this._launch4D();
             })
             .catch((error)=> {
-                console.log("Error", error)
                 const userResponse = vscode.window.showErrorMessage(
                     error
                 );

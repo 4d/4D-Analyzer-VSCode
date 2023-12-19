@@ -47,7 +47,7 @@ export class ToolPreparator {
             const proto = !url.charAt(4).localeCompare('s') ? https : http;
             return new Promise((resolve, reject) => {
                 const request = proto.get(url, response => {
-                    
+
                     if (response.statusCode === 302) {
                         resolve(true)
                     }
@@ -240,8 +240,7 @@ export class ToolPreparator {
     public async prepareTool4D(inPathToStore: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
 
-            let labeledVersion: LabeledVersion = this._versionWanted
-
+            const labeledVersion: LabeledVersion = this._versionWanted!
             const globalStoragePath = inPathToStore;
 
             if (!existsSync(globalStoragePath)) {
@@ -260,30 +259,33 @@ export class ToolPreparator {
 
                 if (url) {
                     if (!existsSync(zipPath)) {
-                        try
-                        {
+                        try {
                             await this._checkDownloadVersionExist(url)
                         }
-                        catch(error)
-                        {
+                        catch (error) {
                             reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
                         }
 
                         if (!existsSync(tool4D)) {
                             mkdirSync(tool4D);
                         }
-                        
-                        console.log("Download", url)
-                        await this._download(url, zipPath);
+
+                        try {
+                            await this._download(url, zipPath);
+                        }
+                        catch (error) {
+                            reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
+                        }
                     }
                 }
 
-                this._decompress(zipPath, tool4D).then(() => {
+                this._decompress(zipPath, tool4D)
+                .then(() => {
                     resolve(tool4DExecutable);
                 })
-                    .catch(() => {
-                        reject();
-                    })
+                .catch(() => {
+                    reject("Cannot decompress the tool4D");
+                })
             }
             else {
                 resolve(tool4DExecutable);

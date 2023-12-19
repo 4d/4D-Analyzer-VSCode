@@ -12,6 +12,9 @@ export class Config {
     _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
+        "tool4d.version",
+        "tool4d.location",
+        "tool4d.enable",
         "diagnostics.enable"
         ]
         .map(opt => `${this.rootSection}.${opt}`);
@@ -42,20 +45,37 @@ export class Config {
         return /^[0-9]{2}((R|\.)[0-9])?$/.test(inText)
     }
 
-    public tool4DVersionWanted() : string {       
-        if(this._isAVersion(this._serverPathFromSettings)) {
-            return this._serverPathFromSettings;
-        }
-        return undefined;
+    public tool4DWanted() : string {       
+        return this._tool4dVersionFromSettings;
     }
 
-    private get _serverPathFromSettings() {
+    public tool4DEnabled() : boolean {       
+        return this._tool4dEnableFromSettings;
+    }
+
+    public tool4DLocation() : string {       
+        return this._tool4dLocationFromSettings;
+    }
+
+    private get _serverPathFromSettings() : string{
         return this.get<string>("server.path") ?? this.get<string>("serverPath");
+    }
+
+    private get _tool4dVersionFromSettings() : string{
+        return this.get<string>("server.tool4d.version");
+    }
+
+    private get _tool4dEnableFromSettings() : boolean {
+        return this.get<boolean>("server.tool4d.enable")?? this.get<boolean>("server.tool4dEnable");
+    }
+
+    private get _tool4dLocationFromSettings() : string {
+        return this.get<string>("server.tool4d.location");
     }
 
     private get _serverPath() {
         const p = this._serverPathFromSettings
-        if(this._isAVersion(p)) {
+        if(this._tool4dEnableFromSettings) {
             return this._tool4DPath;
         }
         return p;
