@@ -136,7 +136,7 @@ export class ToolPreparator {
 
     //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
-    private _getURLTool4D(inVersion: LabeledVersion): string | undefined {
+    private _getURLTool4D(inVersion: LabeledVersion, inExtension: string): string {
         let url = "https://resources-download.4d.com/release/"
         const labeledVersion: LabeledVersion = inVersion
 
@@ -158,26 +158,21 @@ export class ToolPreparator {
         const type = os.type();
 
         if (type == "Linux") {
-            return undefined;
+            url += `linux/tool4d_v${this._getTool4DName(labeledVersion)}_Linux`;
         }
         else if (type == "Darwin") {
             const arch = os.arch();
-            if (labeledVersion.releaseVersion > 0)
-                url += `mac/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_mac`;
-            else
-                url += `mac/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_mac`;
+            url += `mac/tool4d_v${this._getTool4DName(labeledVersion)}_mac`;
             if (arch === "arm" || arch === "arm64")
                 url += "_arm";
             else
                 url += "_x86";
         }
         else if (type == "Windows_NT") {
-            if (labeledVersion.releaseVersion > 0)
-                url += `win/tool4d_v${String(labeledVersion.version)}R${String(labeledVersion.releaseVersion)}_win`;
-            else
-                url += `win/tool4d_v${String(labeledVersion.version)}.${String(labeledVersion.subVersion)}_win`;
+            url += `win/tool4d_v${this._getTool4DName(labeledVersion)}_win`;
         }
-        url += ".tar.xz"
+        url += inExtension
+        //url += ".tar.xz"
 
 
         return url;
@@ -211,12 +206,31 @@ export class ToolPreparator {
     }
 
     private _getTool4DName(labeledVersion: LabeledVersion): string {
-        let isLTS = labeledVersion.releaseVersion == 0
-        let separator = isLTS ? "." : "R";
-        let subVersion = isLTS ? labeledVersion.subVersion : labeledVersion.releaseVersion
+        const isLTS = labeledVersion.releaseVersion == 0
+        const separator = isLTS ? "." : "R";
+        const subVersion = isLTS ? labeledVersion.subVersion : labeledVersion.releaseVersion
         return String(labeledVersion.version) + separator + String(subVersion)
     }
 
+    private async _findValidCompressExtension(labeledVersion: LabeledVersion): Promise<string> {
+        let url: string = this._getURLTool4D(labeledVersion, ".zip");
+        console.log(url)
+        try {
+            await this._checkDownloadVersionExist(url)
+            return url;
+        }
+        catch (e) { }
+
+        url = this._getURLTool4D(labeledVersion, ".tar.xz");
+        console.log(url)
+
+        try {
+            await this._checkDownloadVersionExist(url)
+            return url;
+        }
+        catch (e) { }
+        return undefined
+    }
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion): string {
         return path.join(inRootFolder, this._getTool4DName(labeledVersion))
@@ -251,41 +265,34 @@ export class ToolPreparator {
                 mkdirSync(tool4DMainFolder);
             }
             const tool4D = this._getTool4DPath(tool4DMainFolder, labeledVersion)
-            const zipPath = path.join(tool4D, "tool4d.tar.xz")
+            const zipPath = path.join(tool4D, "tool4d.compressed")
             const tool4DExecutable = this._getTool4DExe(path.join(tool4D, "tool4d"));
 
             if (!existsSync(tool4DExecutable)) {
-                const url: string = this._getURLTool4D(labeledVersion);
+                const url = await this._findValidCompressExtension(labeledVersion)
 
-                if (url) {
-                    if (!existsSync(zipPath)) {
-                        try {
-                            await this._checkDownloadVersionExist(url)
-                        }
-                        catch (error) {
-                            reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
-                        }
+                if (!existsSync(zipPath)) {
 
-                        if (!existsSync(tool4D)) {
-                            mkdirSync(tool4D);
-                        }
-
-                        try {
-                            await this._download(url, zipPath);
-                        }
-                        catch (error) {
-                            reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
-                        }
+                    if (!existsSync(tool4D)) {
+                        mkdirSync(tool4D);
+                    }
+                    try {
+                        await this._download(url, zipPath);
+                    }
+                    catch (error) {
+                        reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
                     }
                 }
 
-                this._decompress(zipPath, tool4D)
-                .then(() => {
-                    resolve(tool4DExecutable);
-                })
-                .catch(() => {
-                    reject("Cannot decompress the tool4D");
-                })
+                if (existsSync(zipPath)) {
+                    this._decompress(zipPath, tool4D)
+                        .then(() => {
+                            resolve(tool4DExecutable);
+                        })
+                        .catch(() => {
+                            reject("Cannot decompress the tool4D");
+                        })
+                }
             }
             else {
                 resolve(tool4DExecutable);

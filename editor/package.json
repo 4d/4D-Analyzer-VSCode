@@ -5,7 +5,7 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.1.7",
+	"version": "0.2.0",
 	"preview": true,
 	"repository": {
 		"type": "git",
@@ -23,7 +23,6 @@
 		"vscode": "^1.64.0"
 	},
 	"activationEvents": [
-		"onLanguage:4d"
 	],
 	"main": "./out/extension",
 	"contributes": {
@@ -125,22 +124,20 @@
 		"test": "tsc -b && sh ./scripts/e2e.sh"
 	},
 	"dependencies": {
-		"tar-fs": "^2.1.1",
-		"unbzip2-stream": "^1.4.3",
-		"vscode-languageclient": "^8.0.2"
+		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/mocha": "^10.0.0",
-		"@types/mz": "2.7.4",
+		"@types/mocha": "^10.0.6",
+		"@types/mz": "2.7.8",
 		"@types/node": "^17.0.45",
-		"@types/vscode": "^1.64.0",
-		"@typescript-eslint/eslint-plugin": "^5.42.0",
-		"@typescript-eslint/parser": "^5.42.0",
-		"@vscode/test-electron": "^2.2.0",
-		"esbuild": "^0.15.13",
-		"eslint": "^8.26.0",
-		"mocha": "^10.1.0",
-		"typescript": "^4.8.4",
-		"@vscode/vsce": "^2.15.0"
+		"@types/vscode": "^1.85.0",
+		"@typescript-eslint/eslint-plugin": "^6.15.0",
+		"@typescript-eslint/parser": "^6.15.0",
+		"@vscode/test-electron": "^2.3.8",
+		"esbuild": "^0.19.10",
+		"eslint": "^8.56.0",
+		"mocha": "^10.2.0",
+		"typescript": "^5.3.3",
+		"@vscode/vsce": "^2.22.0"
 	}
 }

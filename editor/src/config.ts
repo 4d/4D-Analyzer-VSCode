@@ -12,9 +12,9 @@ export class Config {
     _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
-        "tool4d.version",
-        "tool4d.location",
-        "tool4d.enable",
+        "server.tool4d.version",
+        "server.tool4d.location",
+        "server.tool4d.enable",
         "diagnostics.enable"
         ]
         .map(opt => `${this.rootSection}.${opt}`);
