@@ -1,6 +1,5 @@
-import { TextDocument } from "vscode";
 import * as lc from "vscode-languageclient";
-import { TextDocumentIdentifier, WorkspaceDiagnosticReport } from "vscode-languageclient";
+import { WorkspaceDiagnosticReport } from "vscode-languageclient";
 
 export const filesStatus = new lc.RequestType0<object, void>(
     "experimental/filesStatus"

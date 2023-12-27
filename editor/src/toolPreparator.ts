@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as os from 'os';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream, createWriteStream } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 
@@ -213,15 +213,7 @@ export class ToolPreparator {
     }
 
     private async _findValidCompressExtension(labeledVersion: LabeledVersion): Promise<string> {
-        let url: string = this._getURLTool4D(labeledVersion, ".zip");
-        console.log(url)
-        try {
-            await this._checkDownloadVersionExist(url)
-            return url;
-        }
-        catch (e) { }
-
-        url = this._getURLTool4D(labeledVersion, ".tar.xz");
+        const url = this._getURLTool4D(labeledVersion, ".tar.xz");
         console.log(url)
 
         try {

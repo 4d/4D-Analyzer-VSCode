@@ -4,26 +4,26 @@ import * as path from 'path';
 import * as os from 'os';
 
 import * as lc from "vscode-languageclient/node";
-import {Ctx } from "./ctx";
+import { Ctx } from "./ctx";
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
-    _tool4DPath : string;
-    _ctx : Ctx;
+    _tool4DPath: string;
+    _ctx: Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
         "server.tool4d.version",
         "server.tool4d.location",
         "server.tool4d.enable",
         "diagnostics.enable"
-        ]
+    ]
         .map(opt => `${this.rootSection}.${opt}`);
 
     constructor(ctx: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
-    init(ctx : Ctx) {
+    init(ctx: Ctx) {
         this._ctx = ctx;
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.extensionContext.subscriptions);
     }
@@ -32,8 +32,7 @@ export class Config {
         return vscode.workspace.getConfiguration(this.rootSection);
     }
 
-    public setTool4DPath(inPath : string)
-    {
+    public setTool4DPath(inPath: string) {
         this._tool4DPath = inPath;
     }
 
@@ -41,41 +40,41 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
-    private _isAVersion(inText : string) {
+    private _isAVersion(inText: string) {
         return /^[0-9]{2}((R|\.)[0-9])?$/.test(inText)
     }
 
-    public tool4DWanted() : string {       
+    public tool4DWanted(): string {
         return this._tool4dVersionFromSettings;
     }
 
-    public tool4DEnabled() : boolean {       
+    public tool4DEnabled(): boolean {
         return this._tool4dEnableFromSettings;
     }
 
-    public tool4DLocation() : string {       
+    public tool4DLocation(): string {
         return this._tool4dLocationFromSettings;
     }
 
-    private get _serverPathFromSettings() : string{
+    private get _serverPathFromSettings(): string {
         return this.get<string>("server.path") ?? this.get<string>("serverPath");
     }
 
-    private get _tool4dVersionFromSettings() : string{
+    private get _tool4dVersionFromSettings(): string {
         return this.get<string>("server.tool4d.version");
     }
 
-    private get _tool4dEnableFromSettings() : boolean {
-        return this.get<boolean>("server.tool4d.enable")?? this.get<boolean>("server.tool4dEnable");
+    private get _tool4dEnableFromSettings(): boolean {
+        return this.get<boolean>("server.tool4d.enable") ?? this.get<boolean>("server.tool4dEnable");
     }
 
-    private get _tool4dLocationFromSettings() : string {
+    private get _tool4dLocationFromSettings(): string {
         return this.get<string>("server.tool4d.location");
     }
 
     private get _serverPath() {
         const p = this._serverPathFromSettings
-        if(this._tool4dEnableFromSettings) {
+        if (this._tool4dEnableFromSettings) {
             return this._tool4DPath;
         }
         return p;
@@ -85,18 +84,18 @@ export class Config {
         let serverPath = this._serverPath;
         const type = os.type();
         const dirname = path.basename(serverPath);
-        if(type === "Darwin" && dirname.endsWith(".app")) {
+        if (type === "Darwin" && dirname.endsWith(".app")) {
             let nameExecutable = "";
             const infoPlistPath = path.join(serverPath, "Contents", "Info.plist");
-            if(fs.existsSync(infoPlistPath)) {
-                const content : string = fs.readFileSync(infoPlistPath).toString();
+            if (fs.existsSync(infoPlistPath)) {
+                const content: string = fs.readFileSync(infoPlistPath).toString();
                 const match = content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi);
-                if(match !== null && match.length > 1) {
+                if (match !== null && match.length > 1) {
                     nameExecutable = match[1];
                 }
             }
-            
-            if(nameExecutable === "") {
+
+            if (nameExecutable === "") {
                 nameExecutable = path.parse(serverPath).name;
             }
             serverPath = path.join(serverPath, "Contents", "MacOS", nameExecutable);
@@ -104,21 +103,20 @@ export class Config {
         return serverPath;
     }
 
-    private _checkServerPath() : boolean{
+    private _checkServerPath(): boolean {
         return fs.existsSync(this.serverPath);
     }
-    
+
     public async checkSettings() {
-        if(!this._checkServerPath())
-        {
+        if (!this._checkServerPath()) {
             const userResponse = await vscode.window.showErrorMessage(
                 `The 4D path is not valid`,
                 "Show Settings",
                 "Continue"
             );
-    
-            if(userResponse === "Show Settings") {
-                vscode.commands.executeCommand( 'workbench.action.openSettings', '4D-Analyzer.server.path' );
+
+            if (userResponse === "Show Settings") {
+                vscode.commands.executeCommand('workbench.action.openSettings', '4D-Analyzer.server.path');
             }
         }
     }
@@ -129,12 +127,12 @@ export class Config {
         const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
-            
+
         await this._ctx?.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
             settings: this.cfg,
         });
-        
-        
+
+
         if (!requiresReloadOpt) return;
 
         const userResponse = await vscode.window.showInformationMessage(

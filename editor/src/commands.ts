@@ -1,8 +1,9 @@
 import * as ext from "./lsp_ext";
 import { Ctx } from "./ctx";
 import * as vscode from "vscode";
-import { WorkspaceDocumentDiagnosticReport, FullDocumentDiagnosticReport,
-    WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
+import {
+    WorkspaceFullDocumentDiagnosticReport
+} from "vscode-languageclient";
 
 export type Cmd = (...args: any[]) => unknown;
 
@@ -17,8 +18,7 @@ export function filesStatus(ctx: Ctx): Cmd {
             const client = ctx.client;
             const response = await client.sendRequest(ext.filesStatus);
             return new Promise<string>(resolve => {
-                if(response)
-                {
+                if (response) {
                     resolve(JSON.stringify(response));
                 }
                 else
@@ -42,38 +42,6 @@ export function filesStatus(ctx: Ctx): Cmd {
             viewColumn: vscode.ViewColumn.Two,
             preserveFocus: true,
         }));
-    };
-}
-let id = 0;
-export function checkSyntax(ctx: Ctx): Cmd {
-    return async()=> {
-        id++;
-        const client = ctx.client;
-        const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
-            vscode.window.activeTextEditor.document
-        );
-        const response = await client.sendRequest(ext.checkSyntax, params);
-        let currentItem : WorkspaceFullDocumentDiagnosticReport;
-        const diagnosticName : string = client.diagnostics.name;
-        console.log("NAME" + diagnosticName);
-        //.
-        const diagnosticCollection = client.diagnostics;
-        diagnosticCollection.clear();
-        const diagnostics : vscode.Diagnostic[] = [];
-        for(const diagWorkspace of response.items)
-        {
-            currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
-            for(const diag of currentItem.items)
-            {
-                const range : vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);
-                const diagnostic = new vscode.Diagnostic(range, diag.message, diag.severity - 1);
-                diagnostics.push(diagnostic);
-            }
-            diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
-        }
-        
-        ctx.extensionContext.subscriptions.push(diagnosticCollection);
-
     };
 }
 

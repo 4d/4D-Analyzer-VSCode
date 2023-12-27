@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
-import {Config} from "./config";
-import {ToolPreparator} from "./toolPreparator"
+import { Config } from "./config";
+import { ToolPreparator } from "./toolPreparator"
 import {
-	LanguageClient,
-	LanguageClientOptions,
-	StreamInfo
+    LanguageClient,
+    LanguageClientOptions,
+    StreamInfo
 } from 'vscode-languageclient/node';
 
 import { workspace } from 'vscode';
@@ -17,56 +17,52 @@ export type CommandCallback = {
 };
 
 
-export class Ctx
-{
-    private _client : LanguageClient;
-    private _extensionContext : vscode.ExtensionContext;
-    private _commands : Record<string, CommandCallback>;
-    private _config : Config;
+export class Ctx {
+    private _client: LanguageClient;
+    private _extensionContext: vscode.ExtensionContext;
+    private _commands: Record<string, CommandCallback>;
+    private _config: Config;
 
-    constructor(ctx : vscode.ExtensionContext) {
+    constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
     }
 
-    public get extensionContext() : vscode.ExtensionContext
-    {
+    public get extensionContext(): vscode.ExtensionContext {
         return this._extensionContext;
     }
 
-    public get client() : LanguageClient
-    {
+    public get client(): LanguageClient {
         return this._client;
     }
 
-    public set client(inClient : LanguageClient) {
+    public set client(inClient: LanguageClient) {
         this._client = inClient;
     }
 
-    private _getServerPath(isDebug : boolean) : string {
-        let serverPath : string = this._config.serverPath;
-        
-        if(process.env.ANALYZER_4D_PATH) {
+    private _getServerPath(isDebug: boolean): string {
+        let serverPath: string = this._config.serverPath;
+
+        if (process.env.ANALYZER_4D_PATH) {
             serverPath = process.env.ANALYZER_4D_PATH;
         }
 
-        if(isDebug) {
+        if (isDebug) {
             serverPath = '';//debug
         }
 
         return serverPath;
     }
 
-    private _getPort(isDebug : boolean) : number {
+    private _getPort(isDebug: boolean): number {
         let port = 0;
-        if(process.env.ANALYZER_4D_PORT)
-        {
+        if (process.env.ANALYZER_4D_PORT) {
             port = parseInt(process.env.ANALYZER_4D_PORT);
         }
 
-        if(isDebug) {
+        if (isDebug) {
             port = 1800;
         }
 
@@ -75,27 +71,25 @@ export class Ctx
 
 
 
-    public async prepareTool4D(inVersion : string, inLocation : string) : Promise<string>
-    {
-        let toolPreparator : ToolPreparator = new ToolPreparator(inVersion);
+    public async prepareTool4D(inVersion: string, inLocation: string): Promise<string> {
+        let toolPreparator: ToolPreparator = new ToolPreparator(inVersion);
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation
         return toolPreparator.prepareTool4D(outLocation)
     }
 
     private _launch4D() {
         this._config.checkSettings();
-        let isDebug : boolean;
+        let isDebug: boolean;
         isDebug = false;
-        if(process.env.ANALYZER_4D_DEBUG)
-        {
+        if (process.env.ANALYZER_4D_DEBUG) {
             isDebug = true;
         }
-    
-        const serverPath : string = this._getServerPath(isDebug);
-        const port : number= this._getPort(isDebug);
+
+        const serverPath: string = this._getServerPath(isDebug);
+        const port: number = this._getPort(isDebug);
 
         console.log("SERVER PATH", serverPath);
-    
+
         const serverOptions = () =>
             new Promise<child_process.ChildProcess | StreamInfo>((resolve, reject) => {
                 // Use a TCP socket because of problems with blocking STDIO
@@ -114,24 +108,24 @@ export class Ctx
                         console.log(e);
                         server.close();
                     });
-                    resolve({ reader: socket, writer: socket, detached : false });
+                    resolve({ reader: socket, writer: socket, detached: false });
                 });
-    
+
                 // Listen on random port
                 server.listen(port, '127.0.0.1', () => {
                     console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
-                    
-                    if(serverPath != '') {
+
+                    if (serverPath != '') {
                         const childProcess = child_process.spawn(serverPath, [
                             '--lsp=' + (server.address() as net.AddressInfo).port,
                         ]);
-    
+
                         childProcess.stderr.on('data', (chunk: Buffer) => {
                             const str = chunk.toString();
                             console.log('4D Language Server:', str);
                             this._client.outputChannel.appendLine(str);
                         });
-    
+
                         childProcess.on('exit', (code, signal) => {
                             this._client.outputChannel.appendLine(
                                 `Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
@@ -140,30 +134,30 @@ export class Ctx
                                 this._client.outputChannel.show();
                             }
                         });
-    
-    
-                        server.on('close', function() {
+
+
+                        server.on('close', function () {
                             console.log("KILL");
                             childProcess.kill();
                         });
-    
+
                         return childProcess;
                     }
-                   
+
                 });
             });
 
-            // Options to control the language client
-            const clientOptions: LanguageClientOptions = {
-                // Register the server for plain text documents
-                documentSelector: [{ scheme: 'file', language: '4d' }],
-                synchronize: {
-                    // Notify the server about file changes to '.clientrc files contained in the workspace
-                    fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
-                },
-                initializationOptions: this._config.cfg,
-                diagnosticCollectionName:"4d"
-            };
+        // Options to control the language client
+        const clientOptions: LanguageClientOptions = {
+            // Register the server for plain text documents
+            documentSelector: [{ scheme: 'file', language: '4d' }],
+            synchronize: {
+                // Notify the server about file changes to '.clientrc files contained in the workspace
+                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+            },
+            initializationOptions: this._config.cfg,
+            diagnosticCollectionName: "4d"
+        };
         // Create the language client and start the client.
         this._client = new LanguageClient(
             '4D-Analyzer',
@@ -175,37 +169,34 @@ export class Ctx
         this._client.start();
     }
 
-    public start()
-    {
+    public start() {
         this._config = new Config(this._extensionContext);
-        if(this._config.tool4DEnabled()) {
+        if (this._config.tool4DEnabled()) {
             const tool4DVersion = this._config.tool4DWanted();
             this.prepareTool4D(tool4DVersion, this._config.tool4DLocation()).then(path => {
                 this._config.setTool4DPath(path);
                 this._launch4D();
             })
-            .catch((error)=> {
-                const userResponse = vscode.window.showErrorMessage(
-                    error
-                );
-            })
+                .catch((error) => {
+                    const userResponse = vscode.window.showErrorMessage(
+                        error
+                    );
+                })
         }
         else {
             this._launch4D();
         }
     }
 
-    public registerCommands()
-    {
+    public registerCommands() {
         this._commands = {
-            filesStatus:{call:Commands.filesStatus},
-            checkSyntax:{call:Commands.checkSyntax}
-         };
+            filesStatus: { call: Commands.filesStatus }
+        };
 
-         for (const [name, command] of Object.entries(this._commands)) {
+        for (const [name, command] of Object.entries(this._commands)) {
             const fullName = `4d-analyzer.${name}`;
             const callback = command.call(this);
-           
+
             this._extensionContext.subscriptions.push(vscode.commands.registerCommand(fullName, callback));
         }
     }
@@ -214,12 +205,11 @@ export class Ctx
         this._extensionContext.subscriptions.push(d);
     }
 
-    stop() : undefined | Promise<void>
-    {
+    stop(): undefined | Promise<void> {
         if (!this._client) {
             return undefined;
         }
-    
+
         return this._client.stop();
     }
 }
