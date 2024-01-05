@@ -5,39 +5,75 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 
 
-interface LabeledVersion {
-    version: number;
-    releaseVersion: number;
-    subVersion: number;
+class LabeledVersion {
+    public version: number;
+    public releaseVersion: number;
+    public subversion: number;
+    public changelist: number;
+
+    constructor(version : number, releaseVersion : number, subVersion : number, changelist : number) {
+        this.version = version;
+        this.releaseVersion = releaseVersion;
+        this.changelist = changelist;
+        this.subversion = subVersion
+    }
+
+    static fromString(inVersion: string): LabeledVersion {
+        let obj: LabeledVersion = new LabeledVersion(0,0,0,0);
+        let regex : RegExp = /^([0-9]{2})(R([0-9]))?(\.([0-9]*))?$/
+        let regexArray = regex.exec(inVersion)
+        
+        if (regexArray[1]) {
+            obj.version = Number(regexArray[1])
+        }
+
+        if (regexArray[3]) {
+            obj.releaseVersion = Number(regexArray[3])
+        }
+
+        if (regexArray[5]) {
+            obj.subversion = Number(regexArray[5])
+        }
+
+        if (regexArray[7]) {
+            obj.changelist = Number(regexArray[7])
+        }
+
+        return obj;
+    }
+
+    public toString(withChangelist : boolean): string {
+        let result = String(this.version)
+        if(this.releaseVersion > 0)
+        {
+            result += "R" + this.releaseVersion
+        }
+        else
+        {
+            result += "." + this.subversion
+        }
+        
+        if(withChangelist) {
+            result += "." + this.changelist
+        }
+        return result
+    }
 }
 
 export class ToolPreparator {
     private _versionWanted: LabeledVersion
     constructor(inVersion: string) {
-        this._versionWanted = this._getVersion(inVersion)
+        this._versionWanted = LabeledVersion.fromString(inVersion)
     }
 
-    private _getVersion(inVersion: string): LabeledVersion {
-        let obj: LabeledVersion = {
-            version: 0,
-            releaseVersion: 0,
-            subVersion: 0,
-        }
-        if (inVersion.includes("R")) {
-            const temp = inVersion.split("R");
-            obj.version = Number(temp[0])
-            obj.releaseVersion = Number(temp[1])
-        }
-        else if (inVersion.includes(".")) {
-            const temp = inVersion.split(".");
-            obj.version = Number(temp[0])
-            obj.subVersion = Number(temp[1])
-        }
-        else {
-            obj.version = Number(inVersion);
-        }
-        return obj;
+    //TODO: not finished
+    private async _getLatestAvailable() : Promise<LabeledVersion> {
+        return new Promise((resolve, reject)=>{
+            resolve(this._versionWanted)
+        });
     }
+
+
 
     private _checkDownloadVersionExist(url: string): Promise<boolean> {
         const http = require('http');
@@ -142,12 +178,12 @@ export class ToolPreparator {
 
         const version: string = String(labeledVersion.version)
         const releaseVersion: string = String(labeledVersion.releaseVersion)
-        const subVersion: string = String(labeledVersion.subVersion)
+        const subVersion: string = String(labeledVersion.subversion)
 
         if (labeledVersion.releaseVersion > 0) {
             url += `${version} Rx/${version} R${releaseVersion}`
         }
-        else if (labeledVersion.subVersion > 0) {
+        else if (labeledVersion.subversion > 0) {
             url += `${version}.x/${version}.${subVersion}`
         }
         else {
@@ -158,18 +194,18 @@ export class ToolPreparator {
         const type = os.type();
 
         if (type == "Linux") {
-            url += `linux/tool4d_v${this._getTool4DName(labeledVersion)}_Linux`;
+            url += `linux/tool4d_v${labeledVersion.toString(false)}_Linux`;
         }
         else if (type == "Darwin") {
             const arch = os.arch();
-            url += `mac/tool4d_v${this._getTool4DName(labeledVersion)}_mac`;
+            url += `mac/tool4d_v${labeledVersion.toString(false)}_mac`;
             if (arch === "arm" || arch === "arm64")
                 url += "_arm";
             else
                 url += "_x86";
         }
         else if (type == "Windows_NT") {
-            url += `win/tool4d_v${this._getTool4DName(labeledVersion)}_win`;
+            url += `win/tool4d_v${labeledVersion.toString(false)}_win`;
         }
         url += inExtension
         //url += ".tar.xz"
@@ -205,13 +241,6 @@ export class ToolPreparator {
         });
     }
 
-    private _getTool4DName(labeledVersion: LabeledVersion): string {
-        const isLTS = labeledVersion.releaseVersion == 0
-        const separator = isLTS ? "." : "R";
-        const subVersion = isLTS ? labeledVersion.subVersion : labeledVersion.releaseVersion
-        return String(labeledVersion.version) + separator + String(subVersion)
-    }
-
     private async _findValidCompressExtension(labeledVersion: LabeledVersion): Promise<string> {
         const url = this._getURLTool4D(labeledVersion, ".tar.xz");
         console.log(url)
@@ -225,7 +254,7 @@ export class ToolPreparator {
     }
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion): string {
-        return path.join(inRootFolder, this._getTool4DName(labeledVersion))
+        return path.join(inRootFolder, labeledVersion.toString(true))
     }
 
     private _getTool4DExe(inRootFolder: string): string {
@@ -246,7 +275,8 @@ export class ToolPreparator {
     public async prepareTool4D(inPathToStore: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
 
-            const labeledVersion: LabeledVersion = this._versionWanted!
+            const labeledVersionWanted: LabeledVersion = this._versionWanted
+            const labeledVersion : LabeledVersion = labeledVersionWanted;
             const globalStoragePath = inPathToStore;
 
             if (!existsSync(globalStoragePath)) {
@@ -272,7 +302,7 @@ export class ToolPreparator {
                         await this._download(url, zipPath);
                     }
                     catch (error) {
-                        reject(`Tool4D ${this._getTool4DName(labeledVersion)} does not exist`)
+                        reject(`Tool4D ${labeledVersion.toString(false)} does not exist`)
                     }
                 }
 
