@@ -172,7 +172,7 @@ export class ToolPreparator {
 
     //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
-    private _getURLTool4D(inVersion: LabeledVersion, inExtension: string): string {
+    private _getURLTool4D(inVersion: LabeledVersion): string {
         let url = "https://resources-download.4d.com/release/"
         const labeledVersion: LabeledVersion = inVersion
 
@@ -207,8 +207,7 @@ export class ToolPreparator {
         else if (type == "Windows_NT") {
             url += `win/tool4d_v${labeledVersion.toString(false)}_win`;
         }
-        url += inExtension
-        //url += ".tar.xz"
+        url += ".tar.xz"
 
 
         return url;
@@ -223,12 +222,6 @@ export class ToolPreparator {
                 '-xf', input, '-C', inDirectory
             ]);
 
-            childProcess.stderr.on('data', (chunk: Buffer) => {
-                //const str = chunk.toString();
-                //console.log('4D Language Server:', str);
-                //this._client.outputChannel.appendLine(str);
-            });
-
             childProcess.on('exit', (code, signal) => {
                 if (code == 0) {
                     resolve()
@@ -242,7 +235,7 @@ export class ToolPreparator {
     }
 
     private async _findValidCompressExtension(labeledVersion: LabeledVersion): Promise<string> {
-        const url = this._getURLTool4D(labeledVersion, ".tar.xz");
+        const url = this._getURLTool4D(labeledVersion);
         console.log(url)
 
         try {

@@ -171,12 +171,13 @@ export class Ctx {
 
     public start() {
         this._config = new Config(this._extensionContext);
-        if (this._config.tool4DEnabled()) {
+        if (this._config.IsTool4DEnabled()) {
             const tool4DVersion = this._config.tool4DWanted();
-            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation()).then(path => {
-                this._config.setTool4DPath(path);
-                this._launch4D();
-            })
+            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation())
+                .then(path => {
+                    this._config.setTool4DPath(path);
+                    this._launch4D();
+                })
                 .catch((error) => {
                     const userResponse = vscode.window.showErrorMessage(
                         error

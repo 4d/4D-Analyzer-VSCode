@@ -48,7 +48,7 @@ export class Config {
         return this._tool4dVersionFromSettings;
     }
 
-    public tool4DEnabled(): boolean {
+    public IsTool4DEnabled(): boolean {
         return this._tool4dEnableFromSettings;
     }
 
