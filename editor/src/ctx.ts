@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
-import { ToolPreparator } from "./toolPreparator"
+import { ToolPreparator } from "./toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -70,11 +70,10 @@ export class Ctx {
     }
 
 
-
     public async prepareTool4D(inVersion: string, inLocation: string): Promise<string> {
-        let toolPreparator: ToolPreparator = new ToolPreparator(inVersion);
-        const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation
-        return toolPreparator.prepareTool4D(outLocation)
+        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion);
+        const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
+        return toolPreparator.prepareTool4D(outLocation);
     }
 
     private _launch4D() {
@@ -175,14 +174,16 @@ export class Ctx {
             const tool4DVersion = this._config.tool4DWanted();
             this.prepareTool4D(tool4DVersion, this._config.tool4DLocation())
                 .then(path => {
+                    console.log("PATH ", path);
+
                     this._config.setTool4DPath(path);
                     this._launch4D();
                 })
-                .catch((error) => {
+                .catch((error : Error) => {
                     const userResponse = vscode.window.showErrorMessage(
-                        error
+                        error.message
                     );
-                })
+                });
         }
         else {
             this._launch4D();

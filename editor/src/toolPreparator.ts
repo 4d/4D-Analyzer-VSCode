@@ -11,90 +11,85 @@ class LabeledVersion {
     public subversion: number;
     public changelist: number;
 
-    constructor(version : number, releaseVersion : number, subVersion : number, changelist : number) {
+    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number) {
         this.version = version;
         this.releaseVersion = releaseVersion;
         this.changelist = changelist;
-        this.subversion = subVersion
+        this.subversion = subVersion;
     }
 
     static fromString(inVersion: string): LabeledVersion {
-        let obj: LabeledVersion = new LabeledVersion(0,0,0,0);
-        let regex : RegExp = /^([0-9]{2})(R([0-9]))?(\.([0-9]*))?$/
-        let regexArray = regex.exec(inVersion)
-        
+        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0);
+        const regex = /^([0-9]{2})(R([0-9]))?(\.([0-9]*))?$/;
+        const regexArray = regex.exec(inVersion);
+
         if (regexArray[1]) {
-            obj.version = Number(regexArray[1])
+            obj.version = Number(regexArray[1]);
         }
 
         if (regexArray[3]) {
-            obj.releaseVersion = Number(regexArray[3])
+            obj.releaseVersion = Number(regexArray[3]);
         }
 
         if (regexArray[5]) {
-            obj.subversion = Number(regexArray[5])
+            obj.subversion = Number(regexArray[5]);
         }
 
         if (regexArray[7]) {
-            obj.changelist = Number(regexArray[7])
+            obj.changelist = Number(regexArray[7]);
         }
 
         return obj;
     }
 
-    public toString(withChangelist : boolean): string {
-        let result = String(this.version)
-        if(this.releaseVersion > 0)
-        {
-            result += "R" + this.releaseVersion
+    public toString(withChangelist: boolean): string {
+        let result = String(this.version);
+        if (this.releaseVersion > 0) {
+            result += "R" + this.releaseVersion;
         }
-        else
-        {
-            result += "." + this.subversion
+        else {
+            result += "." + this.subversion;
         }
-        
-        if(withChangelist) {
-            result += "." + this.changelist
+
+        if (withChangelist) {
+            result += "." + this.changelist;
         }
-        return result
+        return result;
     }
 }
 
 export class ToolPreparator {
-    private _versionWanted: LabeledVersion
+    private _versionWanted: LabeledVersion;
     constructor(inVersion: string) {
-        this._versionWanted = LabeledVersion.fromString(inVersion)
+        this._versionWanted = LabeledVersion.fromString(inVersion);
     }
 
     //TODO: not finished
-    private async _getLatestAvailable() : Promise<LabeledVersion> {
-        return new Promise((resolve, reject)=>{
-            resolve(this._versionWanted)
+    private async _getLatestAvailable(): Promise<LabeledVersion> {
+        return new Promise((resolve, reject) => {
+            resolve(this._versionWanted);
         });
     }
 
-
-
     private _checkDownloadVersionExist(url: string): Promise<boolean> {
-        const http = require('http');
-        const https = require('https');
-
         async function download(url: string): Promise<boolean> {
+            const http = await import('http');
+            const https = await import('https');
             const proto = !url.charAt(4).localeCompare('s') ? https : http;
             return new Promise((resolve, reject) => {
                 const request = proto.get(url, response => {
 
                     if (response.statusCode === 302) {
-                        resolve(true)
+                        resolve(true);
                     }
                     else if (response.statusCode === 200) {
-                        resolve(true)
+                        resolve(true);
                     }
                     else if (response.statusCode !== 200) {
-                        reject(false)
+                        reject(false);
                     }
                     else {
-                        reject(false)
+                        reject(false);
                     }
                     request.end();
 
@@ -103,18 +98,17 @@ export class ToolPreparator {
         }
         return new Promise((resolve, reject) => {
             download(url).then((p) => {
-                resolve(p)
+                resolve(p);
             }).catch(e => {
                 reject(e);
-            })
+            });
         });
     }
 
     private _download(url: string, filePath: string): Promise<string> {
-        const http = require('http');
-        const https = require('https');
-
         async function download(url, filePath): Promise<string> {
+            const http = await import('http');
+            const https = await import('https');
             const proto = !url.charAt(4).localeCompare('s') ? https : http;
 
             return new Promise((resolve, reject) => {
@@ -124,7 +118,7 @@ export class ToolPreparator {
                     if (response.statusCode == 302) {
                         download(response.headers.location, filePath).then(r => {
                             resolve(r);
-                        })
+                        });
                     }
                     else if (response.statusCode === 200) {
                         const file = fs.createWriteStream(filePath);
@@ -162,10 +156,10 @@ export class ToolPreparator {
         }
         return new Promise((resolve, reject) => {
             download(url, filePath).then((p) => {
-                resolve(p)
+                resolve(p);
             }).catch(e => {
                 reject(e);
-            })
+            });
         });
     }
 
@@ -173,23 +167,23 @@ export class ToolPreparator {
     //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
     private _getURLTool4D(inVersion: LabeledVersion): string {
-        let url = "https://resources-download.4d.com/release/"
-        const labeledVersion: LabeledVersion = inVersion
+        let url = "https://resources-download.4d.com/release/";
+        const labeledVersion: LabeledVersion = inVersion;
 
-        const version: string = String(labeledVersion.version)
-        const releaseVersion: string = String(labeledVersion.releaseVersion)
-        const subVersion: string = String(labeledVersion.subversion)
+        const version = String(labeledVersion.version);
+        const releaseVersion = String(labeledVersion.releaseVersion);
+        const subVersion = String(labeledVersion.subversion);
 
         if (labeledVersion.releaseVersion > 0) {
-            url += `${version} Rx/${version} R${releaseVersion}`
+            url += `${version} Rx/${version} R${releaseVersion}`;
         }
         else if (labeledVersion.subversion > 0) {
-            url += `${version}.x/${version}.${subVersion}`
+            url += `${version}.x/${version}.${subVersion}`;
         }
         else {
-            url += `${version}.x/${version}`
+            url += `${version}.x/${version}`;
         }
-        url += "/latest/"
+        url += "/latest/";
 
         const type = os.type();
 
@@ -207,47 +201,50 @@ export class ToolPreparator {
         else if (type == "Windows_NT") {
             url += `win/tool4d_v${labeledVersion.toString(false)}_win`;
         }
-        url += ".tar.xz"
+        url += ".tar.xz";
 
 
         return url;
     }
 
     private async _decompress(input: string, inDirectory: string): Promise<void> {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             if (!existsSync(input))
                 reject();
-            console.log("Untar", input)
+            console.log("Untar", input);
             const childProcess = child_process.spawn("tar", [
                 '-xf', input, '-C', inDirectory
             ]);
 
-            childProcess.on('exit', (code, signal) => {
+            childProcess.on('exit', (code) => {
                 if (code == 0) {
-                    resolve()
+                    resolve();
                 }
                 else {
-                    reject()
+                    reject();
                 }
             });
-
         });
     }
 
     private async _findValidCompressExtension(labeledVersion: LabeledVersion): Promise<string> {
         const url = this._getURLTool4D(labeledVersion);
-        console.log(url)
+        console.log(url);
 
         try {
-            await this._checkDownloadVersionExist(url)
-            return url;
+            const ok = await this._checkDownloadVersionExist(url);
+            if (ok)
+                return url;
+            else
+                throw new Error(`${url} is not valid`);
         }
-        catch (e) { }
-        return undefined
+        catch (e) {
+            throw new Error(e);
+        }
     }
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion): string {
-        return path.join(inRootFolder, labeledVersion.toString(true))
+        return path.join(inRootFolder, labeledVersion.toString(true));
     }
 
     private _getTool4DExe(inRootFolder: string): string {
@@ -262,56 +259,60 @@ export class ToolPreparator {
         else {
             tool4DExecutable = path.join(inRootFolder, "tool4d");
         }
-        return tool4DExecutable
+        return tool4DExecutable;
     }
 
+    /**
+    * @throws {@link Error} If an issue occured during download/decompress
+    * Download and decompress a toodl
+    */
     public async prepareTool4D(inPathToStore: string): Promise<string> {
-        return new Promise(async (resolve, reject) => {
 
-            const labeledVersionWanted: LabeledVersion = this._versionWanted
-            const labeledVersion : LabeledVersion = labeledVersionWanted;
-            const globalStoragePath = inPathToStore;
+        const labeledVersionWanted: LabeledVersion = this._versionWanted;
+        const labeledVersion: LabeledVersion = labeledVersionWanted;
+        const globalStoragePath = inPathToStore;
 
-            if (!existsSync(globalStoragePath)) {
-                mkdirSync(globalStoragePath);
-            }
-            const tool4DMainFolder = path.join(globalStoragePath, "tool4d")
-            if (!existsSync(tool4DMainFolder)) {
-                mkdirSync(tool4DMainFolder);
-            }
-            const tool4D = this._getTool4DPath(tool4DMainFolder, labeledVersion)
-            const zipPath = path.join(tool4D, "tool4d.compressed")
-            const tool4DExecutable = this._getTool4DExe(path.join(tool4D, "tool4d"));
+        if (!existsSync(globalStoragePath)) {
+            mkdirSync(globalStoragePath);
+        }
+        const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
+        if (!existsSync(tool4DMainFolder)) {
+            mkdirSync(tool4DMainFolder);
+        }
+        const tool4D = this._getTool4DPath(tool4DMainFolder, labeledVersion);
+        const zipPath = path.join(tool4D, "tool4d.compressed");
+        const tool4DExecutable = this._getTool4DExe(path.join(tool4D, "tool4d"));
+        if (!existsSync(tool4DExecutable)) {
 
-            if (!existsSync(tool4DExecutable)) {
-                const url = await this._findValidCompressExtension(labeledVersion)
+            if (!existsSync(zipPath)) {
 
-                if (!existsSync(zipPath)) {
-
-                    if (!existsSync(tool4D)) {
-                        mkdirSync(tool4D);
-                    }
-                    try {
-                        await this._download(url, zipPath);
-                    }
-                    catch (error) {
-                        reject(`Tool4D ${labeledVersion.toString(false)} does not exist`)
-                    }
+                if (!existsSync(tool4D)) {
+                    mkdirSync(tool4D);
                 }
-
-                if (existsSync(zipPath)) {
-                    this._decompress(zipPath, tool4D)
-                        .then(() => {
-                            resolve(tool4DExecutable);
-                        })
-                        .catch(() => {
-                            reject("Cannot decompress the tool4D");
-                        })
+                try {
+                    const url = await this._findValidCompressExtension(labeledVersion);
+                    await this._download(url, zipPath);
+                }
+                catch (error) {
+                    throw new Error(`Tool4D ${labeledVersion.toString(false)} does not exist`);
                 }
             }
-            else {
-                resolve(tool4DExecutable);
+
+            if (existsSync(zipPath)) {
+                try
+                {
+                    await this._decompress(zipPath, tool4D);
+                    return tool4DExecutable;
+                }
+                catch(error)
+                {
+                    throw new Error("Cannot decompress the tool4D");
+                }
             }
-        })
+        }
+        else
+        {
+            return tool4DExecutable;
+        }
     }
 }
