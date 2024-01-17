@@ -87,7 +87,7 @@ export class Config {
             opt => event.affectsConfiguration(opt)
         );
             
-        await this._ctx.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+        await this._ctx?.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
             settings: this.cfg,
         });
 
