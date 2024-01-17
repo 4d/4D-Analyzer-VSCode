@@ -297,8 +297,8 @@ export class ToolPreparator {
         }
 
         if(localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease) {
-            const versions = getDirectories(inRootFolder).sort(
-                (a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const versions = getDirectories(inRootFolder).filter(version => version.startsWith(String(localLabelVersion.version)))
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions.length > 0) {
                 localLabelVersion = LabeledVersion.fromString(versions[0]);
                 return this._getTool4DAvailableLocaly(path.join(inRootFolder, versions[0]), localLabelVersion);

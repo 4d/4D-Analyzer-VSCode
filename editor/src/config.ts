@@ -41,7 +41,7 @@ export class Config {
     }
 
     private _isAVersion(inText: string) {
-        return /^[0-9]{2}((R|\.)[0-9])?$/.test(inText)
+        return /^[0-9]{2}((R|\.)[0-9])?$/.test(inText);
     }
 
     public tool4DWanted(): string {
@@ -73,7 +73,7 @@ export class Config {
     }
 
     private get _serverPath() {
-        const p = this._serverPathFromSettings
+        const p = this._serverPathFromSettings;
         if (this._tool4dEnableFromSettings) {
             return this._tool4DPath;
         }
