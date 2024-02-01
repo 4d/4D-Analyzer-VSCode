@@ -17,9 +17,9 @@ export function run(): Promise<void> {
 	mocha.timeout(100000);
 
 	const testsRoot = __dirname;
-	const currentVersion : string = process.env["VERSION_4D"];
+	const currentVersion: string = process.env["VERSION_4D"];
 	const tests = {
-		"format.test.ts": "20R3"
+		"format.test.js": "20R3"
 	};
 
 	return new Promise((resolve, reject) => {
@@ -27,12 +27,15 @@ export function run(): Promise<void> {
 			if (err) {
 				return reject(err);
 			}
-			
+
 			// Add files to the test suite
-			files.filter(f=> {
+			files.filter(f => {
+
 				const versionFile = tests[f] ? tests[f] : currentVersion;
-				return compareVersion(currentVersion, versionFile) >= 0;})
-			.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
+				console.log(f, versionFile, currentVersion, compareVersion(currentVersion, versionFile));
+				return compareVersion(currentVersion, versionFile) >= 0;
+			})
+				.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
 
 			try {
 				// Run the mocha test
