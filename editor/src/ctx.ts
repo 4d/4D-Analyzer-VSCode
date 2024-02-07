@@ -2,22 +2,14 @@ import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import {Config} from "./config";
 import {
-    DiagnosticProviderMiddleware,
 	LanguageClient,
 	LanguageClientOptions,
-	ProvideWorkspaceDiagnosticSignature,
-	StreamInfo,
-    WorkspaceDiagnosticRequest,
-    WorkspaceDiagnosticReport,
-    vsdiag,
-    TextDocumentIdentifier,
+	StreamInfo
 } from 'vscode-languageclient/node';
 
-import * as ls from 'vscode-languageserver-protocol';
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import { checkSyntax } from "./lsp_ext";
 
 
 export type CommandCallback = {
@@ -52,7 +44,7 @@ export class Ctx
         this._client = inClient;
     }
 
-    private _getServerPath(config : Config, isDebug : boolean) : string {
+    private _getServerPath(isDebug : boolean) : string {
         let serverPath : string = this._config.serverPath;
 
         if(process.env.ANALYZER_4D_PATH)
@@ -67,7 +59,7 @@ export class Ctx
         return serverPath;
     }
 
-    private _getPort(config : Config, isDebug : boolean) : number {
+    private _getPort(isDebug : boolean) : number {
         let port = 0;
         if(process.env.ANALYZER_4D_PORT)
         {
@@ -83,8 +75,8 @@ export class Ctx
 
     public start()
     {
-        const client = this._client;
         this._config = new Config(this._extensionContext);
+        this._config.setContext(this);
         this._config.checkSettings();
         let isDebug : boolean;
         isDebug = false;
@@ -93,8 +85,8 @@ export class Ctx
             isDebug = true;
         }
     
-        const serverPath : string = this._getServerPath(this._config, isDebug);
-        const port : number= this._getPort(this._config, isDebug);
+        const serverPath : string = this._getServerPath(isDebug);
+        const port : number= this._getPort(isDebug);
 
         console.log("SERVER PATH", serverPath);
     
@@ -157,41 +149,6 @@ export class Ctx
                    
                 });
             });
-        const provideWorkspaceDiagnostics = (resultIds : vsdiag.PreviousResultId[], token, resultReporter): vscode.ProviderResult<vsdiag.WorkspaceDiagnosticReport> => {
-                const provideWorkspaceDiagnostics: ProvideWorkspaceDiagnosticSignature = (resultIds :vsdiag.PreviousResultId[], token): vscode.ProviderResult<vsdiag.WorkspaceDiagnosticReport> => {
-                  const partialResultToken = uuid();
-                  const disposable = this.client.onProgress(WorkspaceDiagnosticRequest.partialResult, partialResultToken, partialResult => {
-                    if (partialResult == undefined) {
-                      resultReporter(null);
-                      return;
-                    }
-                    resultReporter(partialResult as ls.WorkspaceDiagnosticReportPartialResult);
-                  });
-                  let uri : TextDocumentIdentifier = null;
-                  if(vscode.window.activeTextEditor.document)
-                  {
-                    uri = client.code2ProtocolConverter.asTextDocumentIdentifier(
-                        vscode.window.activeTextEditor.document
-                    );
-                  }
-                  const params: ls.WorkspaceDiagnosticParams & { uri?: TextDocumentIdentifier } = {
-                    identifier: "this.options.identifier",
-                    previousResultIds: [],
-                    partialResultToken,
-                    uri
-                  };
-                  return this.client.sendRequest(WorkspaceDiagnosticRequest.type, params, token).then(async (result): Promise<vsdiag.WorkspaceDiagnosticReport> => {
-                    resultReporter(result);
-                    return { items: [] };
-                  }).finally(() => {
-                    disposable.dispose();
-                  });
-                };
-                const middleware: DiagnosticProviderMiddleware = this.client.middleware!;
-                return middleware.provideWorkspaceDiagnostics
-                  ? middleware.provideWorkspaceDiagnostics(resultIds, token, resultReporter, provideWorkspaceDiagnostics)
-                  : provideWorkspaceDiagnostics(resultIds, token, resultReporter);
-              };
     
             // Options to control the language client
             const clientOptions: LanguageClientOptions = {
@@ -248,6 +205,3 @@ export interface Disposable {
     dispose(): void;
 }
 
-function uuid() : string{
-    return "";
-}

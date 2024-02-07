@@ -1,8 +1,7 @@
 import * as ext from "./lsp_ext";
 import { Ctx } from "./ctx";
 import * as vscode from "vscode";
-import { WorkspaceDocumentDiagnosticReport, FullDocumentDiagnosticReport,
-    WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
+import { WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
 
 export type Cmd = (...args: any[]) => unknown;
 

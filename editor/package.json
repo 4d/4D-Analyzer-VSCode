@@ -90,6 +90,13 @@
 					"scope": "machine",
 					"default": true,
 					"markdownDescription": "Enable/disable diagnostics"
+				},
+				"4D-Analyzer.diagnostics.scope": {
+					"type": "string",
+					"scope": "machine",
+					"enum": ["Document", "Workspace"],
+					"default": "Workspace",
+					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
 				}
 			}
 		}

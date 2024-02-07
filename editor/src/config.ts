@@ -20,9 +20,8 @@ export class Config {
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
-    init(ctx : Ctx) {
+    setContext(ctx : Ctx) {
         this._ctx = ctx;
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.extensionContext.subscriptions);
     }
 
     get cfg(): vscode.WorkspaceConfiguration {
