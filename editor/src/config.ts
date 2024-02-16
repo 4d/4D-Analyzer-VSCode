@@ -12,7 +12,8 @@ export class Config {
     _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
-        "diagnostics.enable"
+        "diagnostics.enable",
+        "diagnostics.scope"
         ]
         .map(opt => `${this.rootSection}.${opt}`);
 
