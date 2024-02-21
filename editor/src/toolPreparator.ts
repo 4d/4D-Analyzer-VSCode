@@ -6,26 +6,50 @@ import * as path from 'path';
 
 
 class LabeledVersion {
-    public version: number;
-    public releaseVersion: number;
-    public subversion: number;
-    public changelist: number;
-    public isRRelease : boolean;
+    public version: number = 0;
+    public releaseVersion: number = 0;
+    public subversion: number = 0;
+    public changelist: number = 0;
+    public isRRelease : boolean = false;
+    public channel : string = "stable";
 
-    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number) {
+    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number, isRRelease : boolean, channel : string) {
         this.version = version;
         this.releaseVersion = releaseVersion;
         this.changelist = changelist;
         this.subversion = subVersion;
-        this.isRRelease = false;
+        this.isRRelease = isRRelease;
+        this.channel = channel;
+    }
+
+    compare(b : LabeledVersion) : number {
+        if(this.version != b.version)
+        {
+            return this.version - b.version;
+        }
+        else if(this.isRRelease && b.isRRelease && this.releaseVersion != b.releaseVersion)
+        {
+            return this.releaseVersion - b.releaseVersion;
+        }
+        else if(this.isRRelease === b.isRRelease === false)
+        {
+            return this.changelist - b.changelist;
+        }
+        
+        return 0;
     }
 
     static fromString(inVersion: string): LabeledVersion {
-        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0);
-        const regex = /^([0-9]{2})(R([0-9]))?(\.([0-9]*))?$/;
+        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable");
+        console.log("obj1", obj)
+
+        const regex = /^latest|([0-9]{2})(R([0-9]*|x))?$/;
         const regexArray = regex.exec(inVersion);
         if(regexArray == null)
             return obj;
+        if (regexArray[0] && regexArray[0] === "latest") {
+           return obj;
+        }
         if (regexArray[1]) {
             obj.version = Number(regexArray[1]);
         }
@@ -35,17 +59,12 @@ class LabeledVersion {
         }
 
         if (regexArray[3]) {
-            obj.releaseVersion = Number(regexArray[3]);
+            if(regexArray[3] && regexArray[3] === "x")
+                obj.releaseVersion = 0;
+            else
+                obj.releaseVersion = Number(regexArray[3]);
         }
-
-        if (regexArray[5]) {
-            obj.subversion = Number(regexArray[5]);
-        }
-
-        if (regexArray[7]) {
-            obj.changelist = Number(regexArray[7]);
-        }
-
+        console.log("obj", obj)
         return obj;
     }
 
@@ -55,7 +74,8 @@ class LabeledVersion {
             result += "R" + this.releaseVersion;
         }
         else {
-            result += "." + this.subversion;
+            if(this.subversion > 0)
+                result += "." + this.subversion;
         }
 
         if (withChangelist) {
@@ -67,8 +87,9 @@ class LabeledVersion {
 
 export class ToolPreparator {
     private _versionWanted: LabeledVersion;
-    constructor(inVersion: string) {
+    constructor(inVersion: string, channel : string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
+        this._versionWanted.channel = channel
     }
 
     //TODO: not finished
@@ -112,17 +133,27 @@ export class ToolPreparator {
         });
     }
 
-    private _requestChangeList(url: string): Promise<number> {
-        async function download(url: string): Promise<number> {
+    private _requestLabelVersion(url: string): Promise<LabeledVersion> {
+        async function download(url: string): Promise<LabeledVersion> {
             const http = await import('http');
             const https = await import('https');
             const proto = !url.charAt(4).localeCompare('s') ? https : http;
             return new Promise((resolve, reject) => {
                 const request = proto.get(url, response => {
                     if (response.statusCode === 302 || response.statusCode === 200) {
-                        const regex = /_([0-9]{6})/;
+                        const regex = /_([0-9]{2})(\.(x)|R([0-9])*)?_([0-9]{6})/;
+                        console.log("headers location", response.headers.location)
+                        const version = new LabeledVersion(0,0,0,0,false, "stable")
                         const resultRegex = regex.exec(response.headers.location);
-                        resolve(Number(resultRegex[1]));
+                        version.version = Number(resultRegex[1])
+                        version.isRRelease = resultRegex[2] === "R";
+                        if(version.isRRelease)
+                        {
+                            version.releaseVersion = Number(resultRegex[3])
+                        }
+                        version.changelist = Number(resultRegex[4])
+
+                        resolve(version);
                     }
                     else if (response.statusCode !== 200) {
                         reject(false);
@@ -204,8 +235,11 @@ export class ToolPreparator {
 
     //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
+    //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
+    //https://preprod-product-download.4d.com/release/20%20Rx/beta/latest/win/tool4d_win.tar.xz => Last Rx beta
+    //https://preprod-product-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
     private _getURLTool4D(inVersion: LabeledVersion): string {
-        let url = "https://resources-download.4d.com/release/";
+        let url = "https://preprod-product-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
@@ -214,6 +248,15 @@ export class ToolPreparator {
 
         if (labeledVersion.releaseVersion > 0) {
             url += `${version} Rx/${version} R${releaseVersion}`;
+        }
+        else if (labeledVersion.isRRelease && labeledVersion.releaseVersion === 0) {
+            url += `${version} Rx/`;
+            if(labeledVersion.channel === "stable") {
+                url += "lastest"
+            }
+            else {
+                url += "beta"
+            }
         }
         else if (labeledVersion.subversion > 0) {
             url += `${version}.x/${version}.${subVersion}`;
@@ -226,18 +269,18 @@ export class ToolPreparator {
         const type = os.type();
 
         if (type == "Linux") {
-            url += `linux/tool4d_v${labeledVersion.toString(false)}_Linux`;
+            url += `linux/tool4d_Linux`;
         }
         else if (type == "Darwin") {
             const arch = os.arch();
-            url += `mac/tool4d_v${labeledVersion.toString(false)}_mac`;
+            url += `mac/tool4d_mac`;
             if (arch === "arm" || arch === "arm64")
                 url += "_arm";
             else
                 url += "_x86";
         }
         else if (type == "Windows_NT") {
-            url += `win/tool4d_v${labeledVersion.toString(false)}_win`;
+            url += `win/tool4d_win`;
         }
         url += ".tar.xz";
 
@@ -282,41 +325,52 @@ export class ToolPreparator {
 
     private _getTool4DAvailableLocaly(inRootFolder: string, labeledVersion: LabeledVersion) : LabeledVersion {
         const getDirectories = source =>
-        readdirSync(source, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
+                            readdirSync(source, { withFileTypes: true })
+                            .filter(dirent => dirent.isDirectory())
+                            .map(dirent => dirent.name);
 
+        console.log(inRootFolder)
         let localLabelVersion = labeledVersion;
         if(localLabelVersion.version == 0) {
             const versions = getDirectories(inRootFolder).sort(
                 (a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions.length > 0) {
                 localLabelVersion = LabeledVersion.fromString(versions[0]);
-                return this._getTool4DAvailableLocaly(path.join(inRootFolder, versions[0]), localLabelVersion);
+                return this._getTool4DAvailableLocaly(inRootFolder, localLabelVersion);
             }
         }
-
-        if(localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease) {
+        else if(localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease) {
             const versions = getDirectories(inRootFolder).filter(version => version.startsWith(String(localLabelVersion.version)))
             .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions.length > 0) {
                 localLabelVersion = LabeledVersion.fromString(versions[0]);
-                return this._getTool4DAvailableLocaly(path.join(inRootFolder, versions[0]), localLabelVersion);
+                return this._getTool4DAvailableLocaly(inRootFolder, localLabelVersion);
             }
         }
+        else if(localLabelVersion.changelist == 0) {
 
-        if(localLabelVersion.changelist == 0) {
-            const versions = getDirectories(inRootFolder).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            if(versions.length > 0) {
-                localLabelVersion.changelist = Number(versions[0]);
+            //last of all
+            const versions_all = getDirectories(path.join(inRootFolder, localLabelVersion.toString(false))).map(a => a.includes("_") ? a.replace("_beta", "") : a)
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            if(versions_all.length > 0) {
+                console.log("versions_all", versions_all)
+                const version = versions_all[0].includes("_") ? versions_all[0].replace("_beta", "") : versions_all[0]
+                localLabelVersion.changelist = Number(version);
             }
         }
         return localLabelVersion;
     }
 
-    private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion): string {
-        const label = this._getTool4DAvailableLocaly(inRootFolder, labeledVersion);
-        return path.join(inRootFolder, label.toString(false), String(label.changelist));
+    private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion, compute : boolean): string {
+        let label = labeledVersion;
+        if(compute)
+        {
+            label = this._getTool4DAvailableLocaly(inRootFolder, labeledVersion);
+        }
+        let name = String(label.changelist);
+        name += labeledVersion.channel === "beta" ? "_beta" : "";
+        
+        return path.join(inRootFolder, label.toString(false), name);
     }
 
     private _getTool4DExe(inRootFolder: string): string {
@@ -342,20 +396,33 @@ export class ToolPreparator {
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
         const labeledVersionWanted: LabeledVersion = this._versionWanted;
-        let tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labeledVersionWanted), "tool4d"));
-        if (existsSync(tool4DExecutable)) {
-            return tool4DExecutable;
+
+        const labelVersionAvailableLocally = this._getTool4DAvailableLocaly(tool4DMainFolder, labeledVersionWanted);
+
+
+        let labeledVersionCloud: LabeledVersion = labeledVersionWanted;
+        try {
+            const url = await this._getURLFromVersion(labeledVersionWanted);
+            labeledVersionCloud = await this._requestLabelVersion(url);
+            
+        } catch (e) {
+            throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
         }
 
-        const labeledVersion: LabeledVersion = labeledVersionWanted;
-        try {
-            const url = await this._getURLFromVersion(labeledVersion);
-            if (labeledVersion.changelist === 0) {
-                labeledVersion.changelist = await this._requestChangeList(url);
-            }
-        } catch (e) {
-            throw new Error(`Tool4D ${labeledVersion.toString(false)} does not exist`);
+        let tool4DExecutable = ""
+        if(labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease 
+            && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0)
+        {
+            tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labeledVersionCloud, false), "tool4d"));
         }
+        else
+        {
+            let tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labeledVersionWanted, true), "tool4d"));
+            if (existsSync(tool4DExecutable)) {
+                return tool4DExecutable;
+            }
+        }
+
 
         if (!existsSync(globalStoragePath)) {
             mkdirSync(globalStoragePath);
@@ -363,7 +430,8 @@ export class ToolPreparator {
         if (!existsSync(tool4DMainFolder)) {
             mkdirSync(tool4DMainFolder);
         }
-        const tool4D = this._getTool4DPath(tool4DMainFolder, labeledVersion);
+
+        const tool4D = this._getTool4DPath(tool4DMainFolder, labeledVersionCloud, false);
         const zipPath = path.join(tool4D, "tool4d.compressed");
         tool4DExecutable = this._getTool4DExe(path.join(tool4D, "tool4d"));
         if (!existsSync(tool4DExecutable)) {
@@ -374,11 +442,11 @@ export class ToolPreparator {
                     mkdirSync(tool4D, {recursive:true});
                 }
                 try {
-                    const url = this._getURLTool4D(labeledVersion);
+                    const url = this._getURLTool4D(labeledVersionCloud);
                     await this._download(url, zipPath);
                 }
                 catch (error) {
-                    throw new Error(`Tool4D ${labeledVersion.toString(false)} does not exist`);
+                    throw new Error(`Tool4D ${labeledVersionCloud.toString(false)} does not exist`);
                 }
             }
 

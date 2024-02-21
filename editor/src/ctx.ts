@@ -70,8 +70,8 @@ export class Ctx {
     }
 
 
-    public async prepareTool4D(inVersion: string, inLocation: string): Promise<string> {
-        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion);
+    public async prepareTool4D(inVersion: string, inLocation: string, inChannel : string): Promise<string> {
+        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel);
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
     }
@@ -172,7 +172,7 @@ export class Ctx {
         this._config = new Config(this._extensionContext);
         if (this._config.IsTool4DEnabled()) {
             const tool4DVersion = this._config.tool4DWanted();
-            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation())
+            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
                 .then(path => {
                     console.log("PATH ", path);
 

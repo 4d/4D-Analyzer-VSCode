@@ -56,12 +56,20 @@ export class Config {
         return this._tool4dLocationFromSettings;
     }
 
+    public tool4DDownloadChannel(): string {
+        return this._tool4dDownloadChannel;
+    }
+
     private get _serverPathFromSettings(): string {
         return this.get<string>("server.path") ?? this.get<string>("serverPath");
     }
 
     private get _tool4dVersionFromSettings(): string {
         return this.get<string>("server.tool4d.version");
+    }
+
+    private get _tool4dDownloadChannel(): string {
+        return this.get<string>("server.tool4d.channel");
     }
 
     private get _tool4dEnableFromSettings(): boolean {
