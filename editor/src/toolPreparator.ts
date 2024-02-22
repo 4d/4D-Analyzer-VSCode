@@ -41,7 +41,6 @@ class LabeledVersion {
 
     static fromString(inVersion: string): LabeledVersion {
         const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable");
-        console.log("obj1", obj)
 
         const regex = /^latest|([0-9]{2})(R([0-9]*|x))?$/;
         const regexArray = regex.exec(inVersion);
@@ -64,7 +63,6 @@ class LabeledVersion {
             else
                 obj.releaseVersion = Number(regexArray[3]);
         }
-        console.log("obj", obj)
         return obj;
     }
 
@@ -322,25 +320,34 @@ export class ToolPreparator {
             throw new Error(e);
         }
     }
+    
 
     private _getTool4DAvailableLocaly(inRootFolder: string, labeledVersion: LabeledVersion) : LabeledVersion {
-        const getDirectories = source =>
-                            readdirSync(source, { withFileTypes: true })
-                            .filter(dirent => dirent.isDirectory())
-                            .map(dirent => dirent.name);
+        function getDirectories(source : string)
+        {
+            if(existsSync(source))
+            {
+                return readdirSync(source, { withFileTypes: true })
+                .filter(dirent => dirent.isDirectory())
+                .map(dirent => dirent.name);
+            }
+            
+            return [];
+        }
+                            
 
-        console.log(inRootFolder)
         let localLabelVersion = labeledVersion;
         if(localLabelVersion.version == 0) {
-            const versions = getDirectories(inRootFolder).sort(
-                (a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const versions = getDirectories(inRootFolder)
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions.length > 0) {
                 localLabelVersion = LabeledVersion.fromString(versions[0]);
                 return this._getTool4DAvailableLocaly(inRootFolder, localLabelVersion);
             }
         }
         else if(localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease) {
-            const versions = getDirectories(inRootFolder).filter(version => version.startsWith(String(localLabelVersion.version)))
+            const versions = getDirectories(inRootFolder)
+            .filter(version => version.startsWith(String(localLabelVersion.version)))
             .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions.length > 0) {
                 localLabelVersion = LabeledVersion.fromString(versions[0]);
@@ -350,7 +357,8 @@ export class ToolPreparator {
         else if(localLabelVersion.changelist == 0) {
 
             //last of all
-            const versions_all = getDirectories(path.join(inRootFolder, localLabelVersion.toString(false))).map(a => a.includes("_") ? a.replace("_beta", "") : a)
+            const versions_all = getDirectories(path.join(inRootFolder, localLabelVersion.toString(false)))
+            .map(a => a.includes("_") ? a.replace("_beta", "") : a)
             .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if(versions_all.length > 0) {
                 console.log("versions_all", versions_all)
@@ -358,6 +366,7 @@ export class ToolPreparator {
                 localLabelVersion.changelist = Number(version);
             }
         }
+
         return localLabelVersion;
     }
 
@@ -393,21 +402,18 @@ export class ToolPreparator {
     * Download and decompress a toodl
     */
     public async prepareTool4D(inPathToStore: string): Promise<string> {
+        console.log("preparetool4D")
+
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
         const labeledVersionWanted: LabeledVersion = this._versionWanted;
-
         const labelVersionAvailableLocally = this._getTool4DAvailableLocaly(tool4DMainFolder, labeledVersionWanted);
 
-
-        let labeledVersionCloud: LabeledVersion = labeledVersionWanted;
-        try {
-            const url = await this._getURLFromVersion(labeledVersionWanted);
-            labeledVersionCloud = await this._requestLabelVersion(url);
-            
-        } catch (e) {
-            throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
-        }
+    
+        const url = this._getURLTool4D(labeledVersionWanted);
+        const labeledVersionCloud = await this._requestLabelVersion(url);
+        console.log("Version wanted", labeledVersionWanted)
+        console.log("Version availble cloud", labeledVersionCloud)
 
         let tool4DExecutable = ""
         if(labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease 
