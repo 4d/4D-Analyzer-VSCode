@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
-import { ToolPreparator } from "./toolPreparator";
+import { ResultUpdate, ToolPreparator } from "./toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -74,6 +74,12 @@ export class Ctx {
         const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel);
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
+    }
+
+    public async downloadLastTool4D(): Promise<ResultUpdate> {
+        const toolPreparator: ToolPreparator = new ToolPreparator(this._config.tool4DWanted(), this._config.tool4DDownloadChannel());
+        const outLocation = !this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation();
+        return toolPreparator.prepareLastTool(outLocation, true);
     }
 
     private _launch4D() {
@@ -171,8 +177,7 @@ export class Ctx {
     public start() {
         this._config = new Config(this._extensionContext);
         if (this._config.IsTool4DEnabled()) {
-            const tool4DVersion = this._config.tool4DWanted();
-            this.prepareTool4D(tool4DVersion, this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
+            this.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
                 .then(path => {
                     console.log("PATH ", path);
 
@@ -191,8 +196,10 @@ export class Ctx {
     }
 
     public registerCommands() {
+        
         this._commands = {
-            filesStatus: { call: Commands.filesStatus }
+            filesStatus: { call: Commands.filesStatus },
+            updateTool4D: { call: Commands.updateTool4D }
         };
 
         for (const [name, command] of Object.entries(this._commands)) {

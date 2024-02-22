@@ -117,7 +117,13 @@
 					"markdownDescription": "Tool4D location after download. `#4D-Analyzer.server.tool4d.enable#` should be enabled"
 				}
 			}
-		}
+		},
+		"commands": [
+			{
+			  "command": "4d-analyzer.updateTool4D",
+			  "title": "Update tool4D to last version"
+			}
+		  ]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",

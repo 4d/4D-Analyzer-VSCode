@@ -1,10 +1,6 @@
 import * as ext from "./lsp_ext";
 import { Ctx } from "./ctx";
 import * as vscode from "vscode";
-import {
-    WorkspaceFullDocumentDiagnosticReport
-} from "vscode-languageclient";
-
 export type Cmd = (...args: any[]) => unknown;
 
 export function filesStatus(ctx: Ctx): Cmd {
@@ -44,4 +40,23 @@ export function filesStatus(ctx: Ctx): Cmd {
         }));
     };
 }
+
+
+export function updateTool4D(ctx: Ctx): Cmd {
+
+    return async () => {
+        console.log("update now")
+
+        await ctx.downloadLastTool4D()
+        const userResponse = await vscode.window.showInformationMessage(
+            `The tool4D has been updated a restart is needed`,
+            "Reload now"
+        );
+
+        if (userResponse === "Reload now") {
+            await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+    }
+}
+
 
