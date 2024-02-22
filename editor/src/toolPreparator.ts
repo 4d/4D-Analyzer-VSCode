@@ -4,7 +4,6 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { download } from '@vscode/test-electron';
 
 export interface ResultUpdate
 {
@@ -32,6 +31,10 @@ class LabeledVersion {
         return new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel)
     }
 
+    isLatest() {
+        return this.version === 0 && this.isRRelease && this.releaseVersion === 0;
+    }
+
     compare(b: LabeledVersion): number {
         if (this.version != b.version) {
             return this.version - b.version;
@@ -50,6 +53,7 @@ class LabeledVersion {
         if (regexArray == null)
             return obj;
         if (regexArray[0] && regexArray[0] === "latest") {
+            obj.isRRelease = true;
             return obj;
         }
         if (regexArray[1]) {
@@ -143,15 +147,21 @@ export class ToolPreparator {
                 const request = proto.get(url, response => {
                     if (response.statusCode === 302 || response.statusCode === 200) {
                         const regex = /_([0-9]{2})(\.(x)|R([0-9])*)?_([0-9]{6})/;
-
                         const version = new LabeledVersion(0, 0, 0, 0, false, "stable")
                         const resultRegex = regex.exec(response.headers.location);
-                        version.version = Number(resultRegex[1])
-                        version.isRRelease = resultRegex[2].includes("R");
-                        if (version.isRRelease) {
-                            version.releaseVersion = Number(resultRegex[4])
+                        if(resultRegex)
+                        {
+                            version.version = Number(resultRegex[1])
+                            version.isRRelease = resultRegex[2].includes("R");
+                            if (version.isRRelease) {
+                                version.releaseVersion = Number(resultRegex[4])
+                            }
+                            version.changelist = Number(resultRegex[5])
                         }
-                        version.changelist = Number(resultRegex[5])
+                        else
+                        {
+                            reject(false);
+                        }
 
                         resolve(version);
                     }
@@ -382,19 +392,43 @@ export class ToolPreparator {
         return tool4DExecutable;
     }
 
+    private async _getLastMajorVersionAvailable(inStartMajorVersion : number, inChannel) : Promise<number>
+    {
+        let labelVersion = new LabeledVersion(inStartMajorVersion, 0,0,0,false,inChannel);
+        while(true) {
+            const url = this._getURLTool4D(labelVersion);
+            try{
+                const labelVersionReceived = await this._requestLabelVersion(url);
+                labelVersion.version+=1;
+            }
+            catch(error)
+            {
+                break;
+            }
+        }
 
+        return labelVersion.version - 1;
+    }
 
     public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded : boolean): Promise<ResultUpdate> {
         let result = {path:"", updateAvailable:false} as ResultUpdate;
 
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
-        const labeledVersionWanted: LabeledVersion = this._versionWanted;
+        const labeledVersionWanted: LabeledVersion = this._versionWanted.clone();
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
         console.log("Version wanted", this._versionWanted)
+        let lastMajorVersion = labeledVersionWanted.version;
+        if(labeledVersionWanted.isLatest()) {
+            lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
+            labeledVersionWanted.version = lastMajorVersion;
+            console.log("lastVersion available is", labeledVersionWanted.version)
+        }
+        console.log("last version wanted available in cloud", labeledVersionWanted)
 
         const url = this._getURLTool4D(labeledVersionWanted);
+        console.log(url)
         const labeledVersionCloud = await this._requestLabelVersion(url);
         console.log("Version availble cloud", labeledVersionCloud)
         console.log("Version availble locally", labelVersionAvailableLocally)

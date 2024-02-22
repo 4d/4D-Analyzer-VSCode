@@ -121,7 +121,7 @@
 		"commands": [
 			{
 			  "command": "4d-analyzer.updateTool4D",
-			  "title": "Update tool4D to last version"
+			  "title": "4D Analyzer: Update tool4D to last version"
 			}
 		  ]
 	},
