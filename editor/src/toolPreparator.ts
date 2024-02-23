@@ -262,7 +262,7 @@ export class ToolPreparator {
         else if (labeledVersion.isRRelease && labeledVersion.releaseVersion === 0) {
             url += `${version} Rx/`;
             if (labeledVersion.channel === "stable") {
-                url += "lastest"
+                url += "latest"
             }
             else {
                 url += "beta"
