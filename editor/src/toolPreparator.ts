@@ -4,13 +4,10 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { error } from 'console';
 
-export interface ResultUpdate
-{
-    path: string;
-    updateAvailable:boolean;
-}
-class LabeledVersion {
+
+export class LabeledVersion {
     public version: number = 0;
     public releaseVersion: number = 0;
     public subversion: number = 0;
@@ -90,52 +87,18 @@ class LabeledVersion {
     }
 }
 
+export interface ResultUpdate {
+    path: string;
+    currentVersion: LabeledVersion;
+    lastVersion: LabeledVersion;
+    updateAvailable: boolean;
+}
+
 export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
     constructor(inVersion: string, channel: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
         this._versionWanted.channel = channel
-    }
-
-    //TODO: not finished
-    private async _getLatestAvailable(): Promise<LabeledVersion> {
-        return new Promise((resolve, reject) => {
-            resolve(this._versionWanted);
-        });
-    }
-
-    private _checkDownloadVersionExist(url: string): Promise<boolean> {
-        async function download(url: string): Promise<boolean> {
-            const http = await import('http');
-            const https = await import('https');
-            const proto = !url.charAt(4).localeCompare('s') ? https : http;
-            return new Promise((resolve, reject) => {
-                const request = proto.get(url, response => {
-
-                    if (response.statusCode === 302) {
-                        resolve(true);
-                    }
-                    else if (response.statusCode === 200) {
-                        resolve(true);
-                    }
-                    else if (response.statusCode !== 200) {
-                        reject(false);
-                    }
-                    else {
-                        reject(false);
-                    }
-                    request.end();
-
-                });
-            });
-        }
-        return new Promise((resolve, reject) => {
-            download(url).then((p) => {
-                resolve(p);
-            }).catch(e => {
-                reject(e);
-            });
-        });
     }
 
     private _requestLabelVersion(url: string): Promise<LabeledVersion> {
@@ -149,8 +112,7 @@ export class ToolPreparator {
                         const regex = /_([0-9]{2})(\.(x)|R([0-9])*)?_([0-9]{6})/;
                         const version = new LabeledVersion(0, 0, 0, 0, false, "stable")
                         const resultRegex = regex.exec(response.headers.location);
-                        if(resultRegex)
-                        {
+                        if (resultRegex) {
                             version.version = Number(resultRegex[1])
                             version.isRRelease = resultRegex[2].includes("R");
                             if (version.isRRelease) {
@@ -158,8 +120,7 @@ export class ToolPreparator {
                             }
                             version.changelist = Number(resultRegex[5])
                         }
-                        else
-                        {
+                        else {
                             reject(false);
                         }
 
@@ -197,10 +158,14 @@ export class ToolPreparator {
                     if (response.statusCode == 302) {
                         download(response.headers.location, filePath).then(r => {
                             resolve({ url: r, changelist: 0 });
-                        });
+                        }).catch(error => reject(error));
                     }
                     else if (response.statusCode === 200) {
                         const file = fs.createWriteStream(filePath);
+                        const parent = path.join(filePath, "..")
+                        if (!existsSync(parent)) {
+                            mkdirSync(parent, { recursive: true });
+                        }
                         let fileInfo = null;
 
                         fileInfo = {
@@ -226,7 +191,9 @@ export class ToolPreparator {
                         fs.unlink(filePath, () => {
                             reject(new Error(`Failed to get '${inURL}' (${response.statusCode})`));
                         });
-                        return;
+                    }
+                    else {
+                        reject(new Error(`Failed to get '${inURL}' (${response.statusCode})`));
                     }
                     request.end();
 
@@ -354,7 +321,7 @@ export class ToolPreparator {
             const versions_all = getDirectories(path.join(inRootFolder, localLabelVersion.toString(false)))
                 .map(a => a.includes("_") ? a.replace("_beta", "") : a)
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            
+
             if (versions_all.length > 0) {
                 const lastVersion = versions_all[versions_all.length - 1]
                 const version = lastVersion.includes("_") ? lastVersion.replace("_beta", "") : lastVersion
@@ -392,17 +359,15 @@ export class ToolPreparator {
         return tool4DExecutable;
     }
 
-    private async _getLastMajorVersionAvailable(inStartMajorVersion : number, inChannel) : Promise<number>
-    {
-        let labelVersion = new LabeledVersion(inStartMajorVersion, 0,0,0,false,inChannel);
-        while(true) {
+    private async _getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel): Promise<number> {
+        let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel);
+        while (true) {
             const url = this._getURLTool4D(labelVersion);
-            try{
-                const labelVersionReceived = await this._requestLabelVersion(url);
-                labelVersion.version+=1;
+            try {
+                await this._requestLabelVersion(url);
+                labelVersion.version += 1;
             }
-            catch(error)
-            {
+            catch (error) {
                 break;
             }
         }
@@ -410,8 +375,8 @@ export class ToolPreparator {
         return labelVersion.version - 1;
     }
 
-    public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded : boolean): Promise<ResultUpdate> {
-        let result = {path:"", updateAvailable:false} as ResultUpdate;
+    public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
+        let result = { path: "", updateAvailable: false } as ResultUpdate;
 
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
@@ -420,39 +385,43 @@ export class ToolPreparator {
 
         console.log("Version wanted", this._versionWanted)
         let lastMajorVersion = labeledVersionWanted.version;
-        if(labeledVersionWanted.isLatest()) {
+        if (labeledVersionWanted.isLatest()) {
             lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
             labeledVersionWanted.version = lastMajorVersion;
             console.log("lastVersion available is", labeledVersionWanted.version)
         }
-        console.log("last version wanted available in cloud", labeledVersionWanted)
 
         const url = this._getURLTool4D(labeledVersionWanted);
         console.log(url)
         const labeledVersionCloud = await this._requestLabelVersion(url);
-        console.log("Version availble cloud", labeledVersionCloud)
-        console.log("Version availble locally", labelVersionAvailableLocally)
+        console.log(labeledVersionCloud)
+        if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
+            throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
+        }
+        console.log("Version available cloud", labeledVersionCloud)
+        console.log("Version available locally", labelVersionAvailableLocally)
         console.log("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
         let tool4DExecutable = ""
-        if (labelVersionAvailableLocally.changelist > 0 
+        if (labelVersionAvailableLocally.changelist > 0
             && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
             && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
-                result.updateAvailable = true;
+            result.updateAvailable = true;
         }
 
         let labelVersionToGet = labelVersionAvailableLocally;
-        if(result.updateAvailable && inUpdateIfNeeded)
-        {
+        if ((result.updateAvailable && inUpdateIfNeeded )|| labelVersionAvailableLocally.changelist === 0) {
             labelVersionToGet = labeledVersionCloud;
         }
         console.log("Version to get", labelVersionToGet)
+        result.currentVersion = labelVersionToGet;
+        result.lastVersion = labeledVersionCloud;
 
         tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
         if (existsSync(tool4DExecutable)) {
             result.path = tool4DExecutable;
             return result;
         }
-        
+
 
         if (!existsSync(globalStoragePath)) {
             mkdirSync(globalStoragePath);
@@ -468,9 +437,6 @@ export class ToolPreparator {
 
             if (!existsSync(zipPath)) {
 
-                if (!existsSync(tool4D)) {
-                    mkdirSync(tool4D, { recursive: true });
-                }
                 try {
                     const url = this._getURLTool4D(labelVersionToGet);
                     await this._download(url, zipPath);
@@ -479,7 +445,7 @@ export class ToolPreparator {
                     throw new Error(`Tool4D ${labelVersionToGet.toString(false)} does not exist`);
                 }
             }
-
+            console.log(zipPath)
             if (existsSync(zipPath)) {
                 try {
                     await this._decompress(zipPath, tool4D);
@@ -504,21 +470,27 @@ export class ToolPreparator {
     */
     public async prepareTool4D(inPathToStore: string): Promise<string> {
 
-        let result = await this.prepareLastTool(inPathToStore, false);
-        if(result.updateAvailable) {
-            let command = async () => {
-                const userResponse = await vscode.window.showInformationMessage(
-                    `A new version of 4D is available, do you want to download it?`,
-                    "Download",
-                    "Continue"
-                );
-    
-                if (userResponse === "Download") {
-                    vscode.commands.executeCommand('4d-analyzer.updateTool4D');
+        try {
+            let result = await this.prepareLastTool(inPathToStore, false);
+            if (result.updateAvailable) {
+                let command = async () => {
+                    const userResponse = await vscode.window.showInformationMessage(
+                        `4D ${result.lastVersion.toString(true)} is available, you have ${result.currentVersion.toString(true)}. Would you like to download it?`,
+                        "Download",
+                        "Continue"
+                    );
+
+                    if (userResponse === "Download") {
+                        vscode.commands.executeCommand('4d-analyzer.updateTool4D');
+                    }
                 }
+                command();
             }
-            command();
+            return result.path;
+
+        } catch (error) {
+            throw error;
         }
-        return result.path;
+
     }
 }

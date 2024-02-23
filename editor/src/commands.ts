@@ -46,16 +46,23 @@ export function updateTool4D(ctx: Ctx): Cmd {
 
     return async () => {
         console.log("update now")
-
-        await ctx.downloadLastTool4D()
-        const userResponse = await vscode.window.showInformationMessage(
-            `The tool4D has been updated a restart is needed`,
-            "Reload now"
-        );
-
-        if (userResponse === "Reload now") {
-            await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        try{
+            await ctx.downloadLastTool4D()
+            const userResponse = await vscode.window.showInformationMessage(
+                `The tool4D has been updated a restart is needed`,
+                "Reload now"
+            );
+    
+            if (userResponse === "Reload now") {
+                await vscode.commands.executeCommand("workbench.action.reloadWindow");
+            }
+        }catch(error)
+        {
+            const userResponse = await vscode.window.showErrorMessage(
+                error,
+            );
         }
+
     }
 }
 
