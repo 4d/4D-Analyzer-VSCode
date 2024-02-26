@@ -94,16 +94,14 @@ export class Config {
         return p;
     }
 
-    private _getInfoplistPath()
-    {
+    private _getInfoplistPath() {
         let serverPath = this._serverPath;
         const type = os.type();
         const dirname = path.basename(serverPath);
         if (type === "Darwin" && dirname.endsWith(".app")) {
             return path.join(serverPath, "Contents", "Info.plist");
         }
-        else if(type === "Windows_NT" || type === "Linux")
-        {
+        else if (type === "Windows_NT" || type === "Linux") {
             return path.join(serverPath, "..", "Resources", "Info.plist");
         }
         return serverPath;
@@ -132,8 +130,8 @@ export class Config {
         return serverPath;
     }
 
-    public get4DVersion() : LabeledVersion{
-        let labeledVersion = new LabeledVersion(0,0,0,0,false, "stable", false);
+    public get4DVersion(): LabeledVersion {
+        let labeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
 
         const infoPlistPath = this._getInfoplistPath();
         if (fs.existsSync(infoPlistPath)) {
@@ -142,19 +140,16 @@ export class Config {
             if (match !== null && match.length > 1) {
                 let matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/)
                 console.log(matchVersion)
-                if(matchVersion)
-                {
-                    if(matchVersion[2])
-                    {
+                if (matchVersion) {
+                    if (matchVersion[2]) {
                         labeledVersion = LabeledVersion.fromString(matchVersion[2]);
                     }
-                    else if(matchVersion[1])
-                    {
+                    else if (matchVersion[1]) {
                         labeledVersion = LabeledVersion.fromString(matchVersion[1]);
                     }
-                    if(matchVersion[3]){
+                    if (matchVersion[3]) {
                         labeledVersion.changelist = Number(matchVersion[3]);
-                        if(labeledVersion.changelist > 0 && labeledVersion.version === 0) {
+                        if (labeledVersion.changelist > 0 && labeledVersion.version === 0) {
                             labeledVersion.main = true;
                         }
                     }
