@@ -71,13 +71,13 @@ export class Ctx {
 
 
     public async prepareTool4D(inVersion: string, inLocation: string, inChannel : string): Promise<string> {
-        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel);
+        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel, process.env["FOURD_RESOURCE_API_KEY"]);
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
     }
 
     public async downloadLastTool4D(): Promise<ResultUpdate> {
-        const toolPreparator: ToolPreparator = new ToolPreparator(this._config.tool4DWanted(), this._config.tool4DDownloadChannel());
+        const toolPreparator: ToolPreparator = new ToolPreparator(this._config.tool4DWanted(), this._config.tool4DDownloadChannel(), process.env["FOURD_RESOURCE_API_KEY"]);
         const outLocation = !this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation();
         return toolPreparator.prepareLastTool(outLocation, true);
     }

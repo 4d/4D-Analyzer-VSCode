@@ -4,7 +4,6 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { error } from 'console';
 
 
 export class LabeledVersion {
@@ -13,26 +12,43 @@ export class LabeledVersion {
     public subversion: number = 0;
     public changelist: number = 0;
     public isRRelease: boolean = false;
-    public channel: string = "stable";
+    public channel: string = "stable"; //or beta
+    public main: boolean = false;
 
-    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number, isRRelease: boolean, channel: string) {
+    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number, isRRelease: boolean, channel: string, main: boolean) {
         this.version = version;
         this.releaseVersion = releaseVersion;
         this.changelist = changelist;
         this.subversion = subVersion;
         this.isRRelease = isRRelease;
         this.channel = channel;
+        this.main = main;
     }
 
     clone() {
-        return new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel)
+        let labeledVersion = new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel, this.main)
+        return labeledVersion;
     }
 
     isLatest() {
         return this.version === 0 && this.isRRelease && this.releaseVersion === 0;
     }
 
+    isMain() {
+        return this.main;
+    }
     compare(b: LabeledVersion): number {
+
+        //Main is version 0R0
+        if (this.isMain() && b.isMain()) {
+            return this.changelist - b.changelist;
+        }
+        else if (this.isMain() && !b.isMain())
+            return 1;
+        else if (b.isMain() && !this.isMain())
+            return -1;
+
+
         if (this.version != b.version) {
             return this.version - b.version;
         }
@@ -43,9 +59,9 @@ export class LabeledVersion {
     }
 
     static fromString(inVersion: string): LabeledVersion {
-        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable");
+        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
 
-        const regex = /^latest|([0-9]{2})(R([0-9]*|x))?$/;
+        const regex = /^latest$|^([0-9]+)(R([0-9]*|x))?(B)?$/;
         const regexArray = regex.exec(inVersion);
         if (regexArray == null)
             return obj;
@@ -67,6 +83,11 @@ export class LabeledVersion {
             else
                 obj.releaseVersion = Number(regexArray[3]);
         }
+
+        if (regexArray[4]) {
+            obj.channel = regexArray[4].includes("B") ? "beta" : "stable";
+        }
+
         return obj;
     }
 
@@ -83,6 +104,10 @@ export class LabeledVersion {
         if (withChangelist) {
             result += "." + this.changelist;
         }
+        if (this.channel === "beta") {
+            result += "B";
+        }
+
         return result;
     }
 }
@@ -96,12 +121,17 @@ export interface ResultUpdate {
 
 export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
-    constructor(inVersion: string, channel: string) {
+    private readonly _API_KEY: string
+    constructor(inVersion: string, channel: string, inAPIKey: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
+        if (this._versionWanted.isLatest()) {
+            this._versionWanted.main = !!inAPIKey;
+        }
         this._versionWanted.channel = channel
+        this._API_KEY = inAPIKey;
     }
 
-    private _requestLabelVersion(url: string): Promise<LabeledVersion> {
+    private _requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
         async function download(url: string): Promise<LabeledVersion> {
             const http = await import('http');
             const https = await import('https');
@@ -109,21 +139,28 @@ export class ToolPreparator {
             return new Promise((resolve, reject) => {
                 const request = proto.get(url, response => {
                     if (response.statusCode === 302 || response.statusCode === 200) {
-                        const regex = /_([0-9]{2})(\.(x)|R([0-9])*)?_([0-9]{6})/;
-                        const version = new LabeledVersion(0, 0, 0, 0, false, "stable")
+                        const regex = /_(([0-9]{2})(\.(x)|R([0-9])*)?|main)_([0-9]{6})/;
+                        const version = new LabeledVersion(0, 0, 0, 0, false, channel, false)
                         const resultRegex = regex.exec(response.headers.location);
                         if (resultRegex) {
-                            version.version = Number(resultRegex[1])
-                            version.isRRelease = resultRegex[2].includes("R");
-                            if (version.isRRelease) {
-                                version.releaseVersion = Number(resultRegex[4])
+                            if (resultRegex[1] && resultRegex[1] === "main") {
+                                version.isRRelease = true;
+                                version.main = true;
+                                version.changelist = Number(resultRegex[6])
                             }
-                            version.changelist = Number(resultRegex[5])
+                            else {
+                                version.version = Number(resultRegex[2])
+                                version.isRRelease = resultRegex[3].includes("R");
+                                if (version.isRRelease) {
+                                    version.releaseVersion = Number(resultRegex[5])
+                                }
+                                version.changelist = Number(resultRegex[6])
+                            }
+
                         }
                         else {
                             reject(false);
                         }
-
                         resolve(version);
                     }
                     else if (response.statusCode !== 200) {
@@ -144,6 +181,17 @@ export class ToolPreparator {
                 reject(e);
             });
         });
+    }
+
+    private async _isCloudVersionABeta(inlabelVersion: LabeledVersion): Promise<boolean> {
+        if(inlabelVersion.isMain())
+            return false;
+        let labelVersion = inlabelVersion.clone();
+        const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false));
+        const labeledVersionCloudBeta = await this._requestLabelVersion(url, "beta");
+        if (labelVersion.compare(labeledVersionCloudBeta) === 0)
+            return true;
+        return false;
     }
 
     private _download(inURL: string, filePath: string): Promise<object> {
@@ -222,25 +270,30 @@ export class ToolPreparator {
         const version = String(labeledVersion.version);
         const releaseVersion = String(labeledVersion.releaseVersion);
         const subVersion = String(labeledVersion.subversion);
-
-        if (labeledVersion.releaseVersion > 0) {
-            url += `${version} Rx/${version} R${releaseVersion}`;
-        }
-        else if (labeledVersion.isRRelease && labeledVersion.releaseVersion === 0) {
-            url += `${version} Rx/`;
-            if (labeledVersion.channel === "stable") {
-                url += "latest"
-            }
-            else {
-                url += "beta"
-            }
-        }
-        else if (labeledVersion.subversion > 0) {
-            url += `${version}.x/${version}.${subVersion}`;
+        if (labeledVersion.isMain()) {
+            url += "main/main";
         }
         else {
-            url += `${version}.x/${version}`;
+            if (labeledVersion.releaseVersion > 0) {
+                url += `${version} Rx/${version} R${releaseVersion}`;
+            }
+            else if (labeledVersion.isRRelease && labeledVersion.releaseVersion === 0) {
+                url += `${version} Rx/`;
+                if (labeledVersion.channel === "stable") {
+                    url += "latest"
+                }
+                else {
+                    url += "beta"
+                }
+            }
+            else if (labeledVersion.subversion > 0) {
+                url += `${version}.x/${version}.${subVersion}`;
+            }
+            else {
+                url += `${version}.x/${version}`;
+            }
         }
+
         url += "/latest/";
 
         const type = os.type();
@@ -261,6 +314,10 @@ export class ToolPreparator {
         }
         url += ".tar.xz";
 
+        if (labeledVersion.isMain()) {
+            url += "?"
+            url += "token_tool=" + this._API_KEY
+        }
 
         return url;
     }
@@ -298,20 +355,36 @@ export class ToolPreparator {
 
 
         let localLabelVersion = labeledVersion.clone();
-        if (localLabelVersion.version == 0) {
+        if (localLabelVersion.version == 0&& !localLabelVersion.isMain()) {
             const versions = getDirectories(inRootFolder)
-                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                .map(version => LabeledVersion.fromString(version))
+                .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
+                .sort((a, b) => a.version - b.version);
             if (versions.length > 0) {
-                localLabelVersion = LabeledVersion.fromString(versions[versions.length - 1]);
-                return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
+                localLabelVersion = versions[versions.length - 1];
+                if (labeledVersion.isMain()) {
+                    if (versions[0].version === 0) {
+                        localLabelVersion = versions[0];
+                        return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
+                    }
+                    else
+                    {
+                        //issue
+                    }
+                }
+                else
+                {
+                    return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
+                }
             }
         }
-        else if (localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease) {
+        else if (localLabelVersion.releaseVersion == 0 && localLabelVersion.isRRelease && !localLabelVersion.isMain()) {
             const versions = getDirectories(inRootFolder)
-                .filter(version => version.startsWith(String(localLabelVersion.version)))
-                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                .map(version => LabeledVersion.fromString(version))
+                .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
+                .sort((a, b) => a.releaseVersion - b.releaseVersion);
             if (versions.length > 0) {
-                localLabelVersion = LabeledVersion.fromString(versions[versions.length - 1]);
+                localLabelVersion = versions[versions.length - 1];
                 return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
             }
         }
@@ -319,13 +392,11 @@ export class ToolPreparator {
 
             //last of all
             const versions_all = getDirectories(path.join(inRootFolder, localLabelVersion.toString(false)))
-                .map(a => a.includes("_") ? a.replace("_beta", "") : a)
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
             if (versions_all.length > 0) {
                 const lastVersion = versions_all[versions_all.length - 1]
-                const version = lastVersion.includes("_") ? lastVersion.replace("_beta", "") : lastVersion
-                localLabelVersion.changelist = Number(version);
+                localLabelVersion.changelist = Number(lastVersion);
             }
         }
 
@@ -338,8 +409,7 @@ export class ToolPreparator {
             label = this._getTool4DAvailableLocally(inRootFolder, labeledVersion);
             return this._getTool4DPath(inRootFolder, label, false)
         }
-        let name = String(label.changelist);
-        name += labeledVersion.channel === "beta" ? "_beta" : "";
+        const name = String(label.changelist);
 
         return path.join(inRootFolder, label.toString(false), name);
     }
@@ -360,11 +430,11 @@ export class ToolPreparator {
     }
 
     private async _getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel): Promise<number> {
-        let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel);
+        let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
             const url = this._getURLTool4D(labelVersion);
             try {
-                await this._requestLabelVersion(url);
+                await this._requestLabelVersion(url, labelVersion.channel);
                 labelVersion.version += 1;
             }
             catch (error) {
@@ -373,6 +443,14 @@ export class ToolPreparator {
         }
 
         return labelVersion.version - 1;
+    }
+
+    private async _getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
+        const url = this._getURLTool4D(labeledVersionWanted);
+        let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
+        const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
+        labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
+        return labeledVersionCloud;
     }
 
     public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
@@ -385,16 +463,13 @@ export class ToolPreparator {
 
         console.log("Version wanted", this._versionWanted)
         let lastMajorVersion = labeledVersionWanted.version;
-        if (labeledVersionWanted.isLatest()) {
+        if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
             lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
             labeledVersionWanted.version = lastMajorVersion;
             console.log("lastVersion available is", labeledVersionWanted.version)
         }
 
-        const url = this._getURLTool4D(labeledVersionWanted);
-        console.log(url)
-        const labeledVersionCloud = await this._requestLabelVersion(url);
-        console.log(labeledVersionCloud)
+        const labeledVersionCloud = await this._getLastVersionCloud(labeledVersionWanted)
         if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
             throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
         }
@@ -409,7 +484,7 @@ export class ToolPreparator {
         }
 
         let labelVersionToGet = labelVersionAvailableLocally;
-        if ((result.updateAvailable && inUpdateIfNeeded )|| labelVersionAvailableLocally.changelist === 0) {
+        if ((result.updateAvailable && inUpdateIfNeeded) || labelVersionAvailableLocally.changelist === 0) {
             labelVersionToGet = labeledVersionCloud;
         }
         console.log("Version to get", labelVersionToGet)
@@ -445,7 +520,6 @@ export class ToolPreparator {
                     throw new Error(`Tool4D ${labelVersionToGet.toString(false)} does not exist`);
                 }
             }
-            console.log(zipPath)
             if (existsSync(zipPath)) {
                 try {
                     await this._decompress(zipPath, tool4D);

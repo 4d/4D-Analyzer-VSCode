@@ -15,6 +15,7 @@ export class Config {
         "server.tool4d.version",
         "server.tool4d.location",
         "server.tool4d.enable",
+        "server.tool4d.channel",
         "diagnostics.enable"
     ]
         .map(opt => `${this.rootSection}.${opt}`);
