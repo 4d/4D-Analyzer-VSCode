@@ -61,12 +61,17 @@ export class LabeledVersion {
     static fromString(inVersion: string): LabeledVersion {
         const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
 
-        const regex = /^latest$|^([0-9]+)(R([0-9]*|x))?(B)?$/;
+        const regex = /^latest|main$|^([0-9]+)(R([0-9]*|x))?(B)?$/;
         const regexArray = regex.exec(inVersion);
         if (regexArray == null)
             return obj;
         if (regexArray[0] && regexArray[0] === "latest") {
             obj.isRRelease = true;
+            return obj;
+        }
+        if (regexArray[0] && regexArray[0] === "main") {
+            obj.isRRelease = true;
+            obj.main = true;
             return obj;
         }
         if (regexArray[1]) {
@@ -184,13 +189,18 @@ export class ToolPreparator {
     }
 
     private async _isCloudVersionABeta(inlabelVersion: LabeledVersion): Promise<boolean> {
-        if(inlabelVersion.isMain())
+        if (inlabelVersion.isMain())
             return false;
         let labelVersion = inlabelVersion.clone();
         const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false));
-        const labeledVersionCloudBeta = await this._requestLabelVersion(url, "beta");
-        if (labelVersion.compare(labeledVersionCloudBeta) === 0)
-            return true;
+        try {
+            const labeledVersionCloudBeta = await this._requestLabelVersion(url, "beta");
+            if (labelVersion.compare(labeledVersionCloudBeta) === 0)
+                return true;
+        } catch (error) {
+            throw error;
+        }
+
         return false;
     }
 
@@ -355,7 +365,7 @@ export class ToolPreparator {
 
 
         let localLabelVersion = labeledVersion.clone();
-        if (localLabelVersion.version == 0&& !localLabelVersion.isMain()) {
+        if (localLabelVersion.version == 0 && !localLabelVersion.isMain()) {
             const versions = getDirectories(inRootFolder)
                 .map(version => LabeledVersion.fromString(version))
                 .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
@@ -367,13 +377,11 @@ export class ToolPreparator {
                         localLabelVersion = versions[0];
                         return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
                     }
-                    else
-                    {
+                    else {
                         //issue
                     }
                 }
-                else
-                {
+                else {
                     return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
                 }
             }
@@ -447,10 +455,15 @@ export class ToolPreparator {
 
     private async _getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
         const url = this._getURLTool4D(labeledVersionWanted);
-        let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
-        const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
-        labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
-        return labeledVersionCloud;
+        try {
+            let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
+            const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
+            labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
+            return labeledVersionCloud;
+        } catch (error) {
+            throw error;
+        }
+
     }
 
     public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
@@ -463,33 +476,41 @@ export class ToolPreparator {
 
         console.log("Version wanted", this._versionWanted)
         let lastMajorVersion = labeledVersionWanted.version;
-        if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
-            lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
-            labeledVersionWanted.version = lastMajorVersion;
-            console.log("lastVersion available is", labeledVersionWanted.version)
-        }
+        let tool4DExecutable = ""
+        let labelVersionToGet = labelVersionAvailableLocally;
 
-        const labeledVersionCloud = await this._getLastVersionCloud(labeledVersionWanted)
-        if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
+        try {
+            if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
+                lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
+                labeledVersionWanted.version = lastMajorVersion;
+                console.log("lastVersion available is", labeledVersionWanted.version)
+            }
+
+            const labeledVersionCloud = await this._getLastVersionCloud(labeledVersionWanted)
+            if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
+                throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
+            }
+
+            console.log("Version available cloud", labeledVersionCloud)
+            console.log("Version available locally", labelVersionAvailableLocally)
+            console.log("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
+            if (labelVersionAvailableLocally.changelist > 0
+                && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
+                && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
+                result.updateAvailable = true;
+            }
+
+            let labelVersionToGet = labelVersionAvailableLocally;
+            if ((result.updateAvailable && inUpdateIfNeeded) || labelVersionAvailableLocally.changelist === 0) {
+                labelVersionToGet = labeledVersionCloud;
+            }
+
+            console.log("Version to get", labelVersionToGet)
+            result.currentVersion = labelVersionToGet;
+            result.lastVersion = labeledVersionCloud;
+        } catch (error) {
             throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
         }
-        console.log("Version available cloud", labeledVersionCloud)
-        console.log("Version available locally", labelVersionAvailableLocally)
-        console.log("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
-        let tool4DExecutable = ""
-        if (labelVersionAvailableLocally.changelist > 0
-            && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
-            && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
-            result.updateAvailable = true;
-        }
-
-        let labelVersionToGet = labelVersionAvailableLocally;
-        if ((result.updateAvailable && inUpdateIfNeeded) || labelVersionAvailableLocally.changelist === 0) {
-            labelVersionToGet = labeledVersionCloud;
-        }
-        console.log("Version to get", labelVersionToGet)
-        result.currentVersion = labelVersionToGet;
-        result.lastVersion = labeledVersionCloud;
 
         tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
         if (existsSync(tool4DExecutable)) {
@@ -542,7 +563,7 @@ export class ToolPreparator {
     * @throws {@link Error} If an issue occured during download/decompress
     * Download and decompress a toodl
     */
-    public async prepareTool4D(inPathToStore: string): Promise<string> {
+    public async prepareTool4D(inPathToStore: string): Promise<ResultUpdate> {
 
         try {
             let result = await this.prepareLastTool(inPathToStore, false);
@@ -560,7 +581,7 @@ export class ToolPreparator {
                 }
                 command();
             }
-            return result.path;
+            return result;
 
         } catch (error) {
             throw error;

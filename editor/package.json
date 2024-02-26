@@ -122,7 +122,11 @@
 			{
 			  "command": "4d-analyzer.updateTool4D",
 			  "title": "4D Analyzer: Update tool4D to last version"
-			}
+			},
+			{
+				"command": "4d-analyzer.display4DVersion",
+				"title": "4D Analyzer: Display 4D version used"
+			  }
 		  ]
 	},
 	"scripts": {

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
-import { ResultUpdate, ToolPreparator } from "./toolPreparator";
+import { LabeledVersion, ResultUpdate, ToolPreparator } from "./toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -70,16 +70,20 @@ export class Ctx {
     }
 
 
-    public async prepareTool4D(inVersion: string, inLocation: string, inChannel : string): Promise<string> {
-        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel, process.env["FOURD_RESOURCE_API_KEY"]);
+    public async prepareTool4D(inVersion: string, inLocation: string, inChannel : string): Promise<ResultUpdate> {
+        const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel, this._config.tool4dAPIKEY());
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
     }
 
     public async downloadLastTool4D(): Promise<ResultUpdate> {
-        const toolPreparator: ToolPreparator = new ToolPreparator(this._config.tool4DWanted(), this._config.tool4DDownloadChannel(), process.env["FOURD_RESOURCE_API_KEY"]);
+        const toolPreparator: ToolPreparator = new ToolPreparator(this._config.tool4DWanted(), this._config.tool4DDownloadChannel(), this._config.tool4dAPIKEY());
         const outLocation = !this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation();
         return toolPreparator.prepareLastTool(outLocation, true);
+    }
+
+    public get4DVersion(): LabeledVersion {
+        return this._config.get4DVersion();
     }
 
     private _launch4D() {
@@ -178,10 +182,10 @@ export class Ctx {
         this._config = new Config(this._extensionContext);
         if (this._config.IsTool4DEnabled()) {
             this.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
-                .then(path => {
-                    console.log("PATH ", path);
+                .then(result => {
+                    console.log("PATH ", result.path);
 
-                    this._config.setTool4DPath(path);
+                    this._config.setTool4DPath(result.path);
                     this._launch4D();
                 })
                 .catch((error : Error) => {
@@ -199,7 +203,8 @@ export class Ctx {
         
         this._commands = {
             filesStatus: { call: Commands.filesStatus },
-            updateTool4D: { call: Commands.updateTool4D }
+            updateTool4D: { call: Commands.updateTool4D },
+            display4DVersion: { call: Commands.display4DVersion }
         };
 
         for (const [name, command] of Object.entries(this._commands)) {

@@ -66,4 +66,24 @@ export function updateTool4D(ctx: Ctx): Cmd {
     }
 }
 
+export function display4DVersion(ctx: Ctx): Cmd {
+
+    return async () => {
+        try{
+            const version = ctx.get4DVersion()
+            const userResponse = await vscode.window.showInformationMessage(
+                `4D Version ${(await version).toString(true)}`,
+            );
+    
+
+        }catch(error)
+        {
+            const userResponse = await vscode.window.showErrorMessage(
+                error,
+            );
+        }
+
+    }
+}
+
 
