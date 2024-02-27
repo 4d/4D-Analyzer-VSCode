@@ -214,6 +214,7 @@ export class ToolPreparator {
 
                 const request = proto.get(inURL, response => {
                     if (response.statusCode == 302) {
+                        Logger.debugLog(response.headers)
                         download(response.headers.location, filePath).then(r => {
                             resolve({ url: r, changelist: 0 });
                         }).catch(error => reject(error));
@@ -273,13 +274,17 @@ export class ToolPreparator {
     //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
     //https://preprod-product-download.4d.com/release/20%20Rx/beta/latest/win/tool4d_win.tar.xz => Last Rx beta
     //https://preprod-product-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
+    /*
+        Starting from 20R5
+        Linux has tar.xz and .deb
+    */
     private _getURLTool4D(inVersion: LabeledVersion): string {
         let url = "https://preprod-product-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
         const releaseVersion = String(labeledVersion.releaseVersion);
-        const subVersion = String(labeledVersion.subversion);
+        const hasLinuxDeb : boolean = labeledVersion.isMain() || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5)
         if (labeledVersion.isMain()) {
             url += "main/main";
         }
@@ -296,9 +301,6 @@ export class ToolPreparator {
                     url += "beta"
                 }
             }
-            else if (labeledVersion.subversion > 0) {
-                url += `${version}.x/${version}.${subVersion}`;
-            }
             else {
                 url += `${version}.x/${version}`;
             }
@@ -309,7 +311,14 @@ export class ToolPreparator {
         const type = os.type();
 
         if (type == "Linux") {
-            url += `linux/tool4d_Linux`;
+            if(hasLinuxDeb)
+            {
+                url += `linux/tool4d.deb`;
+            }
+            else
+            {
+                url += `linux/tool4d_Linux.tar.xz`;
+            }
         }
         else if (type == "Darwin") {
             const arch = os.arch();
@@ -318,11 +327,12 @@ export class ToolPreparator {
                 url += "_arm";
             else
                 url += "_x86";
+            url += ".tar.xz";
         }
         else if (type == "Windows_NT") {
             url += `win/tool4d_win`;
+            url += ".tar.xz";
         }
-        url += ".tar.xz";
 
         if (labeledVersion.isMain()) {
             url += "?"
@@ -428,7 +438,7 @@ export class ToolPreparator {
         let tool4DExecutable = "";
         const osType = os.type();
         if (osType === "Windows_NT") {
-            tool4DExecutable = path.join(inRootFolder, "tool4d.exe");
+            tool4DExecutable = path.join(inRootFolder, "tool4d", "tool4d.exe");
         }
         else if (osType == "Darwin") {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
@@ -532,8 +542,6 @@ export class ToolPreparator {
         const zipPath = path.join(tool4D, "tool4d.compressed");
         tool4DExecutable = this._getTool4DExe(tool4D);
         if (!existsSync(tool4DExecutable)) {
-            Logger.debugLog(3)
-
             if (!existsSync(zipPath)) {
 
                 try {
