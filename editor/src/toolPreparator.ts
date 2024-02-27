@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
-
+import * as Logger from './logger'
 
 export class LabeledVersion {
     public version: number = 0;
@@ -336,7 +336,7 @@ export class ToolPreparator {
         return new Promise((resolve, reject) => {
             if (!existsSync(input))
                 reject();
-            console.log("Untar", input);
+            Logger.debugLog("Untar", input);
             const childProcess = child_process.spawn("tar", [
                 '-xf', input, '-C', inDirectory
             ]);
@@ -359,7 +359,6 @@ export class ToolPreparator {
                     .filter(dirent => dirent.isDirectory())
                     .map(dirent => dirent.name);
             }
-
             return [];
         }
 
@@ -370,6 +369,7 @@ export class ToolPreparator {
                 .map(version => LabeledVersion.fromString(version))
                 .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
                 .sort((a, b) => a.version - b.version);
+
             if (versions.length > 0) {
                 localLabelVersion = versions[versions.length - 1];
                 if (labeledVersion.isMain()) {
@@ -391,7 +391,9 @@ export class ToolPreparator {
                 .map(version => LabeledVersion.fromString(version))
                 .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
                 .sort((a, b) => a.releaseVersion - b.releaseVersion);
+
             if (versions.length > 0) {
+
                 localLabelVersion = versions[versions.length - 1];
                 return this._getTool4DAvailableLocally(inRootFolder, localLabelVersion);
             }
@@ -474,7 +476,7 @@ export class ToolPreparator {
         const labeledVersionWanted: LabeledVersion = this._versionWanted.clone();
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
-        console.log("Version wanted", this._versionWanted)
+        Logger.debugLog("Version wanted", this._versionWanted)
         let lastMajorVersion = labeledVersionWanted.version;
         let tool4DExecutable = ""
         let labelVersionToGet = labelVersionAvailableLocally;
@@ -483,7 +485,7 @@ export class ToolPreparator {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
                 labeledVersionWanted.version = lastMajorVersion;
-                console.log("lastVersion available is", labeledVersionWanted.version)
+                Logger.debugLog("lastVersion available is", labeledVersionWanted.version)
             }
 
             const labeledVersionCloud = await this._getLastVersionCloud(labeledVersionWanted)
@@ -491,33 +493,33 @@ export class ToolPreparator {
                 throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
             }
 
-            console.log("Version available cloud", labeledVersionCloud)
-            console.log("Version available locally", labelVersionAvailableLocally)
-            console.log("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
+            Logger.debugLog("Version available cloud", labeledVersionCloud)
+            Logger.debugLog("Version available locally", labelVersionAvailableLocally)
+            Logger.debugLog("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
             if (labelVersionAvailableLocally.changelist > 0
                 && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
                 && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
                 result.updateAvailable = true;
             }
 
-            let labelVersionToGet = labelVersionAvailableLocally;
+            labelVersionToGet = labelVersionAvailableLocally;
             if ((result.updateAvailable && inUpdateIfNeeded) || labelVersionAvailableLocally.changelist === 0) {
                 labelVersionToGet = labeledVersionCloud;
             }
 
-            console.log("Version to get", labelVersionToGet)
             result.currentVersion = labelVersionToGet;
             result.lastVersion = labeledVersionCloud;
         } catch (error) {
             throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
         }
+        Logger.debugLog("Version to get", labelVersionToGet)
 
         tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
+
         if (existsSync(tool4DExecutable)) {
             result.path = tool4DExecutable;
             return result;
         }
-
 
         if (!existsSync(globalStoragePath)) {
             mkdirSync(globalStoragePath);
@@ -530,11 +532,13 @@ export class ToolPreparator {
         const zipPath = path.join(tool4D, "tool4d.compressed");
         tool4DExecutable = this._getTool4DExe(tool4D);
         if (!existsSync(tool4DExecutable)) {
+            Logger.debugLog(3)
 
             if (!existsSync(zipPath)) {
 
                 try {
                     const url = this._getURLTool4D(labelVersionToGet);
+                    Logger.debugLog(url)
                     await this._download(url, zipPath);
                 }
                 catch (error) {

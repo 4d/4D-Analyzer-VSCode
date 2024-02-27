@@ -11,7 +11,7 @@ import {
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-
+import * as Logger from "./logger"
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
@@ -97,24 +97,24 @@ export class Ctx {
         const serverPath: string = this._getServerPath(isDebug);
         const port: number = this._getPort(isDebug);
 
-        console.log("SERVER PATH", serverPath);
+        Logger.debugLog("SERVER PATH", serverPath);
 
         const serverOptions = () =>
             new Promise<child_process.ChildProcess | StreamInfo>((resolve, reject) => {
                 // Use a TCP socket because of problems with blocking STDIO
                 const server = net.createServer(socket => {
                     // 'connection' listener
-                    console.log('4D process connected');
+                    Logger.debugLog('4D process connected');
                     socket.on('end', () => {
-                        console.log('4D process disconnected');
+                        Logger.debugLog('4D process disconnected');
                         server.close();
                     });
                     socket.on('close', () => {
-                        console.log('4D process disconnected');
+                        Logger.debugLog('4D process disconnected');
                         server.close();
                     });
                     socket.on('error', (e) => {
-                        console.log(e);
+                        Logger.debugLog(e);
                         server.close();
                     });
                     resolve({ reader: socket, writer: socket, detached: false });
@@ -122,7 +122,7 @@ export class Ctx {
 
                 // Listen on random port
                 server.listen(port, '127.0.0.1', () => {
-                    console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
+                    Logger.debugLog(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
 
                     if (serverPath != '') {
                         const childProcess = child_process.spawn(serverPath, [
@@ -131,7 +131,7 @@ export class Ctx {
 
                         childProcess.stderr.on('data', (chunk: Buffer) => {
                             const str = chunk.toString();
-                            console.log('4D Language Server:', str);
+                            Logger.debugLog('4D Language Server:', str);
                             this._client.outputChannel.appendLine(str);
                         });
 
@@ -146,7 +146,7 @@ export class Ctx {
 
 
                         server.on('close', function () {
-                            console.log("KILL");
+                            Logger.debugLog("KILL");
                             childProcess.kill();
                         });
 
@@ -183,7 +183,7 @@ export class Ctx {
         if (this._config.IsTool4DEnabled()) {
             this.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
                 .then(result => {
-                    console.log("PATH ", result.path);
+                    Logger.debugLog("PATH ", result.path);
 
                     this._config.setTool4DPath(result.path);
                     this._launch4D();

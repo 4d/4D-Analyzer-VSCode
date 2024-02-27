@@ -139,7 +139,6 @@ export class Config {
             const match = content.match(/CFBundleShortVersionString<\/key>\s*<string>(.*)<\/string>/mi);
             if (match !== null && match.length > 1) {
                 let matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/)
-                console.log(matchVersion)
                 if (matchVersion) {
                     if (matchVersion[2]) {
                         labeledVersion = LabeledVersion.fromString(matchVersion[2]);
