@@ -192,7 +192,7 @@ export class ToolPreparator {
         if (inlabelVersion.isMain())
             return false;
         let labelVersion = inlabelVersion.clone();
-        const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false));
+        const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false), true);
         try {
             const labeledVersionCloudBeta = await this._requestLabelVersion(url, "beta");
             if (labelVersion.compare(labeledVersionCloudBeta) === 0)
@@ -214,9 +214,15 @@ export class ToolPreparator {
 
                 const request = proto.get(inURL, response => {
                     if (response.statusCode == 302) {
+                        const regex = /_[0-9]{6,}\.([a-z]*\.?[a-z]*)/
+                        const resultRegex = regex.exec(response.headers.location);
+                        let fileType = "tar.xz"
+                        if (resultRegex && resultRegex[1]) {
+                            fileType = resultRegex[1];
+                        }
                         Logger.debugLog(response.headers)
-                        download(response.headers.location, filePath).then(r => {
-                            resolve({ url: r, changelist: 0 });
+                        download(response.headers.location, filePath + "." + fileType).then(r => {
+                            resolve({ url: r, changelist: 0, fileType: fileType });
                         }).catch(error => reject(error));
                     }
                     else if (response.statusCode === 200) {
@@ -231,6 +237,7 @@ export class ToolPreparator {
                             mime: response.headers['content-type'],
                             size: parseInt(response.headers['content-length'], 10),
                         };
+                        Logger.debugLog("fileinfo", fileInfo)
 
                         response.pipe(file);
 
@@ -278,13 +285,13 @@ export class ToolPreparator {
         Starting from 20R5
         Linux has tar.xz and .deb
     */
-    private _getURLTool4D(inVersion: LabeledVersion): string {
+    private _getURLTool4D(inVersion: LabeledVersion, wantTar: boolean): string {
         let url = "https://preprod-product-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
         const releaseVersion = String(labeledVersion.releaseVersion);
-        const hasLinuxDeb : boolean = labeledVersion.isMain() || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5)
+        const hasLinuxDeb: boolean = !wantTar && (labeledVersion.isMain() || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5))
         if (labeledVersion.isMain()) {
             url += "main/main";
         }
@@ -311,12 +318,10 @@ export class ToolPreparator {
         const type = os.type();
 
         if (type == "Linux") {
-            if(hasLinuxDeb)
-            {
+            if (hasLinuxDeb) {
                 url += `linux/tool4d.deb`;
             }
-            else
-            {
+            else {
                 url += `linux/tool4d_Linux.tar.xz`;
             }
         }
@@ -444,7 +449,7 @@ export class ToolPreparator {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
         }
         else {
-            tool4DExecutable = path.join(inRootFolder, "tool4d");
+            tool4DExecutable = path.join(inRootFolder, "bin", "tool4d");
         }
         return tool4DExecutable;
     }
@@ -452,7 +457,7 @@ export class ToolPreparator {
     private async _getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel): Promise<number> {
         let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
-            const url = this._getURLTool4D(labelVersion);
+            const url = this._getURLTool4D(labelVersion, true);
             try {
                 await this._requestLabelVersion(url, labelVersion.channel);
                 labelVersion.version += 1;
@@ -466,7 +471,7 @@ export class ToolPreparator {
     }
 
     private async _getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
-        const url = this._getURLTool4D(labeledVersionWanted);
+        const url = this._getURLTool4D(labeledVersionWanted, true);
         try {
             let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
             const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
@@ -477,6 +482,7 @@ export class ToolPreparator {
         }
 
     }
+
 
     public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
         let result = { path: "", updateAvailable: false } as ResultUpdate;
@@ -539,36 +545,56 @@ export class ToolPreparator {
         }
 
         const tool4D = this._getTool4DPath(tool4DMainFolder, labelVersionToGet, false);
-        const zipPath = path.join(tool4D, "tool4d.compressed");
+
+        const compressedPath = path.join(tool4D, "tool4d.compressed");
+        const tarPath = compressedPath + ".tar.xz";
+        const debPath = compressedPath + ".deb";
+        let wantTar = true;
+        if (os.type() === "Linux") {
+            try {
+                const result = child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 1 })
+                Logger.debugLog(result.toString("utf-8"))
+                wantTar = false
+            } catch (err) {
+                wantTar = true;
+            }
+        }
+
         tool4DExecutable = this._getTool4DExe(tool4D);
         if (!existsSync(tool4DExecutable)) {
-            if (!existsSync(zipPath)) {
+            if (!(existsSync(tarPath) || existsSync(debPath))) {
 
                 try {
-                    const url = this._getURLTool4D(labelVersionToGet);
-                    Logger.debugLog(url)
-                    await this._download(url, zipPath);
+                    const url = this._getURLTool4D(labelVersionToGet, wantTar);
+
+                    await this._download(url, compressedPath);
                 }
                 catch (error) {
                     throw new Error(`Tool4D ${labelVersionToGet.toString(false)} does not exist`);
                 }
             }
-            if (existsSync(zipPath)) {
+            if (wantTar && existsSync(tarPath)) {
                 try {
-                    await this._decompress(zipPath, tool4D);
+                    await this._decompress(tarPath, tool4D);
                     result.path = tool4DExecutable;
-
-                    return result;
                 }
                 catch (error) {
                     throw new Error("Cannot decompress the tool4D");
                 }
             }
+            else if (existsSync(debPath)) {
+                try {
+                    child_process.execSync(`sudo apt --fix-broken install ${debPath}`, { shell: '/bin/bash' })
+                    result.path = "/opt/tool4d/tool4d";
+                } catch (err) {
+                    throw new Error("Cannot install the tool4D");
+                }
+            }
         }
         else {
             result.path = tool4DExecutable;
-            return result;
         }
+        return result;
     }
 
     /**
