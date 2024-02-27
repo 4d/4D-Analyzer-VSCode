@@ -552,8 +552,7 @@ export class ToolPreparator {
         let wantTar = true;
         if (os.type() === "Linux") {
             try {
-                const result = child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 1 })
-                Logger.debugLog(result.toString("utf-8"))
+                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 1 })
                 wantTar = false
             } catch (err) {
                 wantTar = true;
