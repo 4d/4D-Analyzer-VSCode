@@ -20,6 +20,7 @@ export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
     private readonly _API_KEY: string
     private readonly _packagePreference: string; //deb | tar
+    private readonly _log : vscode.OutputChannel;
     constructor(inVersion: string, channel: string, inAPIKey: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
         if (this._versionWanted.isLatest()) {
@@ -28,12 +29,14 @@ export class ToolPreparator {
         this._versionWanted.channel = channel
         this._API_KEY = inAPIKey;
         this._packagePreference = this._computePackagePreference()
+        this._log = vscode.window.createOutputChannel("4D-Analyzer");
+
     }
 
     private _requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
         async function download(url: string): Promise<LabeledVersion> {
-            const http = await import('http');
-            const https = await import('https');
+            const http = require('http');
+            const https = require('https');
             const proto = !url.charAt(4).localeCompare('s') ? https : http;
             return new Promise((resolve, reject) => {
                 const request = proto.get(url, response => {
@@ -100,8 +103,8 @@ export class ToolPreparator {
 
     private _download(inURL: string, filePath: string): Promise<object> {
         async function download(inURL, filePath): Promise<object> {
-            const http = await import('http');
-            const https = await import('https');
+            const http = require('http');
+            const https = require('https');
             const proto = !inURL.charAt(4).localeCompare('s') ? https : http;
 
             return new Promise((resolve, reject) => {
@@ -382,6 +385,7 @@ export class ToolPreparator {
             labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
             return labeledVersionCloud;
         } catch (error) {
+            this._log.appendLine(error)
             throw error;
         }
 
@@ -448,8 +452,9 @@ export class ToolPreparator {
             result.currentVersion = labelVersionToGet;
             result.lastVersion = labeledVersionCloud;
         } catch (error) {
-            throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
+            throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist\n${error}`);
         }
+
         progress += 10;
         inProgress.report({message:`Prepare version ${labelVersionToGet.toString(true)}`, increment: 10 });
 
