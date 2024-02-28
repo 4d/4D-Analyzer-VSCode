@@ -552,7 +552,7 @@ export class ToolPreparator {
         let wantTar = true;
         if (os.type() === "Linux") {
             try {
-                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 1 })
+                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 })
                 wantTar = false
             } catch (err) {
                 wantTar = true;
@@ -583,10 +583,11 @@ export class ToolPreparator {
             }
             else if (existsSync(debPath)) {
                 try {
-                    child_process.execSync(`sudo apt --fix-broken install ${debPath}`, { shell: '/bin/bash' })
+                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' })
+                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' })
                     result.path = "/opt/tool4d/tool4d";
                 } catch (err) {
-                    throw new Error("Cannot install the tool4D");
+                    throw new Error("Cannot install the tool4D:\n" + err);
                 }
             }
         }
