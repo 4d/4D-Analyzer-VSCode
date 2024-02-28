@@ -8,6 +8,7 @@ export class InfoPlistManager {
     private readonly _content : string;
     constructor(inPath : string) {
         this._infoPlistPath = inPath;
+        this._content = ""
         if (fs.existsSync(this._infoPlistPath)) {
             this._content = fs.readFileSync(this._infoPlistPath).toString();
         }

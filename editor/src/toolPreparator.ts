@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as Logger from './logger'
 import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
-import { ExtensionContext, StatusBarAlignment, window, StatusBarItem, Selection, workspace, TextEditor, commands, ProgressLocation } from 'vscode';
+import { window, ProgressLocation } from 'vscode';
 
 export interface ResultUpdate {
     path: string;
