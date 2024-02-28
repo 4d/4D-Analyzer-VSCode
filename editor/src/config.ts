@@ -5,7 +5,9 @@ import * as os from 'os';
 
 import * as lc from "vscode-languageclient/node";
 import { Ctx } from "./ctx";
-import { LabeledVersion } from './toolPreparator';
+import { LabeledVersion } from './labeledVersion';
+import { InfoPlistManager } from './Infoplist';
+
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
@@ -109,19 +111,13 @@ export class Config {
 
     get serverPath() {
         let serverPath = this._serverPath;
+        
         const type = os.type();
         const dirname = path.basename(serverPath);
         if (type === "Darwin" && dirname.endsWith(".app")) {
-            let nameExecutable = "";
-            const infoPlistPath = path.join(serverPath, "Contents", "Info.plist");
-            if (fs.existsSync(infoPlistPath)) {
-                const content: string = fs.readFileSync(infoPlistPath).toString();
-                const match = content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi);
-                if (match !== null && match.length > 1) {
-                    nameExecutable = match[1];
-                }
-            }
-
+            const infoPlist = InfoPlistManager.fromExePath(serverPath);
+           
+            let nameExecutable =  infoPlist.getExeName();
             if (nameExecutable === "") {
                 nameExecutable = path.parse(serverPath).name;
             }
@@ -131,31 +127,8 @@ export class Config {
     }
 
     public get4DVersion(): LabeledVersion {
-        let labeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
-
-        const infoPlistPath = this._getInfoplistPath();
-        if (fs.existsSync(infoPlistPath)) {
-            const content: string = fs.readFileSync(infoPlistPath).toString();
-            const match = content.match(/CFBundleShortVersionString<\/key>\s*<string>(.*)<\/string>/mi);
-            if (match !== null && match.length > 1) {
-                let matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/)
-                if (matchVersion) {
-                    if (matchVersion[2]) {
-                        labeledVersion = LabeledVersion.fromString(matchVersion[2]);
-                    }
-                    else if (matchVersion[1]) {
-                        labeledVersion = LabeledVersion.fromString(matchVersion[1]);
-                    }
-                    if (matchVersion[3]) {
-                        labeledVersion.changelist = Number(matchVersion[3]);
-                        if (labeledVersion.changelist > 0 && labeledVersion.version === 0) {
-                            labeledVersion.main = true;
-                        }
-                    }
-                }
-            }
-        }
-        return labeledVersion
+        const infoPlist = InfoPlistManager.fromExePath(this._serverPath);
+        return infoPlist.getVersion();
     }
 
     private _checkServerPath(): boolean {

@@ -5,117 +5,8 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import * as Logger from './logger'
-
-export class LabeledVersion {
-    public version: number = 0;
-    public releaseVersion: number = 0;
-    public subversion: number = 0;
-    public changelist: number = 0;
-    public isRRelease: boolean = false;
-    public channel: string = "stable"; //or beta
-    public main: boolean = false;
-
-    constructor(version: number, releaseVersion: number, subVersion: number, changelist: number, isRRelease: boolean, channel: string, main: boolean) {
-        this.version = version;
-        this.releaseVersion = releaseVersion;
-        this.changelist = changelist;
-        this.subversion = subVersion;
-        this.isRRelease = isRRelease;
-        this.channel = channel;
-        this.main = main;
-    }
-
-    clone() {
-        let labeledVersion = new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel, this.main)
-        return labeledVersion;
-    }
-
-    isLatest() {
-        return this.version === 0 && this.isRRelease && this.releaseVersion === 0;
-    }
-
-    isMain() {
-        return this.main;
-    }
-    compare(b: LabeledVersion): number {
-
-        //Main is version 0R0
-        if (this.isMain() && b.isMain()) {
-            return this.changelist - b.changelist;
-        }
-        else if (this.isMain() && !b.isMain())
-            return 1;
-        else if (b.isMain() && !this.isMain())
-            return -1;
-
-
-        if (this.version != b.version) {
-            return this.version - b.version;
-        }
-        else if (this.isRRelease && b.isRRelease && this.releaseVersion != b.releaseVersion) {
-            return this.releaseVersion - b.releaseVersion;
-        }
-        return this.changelist - b.changelist;
-    }
-
-    static fromString(inVersion: string): LabeledVersion {
-        const obj: LabeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
-
-        const regex = /^latest|main$|^([0-9]+)(R([0-9]*|x))?(B)?$/;
-        const regexArray = regex.exec(inVersion);
-        if (regexArray == null)
-            return obj;
-        if (regexArray[0] && regexArray[0] === "latest") {
-            obj.isRRelease = true;
-            return obj;
-        }
-        if (regexArray[0] && regexArray[0] === "main") {
-            obj.isRRelease = true;
-            obj.main = true;
-            return obj;
-        }
-        if (regexArray[1]) {
-            obj.version = Number(regexArray[1]);
-        }
-
-        if (regexArray[2]) {
-            obj.isRRelease = regexArray[2].includes("R");
-        }
-
-        if (regexArray[3]) {
-            if (regexArray[3] && regexArray[3] === "x")
-                obj.releaseVersion = 0;
-            else
-                obj.releaseVersion = Number(regexArray[3]);
-        }
-
-        if (regexArray[4]) {
-            obj.channel = regexArray[4].includes("B") ? "beta" : "stable";
-        }
-
-        return obj;
-    }
-
-    public toString(withChangelist: boolean): string {
-        let result = String(this.version);
-        if (this.isRRelease) {
-            result += "R" + this.releaseVersion;
-        }
-        else {
-            if (this.subversion > 0)
-                result += "." + this.subversion;
-        }
-
-        if (withChangelist) {
-            result += "." + this.changelist;
-        }
-        if (this.channel === "beta") {
-            result += "B";
-        }
-
-        return result;
-    }
-}
+import { LabeledVersion } from './labeledVersion';
+import { InfoPlistManager } from './Infoplist';
 
 export interface ResultUpdate {
     path: string;
@@ -127,6 +18,7 @@ export interface ResultUpdate {
 export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
     private readonly _API_KEY: string
+    private readonly _packagePreference: string; //deb | tar
     constructor(inVersion: string, channel: string, inAPIKey: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
         if (this._versionWanted.isLatest()) {
@@ -134,6 +26,7 @@ export class ToolPreparator {
         }
         this._versionWanted.channel = channel
         this._API_KEY = inAPIKey;
+        this._packagePreference = this._computePackagePreference()
     }
 
     private _requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
@@ -192,7 +85,7 @@ export class ToolPreparator {
         if (inlabelVersion.isMain())
             return false;
         let labelVersion = inlabelVersion.clone();
-        const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false), true);
+        const url = this._getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false));
         try {
             const labeledVersionCloudBeta = await this._requestLabelVersion(url, "beta");
             if (labelVersion.compare(labeledVersionCloudBeta) === 0)
@@ -285,13 +178,16 @@ export class ToolPreparator {
         Starting from 20R5
         Linux has tar.xz and .deb
     */
-    private _getURLTool4D(inVersion: LabeledVersion, wantTar: boolean): string {
+    private _getURLTool4D(inVersion: LabeledVersion): string {
         let url = "https://preprod-product-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
         const releaseVersion = String(labeledVersion.releaseVersion);
-        const hasLinuxDeb: boolean = !wantTar && (labeledVersion.isMain() || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5))
+        const hasLinuxDeb: boolean = this._packagePreference === "deb"
+            && (labeledVersion.isMain()
+                || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5))
+
         if (labeledVersion.isMain()) {
             url += "main/main";
         }
@@ -368,6 +264,7 @@ export class ToolPreparator {
     }
 
     private _getTool4DAvailableLocally(inRootFolder: string, labeledVersion: LabeledVersion): LabeledVersion {
+
         function getDirectories(source: string) {
             if (existsSync(source)) {
                 return readdirSync(source, { withFileTypes: true })
@@ -427,6 +324,7 @@ export class ToolPreparator {
 
         return localLabelVersion;
     }
+//        tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion, compute: boolean): string {
         let label = labeledVersion;
@@ -445,11 +343,16 @@ export class ToolPreparator {
         if (osType === "Windows_NT") {
             tool4DExecutable = path.join(inRootFolder, "tool4d", "tool4d.exe");
         }
-        else if (osType == "Darwin") {
+        else if (osType === "Darwin") {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
         }
-        else {
-            tool4DExecutable = path.join(inRootFolder, "bin", "tool4d");
+        else if(osType === "Linux") {
+            if (this._packagePreference === "deb") {
+                tool4DExecutable = "/opt/tool4d/tool4d"
+            }
+            else {
+                tool4DExecutable = path.join(inRootFolder, "bin", "tool4d");
+            }
         }
         return tool4DExecutable;
     }
@@ -457,7 +360,7 @@ export class ToolPreparator {
     private async _getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel): Promise<number> {
         let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
-            const url = this._getURLTool4D(labelVersion, true);
+            const url = this._getURLTool4D(labelVersion);
             try {
                 await this._requestLabelVersion(url, labelVersion.channel);
                 labelVersion.version += 1;
@@ -471,7 +374,7 @@ export class ToolPreparator {
     }
 
     private async _getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
-        const url = this._getURLTool4D(labeledVersionWanted, true);
+        const url = this._getURLTool4D(labeledVersionWanted);
         try {
             let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
             const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
@@ -483,9 +386,23 @@ export class ToolPreparator {
 
     }
 
+    private _computePackagePreference(): string {
+        let wantTar = "tar";
+        if (os.type() === "Linux") {
+            try {
+                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 })
+                wantTar = "deb"
+            } catch (err) {
+                wantTar = "tar";
+            }
+        }
+        return wantTar;
+    }
+
 
     public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
         let result = { path: "", updateAvailable: false } as ResultUpdate;
+        
 
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
@@ -530,7 +447,20 @@ export class ToolPreparator {
         }
         Logger.debugLog("Version to get", labelVersionToGet)
 
-        tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
+        if(os.type() === "Linux" && this._packagePreference === "deb")
+        {
+            if(labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
+                tool4DExecutable = this._getTool4DExe("");
+            }
+            else
+            {
+                tool4DExecutable = "";
+            }
+        }
+        else
+        {
+            tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
+        }
 
         if (existsSync(tool4DExecutable)) {
             result.path = tool4DExecutable;
@@ -549,22 +479,14 @@ export class ToolPreparator {
         const compressedPath = path.join(tool4D, "tool4d.compressed");
         const tarPath = compressedPath + ".tar.xz";
         const debPath = compressedPath + ".deb";
-        let wantTar = true;
-        if (os.type() === "Linux") {
-            try {
-                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 })
-                wantTar = false
-            } catch (err) {
-                wantTar = true;
-            }
-        }
+
 
         tool4DExecutable = this._getTool4DExe(tool4D);
         if (!existsSync(tool4DExecutable)) {
             if (!(existsSync(tarPath) || existsSync(debPath))) {
 
                 try {
-                    const url = this._getURLTool4D(labelVersionToGet, wantTar);
+                    const url = this._getURLTool4D(labelVersionToGet);
 
                     await this._download(url, compressedPath);
                 }
@@ -572,7 +494,7 @@ export class ToolPreparator {
                     throw new Error(`Tool4D ${labelVersionToGet.toString(false)} does not exist`);
                 }
             }
-            if (wantTar && existsSync(tarPath)) {
+            if (existsSync(tarPath)) {
                 try {
                     await this._decompress(tarPath, tool4D);
                     result.path = tool4DExecutable;
@@ -583,9 +505,10 @@ export class ToolPreparator {
             }
             else if (existsSync(debPath)) {
                 try {
-                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' })
-                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' })
-                    result.path = "/opt/tool4d/tool4d";
+                    child_process.execSync(`sudo dpkg --remove tool4d`, { shell: '/bin/bash' }) //remove previous version
+                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' }) //update apt to get missing packages
+                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }) //install tool4d
+                    result.path = "/opt/tool4d/tool4d"; //always there, it depends on the .deb
                 } catch (err) {
                     throw new Error("Cannot install the tool4D:\n" + err);
                 }
