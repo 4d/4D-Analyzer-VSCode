@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
-import { LabeledVersion, ResultUpdate, ToolPreparator } from "./toolPreparator";
+import { LabeledVersion } from './labeledVersion';
+import { ResultUpdate, ToolPreparator } from "./toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,

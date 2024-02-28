@@ -6,7 +6,7 @@ import * as os from 'os';
 import * as lc from "vscode-languageclient/node";
 import { Ctx } from "./ctx";
 import { LabeledVersion } from './labeledVersion';
-import { InfoPlistManager } from './Infoplist';
+import { InfoPlistManager } from './infoplist';
 
 export class Config {
 

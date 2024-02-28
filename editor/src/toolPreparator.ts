@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import * as Logger from './logger'
 import { LabeledVersion } from './labeledVersion';
-import { InfoPlistManager } from './Infoplist';
+import { InfoPlistManager } from './infoplist';
 
 export interface ResultUpdate {
     path: string;
