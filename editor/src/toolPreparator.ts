@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import * as Logger from './logger'
 import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
+import { ExtensionContext, StatusBarAlignment, window, StatusBarItem, Selection, workspace, TextEditor, commands, ProgressLocation } from 'vscode';
 
 export interface ResultUpdate {
     path: string;
@@ -324,7 +325,7 @@ export class ToolPreparator {
 
         return localLabelVersion;
     }
-//        tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
+    //        tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion, compute: boolean): string {
         let label = labeledVersion;
@@ -346,7 +347,7 @@ export class ToolPreparator {
         else if (osType === "Darwin") {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
         }
-        else if(osType === "Linux") {
+        else if (osType === "Linux") {
             if (this._packagePreference === "deb") {
                 tool4DExecutable = "/opt/tool4d/tool4d"
             }
@@ -399,10 +400,12 @@ export class ToolPreparator {
         return wantTar;
     }
 
-
-    public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
+    private async _prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean, inProgress: vscode.Progress<{
+        message?: string;
+        increment?: number;
+    }>): Promise<ResultUpdate> {
         let result = { path: "", updateAvailable: false } as ResultUpdate;
-        
+        let progress = 0;
 
         const globalStoragePath = inPathToStore;
         const tool4DMainFolder = path.join(globalStoragePath, "tool4d");
@@ -414,6 +417,8 @@ export class ToolPreparator {
         let tool4DExecutable = ""
         let labelVersionToGet = labelVersionAvailableLocally;
 
+        inProgress.report({ increment: 10 });
+        progress += 10;
         try {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
@@ -445,24 +450,26 @@ export class ToolPreparator {
         } catch (error) {
             throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
         }
+        progress += 10;
+        inProgress.report({message:`Prepare version ${labelVersionToGet.toString(true)}`, increment: 10 });
+
         Logger.debugLog("Version to get", labelVersionToGet)
 
-        if(os.type() === "Linux" && this._packagePreference === "deb")
-        {
-            if(labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
+        if (os.type() === "Linux" && this._packagePreference === "deb") {
+            if (labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
                 tool4DExecutable = this._getTool4DExe("");
             }
-            else
-            {
+            else {
                 tool4DExecutable = "";
             }
         }
-        else
-        {
+        else {
             tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
         }
 
         if (existsSync(tool4DExecutable)) {
+            inProgress.report({message:`Found on disk ${labelVersionToGet.toString(true)}`, increment: 100 - progress });
+
             result.path = tool4DExecutable;
             return result;
         }
@@ -487,6 +494,8 @@ export class ToolPreparator {
 
                 try {
                     const url = this._getURLTool4D(labelVersionToGet);
+                    progress += 30;
+                    inProgress.report({message:`Download ${labelVersionToGet.toString(true)} ...`, increment: 30 });
 
                     await this._download(url, compressedPath);
                 }
@@ -496,6 +505,9 @@ export class ToolPreparator {
             }
             if (existsSync(tarPath)) {
                 try {
+                    progress += 30;
+                    inProgress.report({message:`Untar ${labelVersionToGet.toString(true)} ...`, increment: 30 });
+
                     await this._decompress(tarPath, tool4D);
                     result.path = tool4DExecutable;
                 }
@@ -505,6 +517,9 @@ export class ToolPreparator {
             }
             else if (existsSync(debPath)) {
                 try {
+                    progress += 10;
+                    inProgress.report({message:`Install ${labelVersionToGet.toString(true)} ...`, increment: 10 });
+
                     child_process.execSync(`sudo dpkg --remove tool4d`, { shell: '/bin/bash' }) //remove previous version
                     child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' }) //update apt to get missing packages
                     child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }) //install tool4d
@@ -517,7 +532,25 @@ export class ToolPreparator {
         else {
             result.path = tool4DExecutable;
         }
+        inProgress.report({message:`Installed`, increment: 100 - progress });
         return result;
+    }
+
+    public async prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean): Promise<ResultUpdate> {
+        return window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Prepare tool4D",
+            cancellable: false
+        }, async (progress, token) => {
+
+            token.onCancellationRequested(() => {
+                console.log("User canceled the long running operation");
+            });
+
+            progress.report({ increment: 0 });
+
+            return this._prepareLastTool(inPathToStore, inUpdateIfNeeded, progress);
+        });
     }
 
     /**
