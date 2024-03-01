@@ -4,10 +4,10 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import * as Logger from './logger'
 import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
 import { window, ProgressLocation } from 'vscode';
+import { Logger } from './logger';
 
 export interface ResultUpdate {
     path: string;
@@ -20,7 +20,6 @@ export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
     private readonly _API_KEY: string
     private readonly _packagePreference: string; //deb | tar
-    private readonly _log : vscode.OutputChannel;
     constructor(inVersion: string, channel: string, inAPIKey: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
         if (this._versionWanted.isLatest()) {
@@ -29,8 +28,6 @@ export class ToolPreparator {
         this._versionWanted.channel = channel
         this._API_KEY = inAPIKey;
         this._packagePreference = this._computePackagePreference()
-        this._log = vscode.window.createOutputChannel("4D-Analyzer");
-
     }
 
     private _requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
@@ -95,7 +92,7 @@ export class ToolPreparator {
             if (labelVersion.compare(labeledVersionCloudBeta) === 0)
                 return true;
         } catch (error) {
-            throw error;
+            return false;
         }
 
         return false;
@@ -117,7 +114,6 @@ export class ToolPreparator {
                         if (resultRegex && resultRegex[1]) {
                             fileType = resultRegex[1];
                         }
-                        Logger.debugLog(response.headers)
                         download(response.headers.location, filePath + "." + fileType).then(r => {
                             resolve({ url: r, changelist: 0, fileType: fileType });
                         }).catch(error => reject(error));
@@ -134,7 +130,6 @@ export class ToolPreparator {
                             mime: response.headers['content-type'],
                             size: parseInt(response.headers['content-length'], 10),
                         };
-                        Logger.debugLog("fileinfo", fileInfo)
 
                         response.pipe(file);
 
@@ -209,7 +204,13 @@ export class ToolPreparator {
                 }
             }
             else {
-                url += `${version}.x/${version}`;
+                url += `${version}.x/`;
+                if (labeledVersion.channel === "stable") {
+                    url += "latest"
+                }
+                else {
+                    url += "beta"
+                }
             }
         }
 
@@ -251,7 +252,6 @@ export class ToolPreparator {
         return new Promise((resolve, reject) => {
             if (!existsSync(input))
                 reject();
-            Logger.debugLog("Untar", input);
             const childProcess = child_process.spawn("tar", [
                 '-xf', input, '-C', inDirectory
             ]);
@@ -380,12 +380,11 @@ export class ToolPreparator {
     private async _getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
         const url = this._getURLTool4D(labeledVersionWanted);
         try {
-            let labeledVersionCloud = await this._requestLabelVersion(url, "stable");
+            const labeledVersionCloud = await this._requestLabelVersion(url, "stable");
             const labeledVersionWantedIsBeta = await this._isCloudVersionABeta(labeledVersionCloud);
             labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
             return labeledVersionCloud;
         } catch (error) {
-            this._log.appendLine(error)
             throw error;
         }
 
@@ -416,7 +415,7 @@ export class ToolPreparator {
         const labeledVersionWanted: LabeledVersion = this._versionWanted.clone();
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
-        Logger.debugLog("Version wanted", this._versionWanted)
+        Logger.get().log("Version wanted", this._versionWanted)
         let lastMajorVersion = labeledVersionWanted.version;
         let tool4DExecutable = ""
         let labelVersionToGet = labelVersionAvailableLocally;
@@ -427,7 +426,7 @@ export class ToolPreparator {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
                 labeledVersionWanted.version = lastMajorVersion;
-                Logger.debugLog("lastVersion available is", labeledVersionWanted.version)
+                Logger.get().log("lastVersion available is", labeledVersionWanted.version)
             }
 
             const labeledVersionCloud = await this._getLastVersionCloud(labeledVersionWanted)
@@ -435,9 +434,9 @@ export class ToolPreparator {
                 throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
             }
 
-            Logger.debugLog("Version available cloud", labeledVersionCloud)
-            Logger.debugLog("Version available locally", labelVersionAvailableLocally)
-            Logger.debugLog("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
+            Logger.get().log("Version available cloud", labeledVersionCloud)
+            Logger.get().log("Version available locally", labelVersionAvailableLocally)
+            Logger.get().log("compare", labeledVersionCloud.compare(labelVersionAvailableLocally))
             if (labelVersionAvailableLocally.changelist > 0
                 && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
                 && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
@@ -458,7 +457,7 @@ export class ToolPreparator {
         progress += 10;
         inProgress.report({message:`Prepare version ${labelVersionToGet.toString(true)}`, increment: 10 });
 
-        Logger.debugLog("Version to get", labelVersionToGet)
+        Logger.get().log("Version to get", labelVersionToGet)
 
         if (os.type() === "Linux" && this._packagePreference === "deb") {
             if (labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
@@ -547,11 +546,6 @@ export class ToolPreparator {
             title: "Prepare tool4D",
             cancellable: false
         }, async (progress, token) => {
-
-            token.onCancellationRequested(() => {
-                console.log("User canceled the long running operation");
-            });
-
             progress.report({ increment: 0 });
 
             return this._prepareLastTool(inPathToStore, inUpdateIfNeeded, progress);

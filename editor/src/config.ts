@@ -96,19 +96,6 @@ export class Config {
         return p;
     }
 
-    private _getInfoplistPath() {
-        let serverPath = this._serverPath;
-        const type = os.type();
-        const dirname = path.basename(serverPath);
-        if (type === "Darwin" && dirname.endsWith(".app")) {
-            return path.join(serverPath, "Contents", "Info.plist");
-        }
-        else if (type === "Windows_NT" || type === "Linux") {
-            return path.join(serverPath, "..", "Resources", "Info.plist");
-        }
-        return serverPath;
-    }
-
     get serverPath() {
         let serverPath = this._serverPath;
         

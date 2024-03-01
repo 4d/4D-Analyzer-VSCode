@@ -12,7 +12,7 @@ import {
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import * as Logger from "./logger"
+import {Logger} from "./logger"
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
