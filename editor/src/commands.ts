@@ -52,14 +52,20 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
             vscode.window.activeTextEditor.document
         );
         const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
+        for(const diagWorkspace of response.items)
+        {
+            let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
+            //client.diagnostics.set(vscode.Uri.parse(currentItem.uri), undefined);
+            let diagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri))
+        }
         
-
-        let diagnosticCollection = client.diagnostics;
+        let diagnosticCollection = ctx.workspaceDiagnostic;
         
         for(const diagWorkspace of response.items)
         {
             const diagnostics : vscode.Diagnostic[] = [];
             let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
+            
             for(const diag of currentItem.items)
             {
                 const range : vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);

@@ -12,7 +12,7 @@ import * as child_process from 'child_process';
 import * as net from 'net';
 
 
-import { ProvideDiagnosticSignature, DocumentDiagnosticRequest, DocumentDiagnosticReportKind, DocumentDiagnosticParams } from 'vscode-languageclient'
+import { ProvideDiagnosticSignature, DocumentDiagnosticRequest, DocumentDiagnosticReportKind, DocumentDiagnosticParams, FullDocumentDiagnosticReport } from 'vscode-languageclient'
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
@@ -22,12 +22,18 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
+    private _workspaceDiagnostic : vscode.DiagnosticCollection;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._workspaceDiagnostic = vscode.languages.createDiagnosticCollection("4d_workspace");
+    }
+
+    public get workspaceDiagnostic(): vscode.DiagnosticCollection {
+        return this._workspaceDiagnostic;
     }
 
     public get extensionContext(): vscode.ExtensionContext {
@@ -159,22 +165,25 @@ export class Ctx {
                     console.log("handleDiagnostics", diagnostics)
                     next(uri, diagnostics);
                 },
-
                 provideDiagnostics: (document, previousResultId, token, next) => {
-
-                    const next2: ProvideDiagnosticSignature = (document, previousResultId, token) => {
+                    this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined)
+                    return next(document, previousResultId, token);
+                    const p: any = async (document, previousResultId, token) => {
                         const params: DocumentDiagnosticParams = {
                             identifier: "4d",
                             textDocument: { uri: this.client.code2ProtocolConverter.asUri(document instanceof vscode.Uri ? document : document.uri) },
                             previousResultId: previousResultId
                         };
-                        if (/*this.isDisposed === true ||*/ !this.client.isRunning()) {
+                        if (!this.client.isRunning()) {
                             return { kind: DocumentDiagnosticReportKind.Full, items: [] };
                         }
                         return this.client.sendRequest(DocumentDiagnosticRequest.type, params, token).then(async (result) => {
-                            if (result === undefined || result === null /*|| this.isDisposed*/ || token.isCancellationRequested) {
+                            if (result === undefined || result === null || token.isCancellationRequested) {
                                 return { kind: DocumentDiagnosticReportKind.Full, items: [] };
                             }
+
+                            
+                            
                             if (result.kind === DocumentDiagnosticReportKind.Full) {
                                 return { kind: DocumentDiagnosticReportKind.Full, resultId: result.resultId, items: await this.client.protocol2CodeConverter.asDiagnostics(result.items, token) };
                             } else {
@@ -185,8 +194,7 @@ export class Ctx {
                         });
                     };
 
-                    return next2(document, previousResultId, token)
-
+                    return p(document, previousResultId, token)
                 },
             }
         };
