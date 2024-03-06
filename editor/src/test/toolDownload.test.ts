@@ -1,5 +1,6 @@
 import { getDocPath } from './helper';
-import { ToolPreparator, requestLabelVersion } from '../toolPreparator';
+import { ToolPreparator } from '../toolPreparator';
+import { requestLabelVersion } from '../apiManager';
 import { LabeledVersion } from '../labeledVersion';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
