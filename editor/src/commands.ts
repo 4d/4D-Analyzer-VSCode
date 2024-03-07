@@ -43,36 +43,50 @@ export function filesStatus(ctx: Ctx): Cmd {
         }));
     };
 }
-let id = 0;
-export function checkSyntax(ctx: Ctx): Cmd {
-    return async()=> {
-        id++;
+
+export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
+    if(ctx.config.diagnosticEnabled && ctx.config.diagnosticScope === "Workspace")
+    {
+        return async()=>{
+            const userResponse = await vscode.window.showErrorMessage(
+                `Workspace syntax checking is already running`
+            );
+        }
+    }
+
+    return async()=> {vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Workspace syntax check running",
+        cancellable: false
+    }, async (progress, token) => {
         const client = ctx.client;
         const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
             vscode.window.activeTextEditor.document
         );
-        const response = await client.sendRequest(ext.checkSyntax, params);
-        let currentItem : WorkspaceFullDocumentDiagnosticReport;
-        const diagnosticName : string = client.diagnostics.name;
-        console.log("NAME" + diagnosticName);
-        //.
-        const diagnosticCollection = client.diagnostics;
-        diagnosticCollection.clear();
-        const diagnostics : vscode.Diagnostic[] = [];
+        const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
+        
+        let diagnosticCollection = ctx.workspaceDiagnostic;
+        diagnosticCollection.clear()
         for(const diagWorkspace of response.items)
         {
-            currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
+            const diagnostics : vscode.Diagnostic[] = [];
+            let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
+            let currentDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri))
             for(const diag of currentItem.items)
             {
                 const range : vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);
                 const diagnostic = new vscode.Diagnostic(range, diag.message, diag.severity - 1);
-                diagnostics.push(diagnostic);
+                if(!currentDiagnostics.find((cdiagnostic =>{
+                    return cdiagnostic.range.isEqual(diagnostic.range) && cdiagnostic.message === diagnostic.message
+                })))
+                {
+                    diagnostics.push(diagnostic);
+                }
+
             }
+            
             diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
         }
-        
-        ctx.extensionContext.subscriptions.push(diagnosticCollection);
-
-    };
+    });}
 }
 

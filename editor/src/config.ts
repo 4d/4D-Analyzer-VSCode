@@ -9,7 +9,7 @@ export class Config {
 
     readonly rootSection = "4D-Analyzer";
 
-    _ctx : Ctx;
+    private _ctx : Ctx;
     private readonly requiresReloadOpts = [
         "server.path",
         "diagnostics.enable",
@@ -27,6 +27,14 @@ export class Config {
 
     get cfg(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration(this.rootSection);
+    }
+
+    public get diagnosticScope() : string{
+        return this.get<string>("diagnostics.scope");
+    }
+
+    public get diagnosticEnabled() : string{
+        return this.get<string>("diagnostics.enable");
     }
 
     private get<T>(path: string): T {

@@ -1,95 +1,97 @@
 import * as vscode from 'vscode';
 import * as Commands from "./commands";
-import {Config} from "./config";
+import { Config } from "./config";
 import {
-	LanguageClient,
-	LanguageClientOptions,
-	StreamInfo
+    LanguageClient,
+    LanguageClientOptions,
+    StreamInfo
 } from 'vscode-languageclient/node';
 
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
 
-
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
 
-export class Ctx
-{
-    private _client : LanguageClient;
-    private _extensionContext : vscode.ExtensionContext;
-    private _commands : Record<string, CommandCallback>;
-    private _config : Config;
+export class Ctx {
+    private _client: LanguageClient;
+    private _extensionContext: vscode.ExtensionContext;
+    private _commands: Record<string, CommandCallback>;
+    private _config: Config;
+    private _workspaceDiagnostic : vscode.DiagnosticCollection;
 
-    constructor(ctx : vscode.ExtensionContext) {
+    constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._workspaceDiagnostic = vscode.languages.createDiagnosticCollection("4d_workspace");
     }
 
-    public get extensionContext() : vscode.ExtensionContext
-    {
+    public get config(): Config {
+        return this._config;
+    }
+
+    public get workspaceDiagnostic(): vscode.DiagnosticCollection {
+        return this._workspaceDiagnostic;
+    }
+
+    public get extensionContext(): vscode.ExtensionContext {
         return this._extensionContext;
     }
 
-    public get client() : LanguageClient
-    {
+    public get client(): LanguageClient {
         return this._client;
     }
 
-    public set client(inClient : LanguageClient) {
+    public set client(inClient: LanguageClient) {
         this._client = inClient;
     }
 
-    private _getServerPath(isDebug : boolean) : string {
-        let serverPath : string = this._config.serverPath;
+    private _getServerPath(isDebug: boolean): string {
+        let serverPath: string = this._config.serverPath;
 
-        if(process.env.ANALYZER_4D_PATH)
-        {
+        if (process.env.ANALYZER_4D_PATH) {
             serverPath = process.env.ANALYZER_4D_PATH;
         }
-    
-        if(isDebug) {
+
+        if (isDebug) {
             serverPath = '';//debug
         }
 
         return serverPath;
     }
 
-    private _getPort(isDebug : boolean) : number {
+    private _getPort(isDebug: boolean): number {
         let port = 0;
-        if(process.env.ANALYZER_4D_PORT)
-        {
+        if (process.env.ANALYZER_4D_PORT) {
             port = parseInt(process.env.ANALYZER_4D_PORT);
         }
 
-        if(isDebug) {
+        if (isDebug) {
             port = 1800;
         }
 
         return port;
     }
 
-    public start()
-    {
+    public start() {
         this._config = new Config(this._extensionContext);
         this._config.setContext(this);
         this._config.checkSettings();
-        let isDebug : boolean;
+        let isDebug: boolean;
         isDebug = false;
-        if(process.env.ANALYZER_4D_DEBUG)
-        {
+        if (process.env.ANALYZER_4D_DEBUG) {
             isDebug = true;
         }
-    
-        const serverPath : string = this._getServerPath(isDebug);
-        const port : number= this._getPort(isDebug);
+
+        const serverPath: string = this._getServerPath(isDebug);
+        const port: number = this._getPort(isDebug);
 
         console.log("SERVER PATH", serverPath);
-    
+
         // If the extension is launched in debug mode then the debug server options are used
         // Otherwise the run options are used
         const serverOptions = () =>
@@ -111,24 +113,24 @@ export class Ctx
                         server.close();
                     });
                     //server.close()
-                    resolve({ reader: socket, writer: socket, detached : false });
+                    resolve({ reader: socket, writer: socket, detached: false });
                 });
-    
+
                 // Listen on random port
                 server.listen(port, '127.0.0.1', () => {
                     console.log(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
-                    
-                    if(serverPath != '') {
+
+                    if (serverPath != '') {
                         const childProcess = child_process.spawn(serverPath, [
                             '--lsp=' + (server.address() as net.AddressInfo).port,
                         ]);
-    
+
                         childProcess.stderr.on('data', (chunk: Buffer) => {
                             const str = chunk.toString();
                             console.log('4D Language Server:', str);
                             this._client.outputChannel.appendLine(str);
                         });
-    
+
                         childProcess.on('exit', (code, signal) => {
                             this._client.outputChannel.appendLine(
                                 `Language server exited ` + (signal ? `from signal ${signal}` : `with exit code ${code}`)
@@ -137,30 +139,38 @@ export class Ctx
                                 this._client.outputChannel.show();
                             }
                         });
-    
-    
-                        server.on('close', function() {
+
+
+                        server.on('close', function () {
                             console.log("KILL");
                             childProcess.kill();
                         });
-    
+
                         return childProcess;
                     }
-                   
+
                 });
             });
-    
-            // Options to control the language client
-            const clientOptions: LanguageClientOptions = {
-                // Register the server for plain text documents
-                documentSelector: [{ scheme: 'file', language: '4d' }],
-                synchronize: {
-                    // Notify the server about file changes to '.clientrc files contained in the workspace
-                    fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
-                },
-                initializationOptions: this._config.cfg,
-                diagnosticCollectionName:"4d"
-            };
+
+        // Options to control the language client
+        const clientOptions: LanguageClientOptions = {
+            // Register the server for plain text documents
+            documentSelector: [{ scheme: 'file', language: '4d' }],
+            synchronize: {
+                // Notify the server about file changes to '.clientrc files contained in the workspace
+                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+            },
+            initializationOptions: this._config.cfg,
+            diagnosticCollectionName: "4d",
+            middleware: {
+                provideDiagnostics: (document, previousResultId, token, next) => {
+                    console.log(document instanceof vscode.Uri ? document : document.uri)
+                    if(this._config.diagnosticEnabled)
+                        this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined)
+                    return next(document, previousResultId, token);
+                }
+            }
+        };
         // Create the language client and start the client.
         this._client = new LanguageClient(
             '4D-Analyzer',
@@ -172,17 +182,16 @@ export class Ctx
         this._client.start();
     }
 
-    public registerCommands()
-    {
+    public registerCommands() {
         this._commands = {
-            filesStatus:{call:Commands.filesStatus},
-            checkSyntax:{call:Commands.checkSyntax}
-         };
+            filesStatus: { call: Commands.filesStatus },
+            checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax }
+        };
 
-         for (const [name, command] of Object.entries(this._commands)) {
+        for (const [name, command] of Object.entries(this._commands)) {
             const fullName = `4d-analyzer.${name}`;
             const callback = command.call(this);
-           
+
             this._extensionContext.subscriptions.push(vscode.commands.registerCommand(fullName, callback));
         }
     }
@@ -191,12 +200,11 @@ export class Ctx
         this._extensionContext.subscriptions.push(d);
     }
 
-    stop() : undefined | Promise<void>
-    {
+    stop(): undefined | Promise<void> {
         if (!this._client) {
             return undefined;
         }
-    
+
         return this._client.stop();
     }
 }

@@ -99,7 +99,13 @@
 					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
 				}
 			}
-		}
+		},
+		"commands": [
+			{
+			  "command": "4d-analyzer.checkWorkspaceSyntax",
+			  "title": "4D Analyzer: Check workspace syntax"
+			}
+		  ]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
