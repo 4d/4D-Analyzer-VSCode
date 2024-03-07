@@ -42,7 +42,7 @@ See the VSCode manual for more information on specific configurations.
 - **Diagnostics: Scope**
   - Setting: 4D-Analyzer.diagnostics.scope
   - Values: "Workspace" (default) / "Document"
-  - Specifies if the Syntax Checling is performed on the current workspace or on the current document only.
+  - Specifies if the Syntax Checking is performed on the current workspace or on the current document only.
 
 - **Server: Path**
   - Setting: 4D-Analyzer.server.path

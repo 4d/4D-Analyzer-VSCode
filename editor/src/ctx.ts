@@ -164,7 +164,6 @@ export class Ctx {
             diagnosticCollectionName: "4d",
             middleware: {
                 provideDiagnostics: (document, previousResultId, token, next) => {
-                    console.log(document instanceof vscode.Uri ? document : document.uri)
                     if(this._config.diagnosticEnabled)
                         this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined)
                     return next(document, previousResultId, token);

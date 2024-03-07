@@ -63,12 +63,11 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
         const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
             vscode.window.activeTextEditor.document
         );
+
         const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
-        
         let diagnosticCollection = ctx.workspaceDiagnostic;
         diagnosticCollection.clear()
-        for(const diagWorkspace of response.items)
-        {
+        response.items.forEach(diagWorkspace => {
             const diagnostics : vscode.Diagnostic[] = [];
             let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
             let currentDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri))
@@ -82,11 +81,10 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
                 {
                     diagnostics.push(diagnostic);
                 }
-
-            }
-            
+            }            
             diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
-        }
+        })
+
     });}
 }
 
