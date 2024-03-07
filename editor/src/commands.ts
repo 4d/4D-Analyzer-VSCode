@@ -45,42 +45,48 @@ export function filesStatus(ctx: Ctx): Cmd {
 }
 
 export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
-    return async()=> {
-        
+    if(ctx.config.diagnosticEnabled && ctx.config.diagnosticScope === "Workspace")
+    {
+        return async()=>{
+            const userResponse = await vscode.window.showErrorMessage(
+                `Workspace syntax checking is already running`
+            );
+        }
+    }
+
+    return async()=> {vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Workspace syntax check running",
+        cancellable: false
+    }, async (progress, token) => {
         const client = ctx.client;
         const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
             vscode.window.activeTextEditor.document
         );
         const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
-        for(const diagWorkspace of response.items)
-        {
-            let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
-            //client.diagnostics.set(vscode.Uri.parse(currentItem.uri), undefined);
-            let diagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri))
-        }
         
         let diagnosticCollection = ctx.workspaceDiagnostic;
-        
+        diagnosticCollection.clear()
         for(const diagWorkspace of response.items)
         {
             const diagnostics : vscode.Diagnostic[] = [];
             let currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
-            
+            let currentDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri))
             for(const diag of currentItem.items)
             {
                 const range : vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);
                 const diagnostic = new vscode.Diagnostic(range, diag.message, diag.severity - 1);
-                diagnostics.push(diagnostic);
+                if(!currentDiagnostics.find((cdiagnostic =>{
+                    return cdiagnostic.range.isEqual(diagnostic.range) && cdiagnostic.message === diagnostic.message
+                })))
+                {
+                    diagnostics.push(diagnostic);
+                }
+
             }
             
             diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
         }
-        /*
-        ctx.extensionContext.subscriptions.push(vscode.languages.onDidChangeDiagnostics((event)=>{
-            event.uris.forEach((uri)=> {
-                console.log(uri, client.diagnostics.get(uri))
-            })
-        }));*/
-    };
+    });}
 }
 
