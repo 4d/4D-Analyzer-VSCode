@@ -81,10 +81,9 @@ export class APIManager {
         return labelVersion.version - 1;
     }
 
-    //https://resources-download.4d.com/release/20.x/20.2/101024/mac/tool4d_v20.2_mac_arm.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
     //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
-    //https://preprod-product-download.4d.com/release/20%20Rx/beta/latest/win/tool4d_win.tar.xz => Last Rx beta
+    //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx beta
     //https://preprod-product-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
     /*
         Starting from 20R5
@@ -108,22 +107,10 @@ export class APIManager {
                 url += `${version} Rx/${version} R${releaseVersion}`;
             }
             else if (labeledVersion.isRRelease && labeledVersion.releaseVersion === 0) {
-                url += `${version} Rx/`;
-                if (labeledVersion.channel === "stable") {
-                    url += "latest"
-                }
-                else {
-                    url += "beta"
-                }
+                url += `${version} Rx/latest`;
             }
             else {
-                url += `${version}.x/`;
-                if (labeledVersion.channel === "stable") {
-                    url += "latest"
-                }
-                else {
-                    url += "beta"
-                }
+                url += `${version}.x/latest`;
             }
         }
 
@@ -152,26 +139,42 @@ export class APIManager {
             url += `win/tool4d_win`;
             url += ".tar.xz";
         }
-
-        if (labeledVersion.isMain()) {
-            url += "?"
-            url += "token_tool=" + this._apiKey
+        let hasArgs = false;
+        if(inVersion.isMain())
+        {
+            hasArgs = true;
+            url += "?";
+            url += "token_tool=" + this._apiKey;
         }
+        else
+        {
+            if(!hasArgs)
+            {
+                url += "?";
+                hasArgs = true;
+            }
 
+            if(inVersion.channel === "beta")
+            {
+                url += "channel=" + inVersion.channel;
+            }
+        }
+        
         return url;
     }
 
     public async isCloudVersionABeta(inlabelVersion: LabeledVersion): Promise<boolean> {
+
         if (inlabelVersion.isMain())
             return false;
         let labelVersion = inlabelVersion.clone();
-        const url = this.getURLTool4D(new LabeledVersion(labelVersion.version, 0, 0, 0, labelVersion.isRRelease, "beta", false));
+        let url = this.getURLTool4D(new LabeledVersion(labelVersion.version, labelVersion.releaseVersion, 0, 0, labelVersion.isRRelease, "stable", false));
         try {
-            const labeledVersionCloudBeta = await requestLabelVersion(url, "beta");
+            const labeledVersionCloudBeta = await requestLabelVersion(url, "stable");
             if (labelVersion.compare(labeledVersionCloudBeta) === 0)
-                return true;
+                return false;
         } catch (error) {
-            return false;
+            return true;
         }
 
         return false;
@@ -179,53 +182,19 @@ export class APIManager {
 
     public async getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
 
-        let labeledVersionCloudBeta;
-        try {
-            if (labeledVersionWanted.channel === "beta") {
-                const url = this.getURLTool4D(labeledVersionWanted);
-                Logger.get().log("beta", url)
-                labeledVersionCloudBeta = await requestLabelVersion(url, "beta");
-            }
-        } catch (error) { }
-
-        let labeledVersionCloudStable;
-        try {
-            let temp = labeledVersionWanted.clone();
-            temp.channel = "stable";
-            const url = this.getURLTool4D(temp);
-            Logger.get().log("stable", url)
-
-            labeledVersionCloudStable = await requestLabelVersion(url, "stable");
-        } catch (error) {
-
-        }
-
-        Logger.get().log("beta", labeledVersionCloudBeta)
-        Logger.get().log("stable", labeledVersionCloudStable)
-
-
         let labeledVersionCloud;
-        if (labeledVersionWanted.channel === "beta" && labeledVersionCloudBeta) {
-            labeledVersionCloud = labeledVersionCloudBeta;
-        }
-        else if (labeledVersionCloudStable) {
-            labeledVersionCloud = labeledVersionCloudStable;
-        }
-
-        if (labeledVersionWanted.channel === "beta" && labeledVersionCloudBeta && labeledVersionCloudStable
-            && labeledVersionCloudBeta.compare(labeledVersionCloudStable) > 0) {
-            labeledVersionCloud = labeledVersionCloudBeta;
-        }
-
-
         try {
-            const labeledVersionWantedIsBeta = await this.isCloudVersionABeta(labeledVersionCloud);
-            labeledVersionCloud.channel = labeledVersionWantedIsBeta ? "beta" : "stable"
-            return labeledVersionCloud;
-        } catch (error) {
-            Logger.get().log(error)
+                const url = this.getURLTool4D(labeledVersionWanted);
+                labeledVersionCloud = await requestLabelVersion(url, labeledVersionWanted.channel);
+            }
+         catch (error) { 
             throw error;
-        }
+         }
+         let isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
+
+         labeledVersionCloud.channel = isBeta ? "beta" : "stable";
+         return labeledVersionCloud;
+        
     }
 
     public async downloadVersion(inlabelVersion: LabeledVersion, output: string): Promise<object> {
