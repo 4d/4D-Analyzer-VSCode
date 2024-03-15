@@ -18,6 +18,7 @@ export class Config {
         .map(opt => `${this.rootSection}.${opt}`);
 
     constructor(ctx: vscode.ExtensionContext) {
+        vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
@@ -85,6 +86,15 @@ export class Config {
             {
                 vscode.commands.executeCommand( 'workbench.action.openSettings', '4D-Analyzer.server.path' );
             }
+        }
+    }
+
+    private async onDidChangeActiveTextEditor(event: vscode.TextEditor) {
+        if(event)
+        {
+            await this._ctx?.client.sendNotification("experimental/didChangeActiveTextEditor", 
+            this._ctx?.client.code2ProtocolConverter.asTextDocumentIdentifier(
+                event.document))
         }
     }
 
