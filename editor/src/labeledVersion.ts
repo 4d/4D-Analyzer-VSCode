@@ -52,6 +52,9 @@ export class LabeledVersion {
         else if (this.isRRelease && b.isRRelease && this.releaseVersion != b.releaseVersion) {
             return this.releaseVersion - b.releaseVersion;
         }
+        else if (this.isRRelease != b.isRRelease && this.releaseVersion != b.releaseVersion) {
+            return this.releaseVersion - b.releaseVersion;
+        }
         return this.changelist - b.changelist;
     }
 

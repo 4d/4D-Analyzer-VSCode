@@ -126,7 +126,11 @@
 			{
 				"command": "4d-analyzer.display4DVersion",
 				"title": "4D Analyzer: Display 4D version used"
-			  }
+			},
+			{
+				"command": "4d-analyzer.cleanUnusedToolVersions",
+				"title": "4D Analyzer: Clean all the tool4D previously downloaded"
+			}
 		  ]
 	},
 	"scripts": {
