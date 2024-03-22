@@ -59,16 +59,14 @@ export function requestLabelVersion(url: string, channel: string): Promise<Label
 
 export class APIManager {
     private readonly _apiKey: string;
-    private readonly _packagePreference: string;
-    constructor(inAPIKey: string, inPackagePreference: string) {
+    constructor(inAPIKey: string) {
         this._apiKey = inAPIKey;
-        this._packagePreference = inPackagePreference;
     }
 
     public async getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel: string): Promise<number> {
         let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
-            const url = this.getURLTool4D(labelVersion);
+            const url = this.getURLTool4D(labelVersion, "Windows_NT");
             try {
                 await requestLabelVersion(url, labelVersion.channel);
                 labelVersion.version += 1;
@@ -89,15 +87,12 @@ export class APIManager {
         Starting from 20R5
         Linux has tar.xz and .deb
     */
-    public getURLTool4D(inVersion: LabeledVersion): string {
+    public getURLTool4D(inVersion: LabeledVersion, inOS? : string): string {
         let url = "https://preprod-product-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
         const releaseVersion = String(labeledVersion.releaseVersion);
-        const hasLinuxDeb: boolean = this._packagePreference === "deb"
-            && (labeledVersion.isMain()
-                || (labeledVersion.version >= 20 && labeledVersion.releaseVersion >= 5))
 
         if (labeledVersion.isMain()) {
             url += "main/main";
@@ -116,15 +111,10 @@ export class APIManager {
 
         url += "/latest/";
 
-        const type = os.type();
+        const type = inOS ?? os.type();
 
         if (type == "Linux") {
-            if (hasLinuxDeb) {
-                url += `linux/tool4d.deb`;
-            }
-            else {
-                url += `linux/tool4d_Linux.tar.xz`;
-            }
+            url += `linux/tool4d.deb`;
         }
         else if (type == "Darwin") {
             const arch = os.arch();
@@ -136,30 +126,24 @@ export class APIManager {
             url += ".tar.xz";
         }
         else if (type == "Windows_NT") {
-            url += `win/tool4d_win`;
-            url += ".tar.xz";
+            url += `win/tool4d_win.tar.xz`;
         }
         let hasArgs = false;
-        if(inVersion.isMain())
-        {
+        if (inVersion.isMain()) {
             hasArgs = true;
             url += "?";
             url += "token_tool=" + this._apiKey;
         }
-        else
-        {
-            if(!hasArgs)
-            {
-                url += "?";
-                hasArgs = true;
-            }
-
-            if(inVersion.channel === "beta")
-            {
+        else {
+            if (inVersion.channel === "beta") {
+                if (!hasArgs) {
+                    url += "?";
+                    hasArgs = true;
+                }
                 url += "channel=" + inVersion.channel;
             }
         }
-        
+
         return url;
     }
 
@@ -185,16 +169,16 @@ export class APIManager {
         let labeledVersionCloud;
         const url = this.getURLTool4D(labeledVersionWanted);
         try {
-                labeledVersionCloud = await requestLabelVersion(url, labeledVersionWanted.channel);
-            }
-         catch (error) { 
-            throw new Error(`Failed url: ${url}`);
-         }
-         let isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
+            labeledVersionCloud = await requestLabelVersion(url, labeledVersionWanted.channel);
+        }
+        catch (error) {
+            throw new Error("Cloud url failed:" + url);
+        }
+        let isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
 
-         labeledVersionCloud.channel = isBeta ? "beta" : "stable";
-         return labeledVersionCloud;
-        
+        labeledVersionCloud.channel = isBeta ? "beta" : "stable";
+        return labeledVersionCloud;
+
     }
 
     public async downloadVersion(inlabelVersion: LabeledVersion, output: string): Promise<object> {

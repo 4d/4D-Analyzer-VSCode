@@ -13,6 +13,9 @@ import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
 import {Logger} from "./logger"
+import { existsSync, mkdirSync, readdirSync, rmdirSync, rm } from "fs";
+import path = require('path');
+
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
@@ -75,6 +78,47 @@ export class Ctx {
         const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel, this._config.tool4dAPIKEY());
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
+    }
+
+    public async cleanUnusedToolVersions() {
+        const location = path.join(!this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation(), "tool4d");
+        if(!this._config.serverPath) //no path are ready
+        {
+            rmdirSync(location)
+        }
+        else
+        {
+            const labeledVersion = this.get4DVersion();
+            function getDirectories(source: string) {
+                if (existsSync(source)) {
+                    return readdirSync(source, { withFileTypes: true })
+                        .filter(dirent => dirent.isDirectory())
+                        .map(dirent => dirent.name);
+                }
+                return [];
+            }
+
+            let labeledVersionWithoutChangelist = labeledVersion.clone();
+            labeledVersionWithoutChangelist.changelist = 0;
+            const directories = getDirectories(location);
+            directories.forEach(async directory=> {
+                const currentLabeledFolder = LabeledVersion.fromString(directory);
+
+                if(currentLabeledFolder.compare(labeledVersionWithoutChangelist) != 0){
+                    await rm(path.join(location, directory),{recursive:true}, ()=>{})
+                }
+                else
+                {
+                    const directoriesChangelist = getDirectories(path.join(location, directory));
+                    directoriesChangelist.forEach(async dir => {
+                        if(Number(dir)!= labeledVersion.changelist){
+                            await rm(path.join(location, directory, dir),{recursive:true}, ()=>{})
+                        }
+                    })
+
+                }
+            })
+        }
     }
 
     public async downloadLastTool4D(): Promise<ResultUpdate> {
@@ -205,7 +249,8 @@ export class Ctx {
         this._commands = {
             filesStatus: { call: Commands.filesStatus },
             updateTool4D: { call: Commands.updateTool4D },
-            display4DVersion: { call: Commands.display4DVersion }
+            display4DVersion: { call: Commands.display4DVersion },
+            cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions }
         };
 
         for (const [name, command] of Object.entries(this._commands)) {

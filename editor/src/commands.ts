@@ -84,3 +84,11 @@ export function display4DVersion(ctx: Ctx): Cmd {
 }
 
 
+export function cleanUnusedToolVersions(ctx: Ctx): Cmd {
+
+    return async () => {
+        
+        return await ctx.cleanUnusedToolVersions()
+    }
+}
+

@@ -7,7 +7,7 @@ import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
 import { window, ProgressLocation } from 'vscode';
 import { Logger } from './logger';
-import { APIManager} from './apiManager';
+import { APIManager } from './apiManager';
 
 export interface ResultUpdate {
     path: string;
@@ -19,7 +19,6 @@ export interface ResultUpdate {
 
 export class ToolPreparator {
     private readonly _versionWanted: LabeledVersion;
-    private readonly _packagePreference: string; //deb | tar
     private readonly _APIManager: APIManager;
     constructor(inVersion: string, channel: string, inAPIKey: string) {
         this._versionWanted = LabeledVersion.fromString(inVersion);
@@ -27,8 +26,7 @@ export class ToolPreparator {
             this._versionWanted.main = !!inAPIKey;
         }
         this._versionWanted.channel = channel
-        this._packagePreference = this._computePackagePreference();
-        this._APIManager = new APIManager(inAPIKey, this._packagePreference)
+        this._APIManager = new APIManager(inAPIKey)
     }
 
     private async _decompress(input: string, inDirectory: string): Promise<void> {
@@ -111,7 +109,6 @@ export class ToolPreparator {
 
         return localLabelVersion;
     }
-    //        tool4DExecutable = this._getTool4DExe(path.join(this._getTool4DPath(tool4DMainFolder, labelVersionToGet, true), "tool4d"));
 
     private _getTool4DPath(inRootFolder: string, labeledVersion: LabeledVersion, compute: boolean): string {
         let label = labeledVersion;
@@ -134,27 +131,21 @@ export class ToolPreparator {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
         }
         else if (osType === "Linux") {
-            if (this._packagePreference === "deb") {
-                tool4DExecutable = "/opt/tool4d/tool4d"
-            }
-            else {
-                tool4DExecutable = path.join(inRootFolder, "bin", "tool4d");
-            }
+            tool4DExecutable = "/opt/tool4d/tool4d"
         }
         return tool4DExecutable;
     }
 
-    private _computePackagePreference(): string {
-        let wantTar = "tar";
+    private _computeSudoRights(): boolean {
         if (os.type() === "Linux") {
             try {
                 child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 })
-                wantTar = "deb"
+                return true;
             } catch (err) {
-                wantTar = "tar";
+                return false;
             }
         }
-        return wantTar;
+        return false;
     }
 
     private async _prepareLastTool(inPathToStore: string, inUpdateIfNeeded: boolean, inProgress: vscode.Progress<{
@@ -170,6 +161,8 @@ export class ToolPreparator {
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
         Logger.get().log("Version wanted", this._versionWanted)
+
+
         let lastMajorVersion = labeledVersionWanted.version;
         let tool4DExecutable = ""
         let labelVersionToGet = labelVersionAvailableLocally;
@@ -189,10 +182,16 @@ export class ToolPreparator {
                 throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
             }
 
+            if (os.type() === "Linux") {
+                if(!this._computeSudoRights())
+                {
+                    throw new Error(`Missing sudo rights`);
+                }
+            }
+
             Logger.get().log("Version available cloud", labeledVersionCloud)
             Logger.get().log("Version available locally", labelVersionAvailableLocally)
             if (labelVersionAvailableLocally.changelist > 0
-                && labeledVersionCloud.isRRelease == labelVersionAvailableLocally.isRRelease
                 && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
                 result.updateAvailable = true;
             }
@@ -213,7 +212,7 @@ export class ToolPreparator {
 
         Logger.get().log("Version to get", labelVersionToGet)
 
-        if (os.type() === "Linux" && this._packagePreference === "deb") {
+        if (os.type() === "Linux") {
             if (labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
                 tool4DExecutable = this._getTool4DExe("");
             }
