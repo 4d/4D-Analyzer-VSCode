@@ -183,12 +183,12 @@ export class APIManager {
     public async getLastVersionCloud(labeledVersionWanted: LabeledVersion): Promise<LabeledVersion> {
 
         let labeledVersionCloud;
+        const url = this.getURLTool4D(labeledVersionWanted);
         try {
-                const url = this.getURLTool4D(labeledVersionWanted);
                 labeledVersionCloud = await requestLabelVersion(url, labeledVersionWanted.channel);
             }
          catch (error) { 
-            throw error;
+            throw new Error(`Failed url: ${url}`);
          }
          let isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
 
