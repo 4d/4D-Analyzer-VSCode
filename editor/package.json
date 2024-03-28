@@ -82,7 +82,7 @@
 					"type": "string",
 					"scope": "machine",
 					"default": "",
-					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension (only has an impact when the \"Automatic download and use of tool4d\" parameter is deactivated).",
+					"markdownDescription": "Path to the 4D, 4D Server or tool4d executable launched by the extension to use as LSP server (only has an impact when the \"Automatic download and use of tool4d\" parameter is deactivated).",
 					"order": 4
 				},
 				"4D-Analyzer.diagnostics.enable": {
@@ -131,7 +131,7 @@
 			},
 			{
 				"command": "4d-analyzer.display4DVersion",
-				"title": "4D Analyzer: Display 4D version currently used"
+				"title": "4D Analyzer: Display current 4D version"
 			},
 			{
 				"command": "4d-analyzer.cleanUnusedToolVersions",

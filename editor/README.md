@@ -63,7 +63,7 @@ More precision on automatic **tool4d** download and use in [this 4D blog post](h
   - Setting: 4D-Analyzer.server.path
       - only has an impact when the "Automatic download and use of tool4d" parameter is deactivated.
   - Values: path
-  - Path to the local **4D**, **4D Server** or **tool4d** application to use as LSP server.
+  - Path to the local **4D**, **4D Server** or **tool4d** executable launched by the extension to use as LSP server.
 
 - **Diagnostics: Enable**
   - Setting: 4D-Analyzer.diagnostics.enable
