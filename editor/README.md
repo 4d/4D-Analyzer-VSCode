@@ -39,32 +39,36 @@ More precision on automatic **tool4d** download and use in [this 4D blog post](h
 
 - **Tool4d: Version**
   - Setting: 4D-Analyzer.server.tool4d.version
+      - only has an impact when the "Automatic download and use of tool4d" parameter is activated.
   - Values: "latest" (default) / Version as string
-  - Defines the **tool4d** version to use:
-    - "latest" corresponds to the latest global version of **tool4d**. This is the default value and the best way to ensure you're always up to date. Versions will be downloaded as they are released, for example: ..., 20R8, 20R8 HF1, 20R8 HF2, 21, 21 HF1, 21 HF2, 21R2, 21R2 HF1, 21R2 HF2, ...
-    - "20R" corresponds to the latest **tool4d** 20 Feature Release version. For example: 20R2, ..., 20R8, 20R8 HF1, 20R8 HF2.
-    - "20R3" corresponds to the latest version of **tool4d** 20 R3. This will limit the download to versions 20R3, 20R3 HF1, and 20R3 HF2, when available. Of course, you can specify "20R4", "20R5," and so on as they become available.
-    - "20" means the latest version of **tool4d** 20 Long Term Service. Downloaded versions depend on their release: 20.0, ..., 20.2, 20.2 HF1, 20.2 HF2, 20.3, 20.3 HF1, 20.3 HF2, ..., latest version 20.x.
+  - Defines the [**tool4d** version](In the new "Warnings" page, ) to use:
+    - "latest" corresponds to the latest global version of **tool4d**. This is the default value and the best way to ensure you're always up to date. Versions will be downloaded as they are released, including HotFix versions.
+    - "20R" corresponds to the latest **tool4d** 20 Feature Release version, including HotFix versions.
+    - "20R4" corresponds to the latest version of **tool4d** 20 R4. This will limit the download to 20 R4, including HotFix versions, when available. Of course, you can specify "20R5", "20R6," and so on as they become available.
+    - "20" means the latest version of **tool4d** 20 Long Term Service, including HotFix versions. Of course, you can specify "21", "22" and so on as they become available.
 
 - **Tool4d: Channel**
   - Setting: 4D-Analyzer.server.tool4d.channel
+      - only has an impact when the "Automatic download and use of tool4d" parameter is activated.
   - Values: "stable" (default) / "beta"
   - Defines the **tool4d** version channel to use.
 
 - **Tool4d: Location**
   - Setting: 4D-Analyzer.server.tool4d.location
+      - only has an impact when the "Automatic download and use of tool4d" parameter is activated.
   - Values: path
   - Optional. Defines a custom location where the downloaded **tool4d** will be placed on disk.
+
+- **Server: Path**
+  - Setting: 4D-Analyzer.server.path
+      - only has an impact when the "Automatic download and use of tool4d" parameter is deactivated.
+  - Values: path
+  - Path to the local **4D**, **4D Server** or **tool4d** application to use as LSP server.
 
 - **Diagnostics: Enable**
   - Setting: 4D-Analyzer.diagnostics.enable
   - Values: true (default) / false
   - Enables/disables the automatic Syntax Checking.
-
-- **Server: Path**
-  - Setting: 4D-Analyzer.server.path
-  - Values: path
-  - Path to the local **4D**, **4D Server** or **tool4d** application to use as LSP server when the "automatic tool4d download and use" setting is set to false.
 
 - **Trace: Server**
   - Setting: 4D-Analyzer.trace.server
@@ -74,6 +78,7 @@ More precision on automatic **tool4d** download and use in [this 4D blog post](h
 ### Use custom local 4D application
 
 1. Install a **4D**, **4D Server** or **tool4d** application on your computer. For example, here is the free download link for [**tool4d**](https://product-download.4d.com/?branch=All&flag=All&version_number=All&platform=All&type=tool).
+1. Deactivate the "Automatic download and use of tool4d" setting (**4D-Analyzer.server.tool4d.enable**).
 1. Set the path of the application executable to **4D-Analyzer.Server.path**.
 More information on this kind of installation in this [4D Blog post](https://blog.4d.com/a-brand-new-visual-studio-code-extension-at-your-disposal/).
 
@@ -230,4 +235,3 @@ To display 4D code with the default 4D stylesheets, insert this property in the 
     }
 }
 ```
-Update readme
