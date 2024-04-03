@@ -12,7 +12,7 @@ import {
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import {Logger} from "./logger"
+import {Logger} from "./logger";
 import { existsSync, mkdirSync, readdirSync, rmdirSync, rm } from "fs";
 import path = require('path');
 
@@ -81,43 +81,43 @@ export class Ctx {
     }
 
     public async cleanUnusedToolVersions() {
+        function getDirectories(source: string) {
+            if (existsSync(source)) {
+                return readdirSync(source, { withFileTypes: true })
+                    .filter(dirent => dirent.isDirectory())
+                    .map(dirent => dirent.name);
+            }
+            return [];
+        }
+
         const location = path.join(!this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation(), "tool4d");
         if(!this._config.serverPath) //no path are ready
         {
-            rmdirSync(location)
+            rmdirSync(location);
         }
         else
         {
             const labeledVersion = this.get4DVersion();
-            function getDirectories(source: string) {
-                if (existsSync(source)) {
-                    return readdirSync(source, { withFileTypes: true })
-                        .filter(dirent => dirent.isDirectory())
-                        .map(dirent => dirent.name);
-                }
-                return [];
-            }
 
-            let labeledVersionWithoutChangelist = labeledVersion.clone();
+            const labeledVersionWithoutChangelist = labeledVersion.clone();
             labeledVersionWithoutChangelist.changelist = 0;
             const directories = getDirectories(location);
             directories.forEach(async directory=> {
                 const currentLabeledFolder = LabeledVersion.fromString(directory);
 
                 if(currentLabeledFolder.compare(labeledVersionWithoutChangelist) != 0){
-                    await rm(path.join(location, directory),{recursive:true}, ()=>{})
+                    await rm(path.join(location, directory),{recursive:true}, ()=>{});
                 }
                 else
                 {
                     const directoriesChangelist = getDirectories(path.join(location, directory));
                     directoriesChangelist.forEach(async dir => {
                         if(Number(dir)!= labeledVersion.changelist){
-                            await rm(path.join(location, directory, dir),{recursive:true}, ()=>{})
+                            await rm(path.join(location, directory, dir),{recursive:true}, ()=>{});
                         }
-                    })
-
+                    });
                 }
-            })
+            });
         }
     }
 

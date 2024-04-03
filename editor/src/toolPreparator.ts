@@ -25,8 +25,8 @@ export class ToolPreparator {
         if (this._versionWanted.isLatest()) {
             this._versionWanted.main = !!inAPIKey;
         }
-        this._versionWanted.channel = channel
-        this._APIManager = new APIManager(inAPIKey)
+        this._versionWanted.channel = channel;
+        this._APIManager = new APIManager(inAPIKey);
     }
 
     private async _decompress(input: string, inDirectory: string): Promise<void> {
@@ -102,7 +102,7 @@ export class ToolPreparator {
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
             if (versions_all.length > 0) {
-                const lastVersion = versions_all[versions_all.length - 1]
+                const lastVersion = versions_all[versions_all.length - 1];
                 localLabelVersion.changelist = Number(lastVersion);
             }
         }
@@ -114,7 +114,7 @@ export class ToolPreparator {
         let label = labeledVersion;
         if (compute) {
             label = this._getTool4DAvailableLocally(inRootFolder, labeledVersion);
-            return this._getTool4DPath(inRootFolder, label, false)
+            return this._getTool4DPath(inRootFolder, label, false);
         }
         const name = String(label.changelist);
 
@@ -131,7 +131,7 @@ export class ToolPreparator {
             tool4DExecutable = path.join(inRootFolder, "tool4d.app");
         }
         else if (osType === "Linux") {
-            tool4DExecutable = "/opt/tool4d/tool4d"
+            tool4DExecutable = "/opt/tool4d/tool4d";
         }
         return tool4DExecutable;
     }
@@ -139,7 +139,7 @@ export class ToolPreparator {
     private _computeSudoRights(): boolean {
         if (os.type() === "Linux") {
             try {
-                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 })
+                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 });
                 return true;
             } catch (err) {
                 return false;
@@ -152,7 +152,7 @@ export class ToolPreparator {
         message?: string;
         increment?: number;
     }>): Promise<ResultUpdate> {
-        let result = { path: "", updateAvailable: false } as ResultUpdate;
+        const result = { path: "", updateAvailable: false } as ResultUpdate;
         let progress = 0;
 
         const globalStoragePath = inPathToStore;
@@ -160,11 +160,11 @@ export class ToolPreparator {
         const labeledVersionWanted: LabeledVersion = this._versionWanted.clone();
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
-        Logger.get().log("Version wanted", this._versionWanted)
+        Logger.get().log("Version wanted", this._versionWanted);
 
 
         let lastMajorVersion = labeledVersionWanted.version;
-        let tool4DExecutable = ""
+        let tool4DExecutable = "";
         let labelVersionToGet = labelVersionAvailableLocally;
 
         inProgress?.report({ increment: 10 });
@@ -173,24 +173,23 @@ export class ToolPreparator {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._APIManager.getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
                 labeledVersionWanted.version = lastMajorVersion;
-                Logger.get().log("lastVersion available is", labeledVersionWanted.version)
+                Logger.get().log("lastVersion available is", labeledVersionWanted.version);
             }
 
 
-            let labeledVersionCloud = await this._APIManager.getLastVersionCloud(labeledVersionWanted)
+            const labeledVersionCloud = await this._APIManager.getLastVersionCloud(labeledVersionWanted);
             if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
                 throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
             }
 
             if (os.type() === "Linux") {
-                if(!this._computeSudoRights())
-                {
+                if (!this._computeSudoRights()) {
                     throw new Error(`Missing sudo rights`);
                 }
             }
 
-            Logger.get().log("Version available cloud", labeledVersionCloud)
-            Logger.get().log("Version available locally", labelVersionAvailableLocally)
+            Logger.get().log("Version available cloud", labeledVersionCloud);
+            Logger.get().log("Version available locally", labelVersionAvailableLocally);
             if (labelVersionAvailableLocally.changelist > 0
                 && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
                 result.updateAvailable = true;
@@ -210,7 +209,7 @@ export class ToolPreparator {
         progress += 10;
         inProgress?.report({ message: `Prepare version ${labelVersionToGet.toString(true)}`, increment: 10 });
 
-        Logger.get().log("Version to get", labelVersionToGet)
+        Logger.get().log("Version to get", labelVersionToGet);
 
         if (os.type() === "Linux") {
             if (labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
@@ -246,7 +245,7 @@ export class ToolPreparator {
 
 
         tool4DExecutable = this._getTool4DExe(tool4D);
-        Logger.get().log("Exe path", tool4DExecutable)
+        Logger.get().log("Exe path", tool4DExecutable);
 
         if (!existsSync(tool4DExecutable)) {
             if (!(existsSync(tarPath) || existsSync(debPath))) {
@@ -277,9 +276,9 @@ export class ToolPreparator {
                     progress += 10;
                     inProgress?.report({ message: `Install ${labelVersionToGet.toString(true)} ...`, increment: 10 });
 
-                    child_process.execSync(`sudo dpkg --remove tool4d`, { shell: '/bin/bash' }) //remove previous version
-                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' }) //update apt to get missing packages
-                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }) //install tool4d
+                    child_process.execSync(`sudo dpkg --remove tool4d`, { shell: '/bin/bash' }); //remove previous version
+                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' }); //update apt to get missing packages
+                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }); //install tool4d
                     result.path = "/opt/tool4d/tool4d"; //always there, it depends on the .deb
                 } catch (err) {
                     throw new Error("Cannot install the tool4D:\n" + err);
@@ -314,28 +313,20 @@ export class ToolPreparator {
     * Download and decompress a toodl
     */
     public async prepareTool4D(inPathToStore: string): Promise<ResultUpdate> {
-
-        try {
-            let result = await this.prepareLastTool(inPathToStore, false);
-            if (result.updateAvailable) {
-                let command = async () => {
-                    const userResponse = await vscode.window.showInformationMessage(
-                        `4D ${result.lastVersion.toString(true)} is available, you have ${result.currentVersion.toString(true)}. Would you like to download it?`,
-                        "Download",
-                        "Continue"
-                    );
-
-                    if (userResponse === "Download") {
-                        vscode.commands.executeCommand('4d-analyzer.updateTool4D');
-                    }
+        const result = await this.prepareLastTool(inPathToStore, false);
+        if (result.updateAvailable) {
+            const command = async () => {
+                const userResponse = await vscode.window.showInformationMessage(
+                    `4D ${result.lastVersion.toString(true)} is available, you have ${result.currentVersion.toString(true)}. Would you like to download it?`,
+                    "Download",
+                    "Continue"
+                );
+                if (userResponse === "Download") {
+                    vscode.commands.executeCommand('4d-analyzer.updateTool4D');
                 }
-                command();
-            }
-            return result;
-
-        } catch (error) {
-            throw error;
+            };
+            command();
         }
-
+        return result;
     }
 }

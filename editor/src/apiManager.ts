@@ -7,28 +7,30 @@ import * as path from 'path';
 
 export function requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
     async function download(url: string): Promise<LabeledVersion> {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const http = require('http');
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const https = require('https');
         const proto = !url.charAt(4).localeCompare('s') ? https : http;
         return new Promise((resolve, reject) => {
             const request = proto.get(url, response => {
                 if (response.statusCode === 302 || response.statusCode === 200) {
                     const regex = /_(([0-9]{2})(\.(x)|R([0-9])*)?|main)_([0-9]{6})/;
-                    const version = new LabeledVersion(0, 0, 0, 0, false, channel, false)
+                    const version = new LabeledVersion(0, 0, 0, 0, false, channel, false);
                     const resultRegex = regex.exec(response.headers.location);
                     if (resultRegex) {
                         if (resultRegex[1] && resultRegex[1] === "main") {
                             version.isRRelease = true;
                             version.main = true;
-                            version.changelist = Number(resultRegex[6])
+                            version.changelist = Number(resultRegex[6]);
                         }
                         else {
-                            version.version = Number(resultRegex[2])
+                            version.version = Number(resultRegex[2]);
                             version.isRRelease = resultRegex[3].includes("R");
                             if (version.isRRelease) {
-                                version.releaseVersion = Number(resultRegex[5])
+                                version.releaseVersion = Number(resultRegex[5]);
                             }
-                            version.changelist = Number(resultRegex[6])
+                            version.changelist = Number(resultRegex[6]);
                         }
 
                     }
@@ -64,7 +66,7 @@ export class APIManager {
     }
 
     public async getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel: string): Promise<number> {
-        let labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
+        const labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
             const url = this.getURLTool4D(labelVersion, "Windows_NT");
             try {
@@ -80,15 +82,15 @@ export class APIManager {
     }
 
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
-    //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
-    //https://preprod-product-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx beta
-    //https://preprod-product-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
+    //https://resources-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
+    //https://resources-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx beta
+    //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
     /*
         Starting from 20R5
         Linux has tar.xz and .deb
     */
     public getURLTool4D(inVersion: LabeledVersion, inOS? : string): string {
-        let url = "https://preprod-product-download.4d.com/release/";
+        let url = "https://resources-download.4d.com/release/";
         const labeledVersion: LabeledVersion = inVersion;
 
         const version = String(labeledVersion.version);
@@ -151,8 +153,8 @@ export class APIManager {
 
         if (inlabelVersion.isMain())
             return false;
-        let labelVersion = inlabelVersion.clone();
-        let url = this.getURLTool4D(new LabeledVersion(labelVersion.version, labelVersion.releaseVersion, 0, 0, labelVersion.isRRelease, "stable", false));
+        const labelVersion = inlabelVersion.clone();
+        const url = this.getURLTool4D(new LabeledVersion(labelVersion.version, labelVersion.releaseVersion, 0, 0, labelVersion.isRRelease, "stable", false));
         try {
             const labeledVersionCloudBeta = await requestLabelVersion(url, "stable");
             if (labelVersion.compare(labeledVersionCloudBeta) === 0)
@@ -174,7 +176,7 @@ export class APIManager {
         catch (error) {
             throw new Error("Cloud url failed:" + url);
         }
-        let isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
+        const isBeta = await this.isCloudVersionABeta(labeledVersionCloud);
 
         labeledVersionCloud.channel = isBeta ? "beta" : "stable";
         return labeledVersionCloud;
@@ -188,7 +190,9 @@ export class APIManager {
 
     private _download(inURL: string, filePath: string): Promise<object> {
         async function download(inURL, filePath): Promise<object> {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const http = require('http');
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const https = require('https');
             const proto = !inURL.charAt(4).localeCompare('s') ? https : http;
 
@@ -196,9 +200,9 @@ export class APIManager {
 
                 const request = proto.get(inURL, response => {
                     if (response.statusCode == 302) {
-                        const regex = /_[0-9]{6,}\.([a-z]*\.?[a-z]*)/
+                        const regex = /_[0-9]{6,}\.([a-z]*\.?[a-z]*)/;
                         const resultRegex = regex.exec(response.headers.location);
-                        let fileType = "tar.xz"
+                        let fileType = "tar.xz";
                         if (resultRegex && resultRegex[1]) {
                             if (resultRegex[1] === "xz") {
                                 fileType = "tar.xz";
@@ -214,7 +218,7 @@ export class APIManager {
                     else if (response.statusCode === 200) {
                         const file = fs.createWriteStream(filePath);
                         const parent = path.join(filePath, "..");
-                        Logger.debugLog(file)
+                        Logger.debugLog(file);
                         if (!existsSync(parent)) {
                             mkdirSync(parent, { recursive: true });
                         }

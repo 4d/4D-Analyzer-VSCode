@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as util from 'util' // has no default export
+import * as util from 'util'; // has no default export
 import { debug } from 'console';
 
 export class Logger {
@@ -31,12 +31,12 @@ export class Logger {
         
         const prefix = `[${new Date().toLocaleString()}]`;
         this._log.append(prefix + ' ');
-        this._logInOutputChannel(...o)
+        this._logInOutputChannel(...o);
     }
 
     public static debugLog(...inArgs) {
-        var args = Array.prototype.slice.call(inArgs);
-        args.unshift("[4D-Analyzer]")
+        const args = Array.prototype.slice.call(inArgs);
+        args.unshift("[4D-Analyzer]");
         console.log.apply(console, args);
     }
 }

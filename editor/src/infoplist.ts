@@ -4,18 +4,18 @@ import * as fs from 'fs';
 import { LabeledVersion } from './labeledVersion';
 
 export class InfoPlistManager {
-    private readonly _infoPlistPath : string
+    private readonly _infoPlistPath : string;
     private readonly _content : string;
     constructor(inPath : string) {
         this._infoPlistPath = inPath;
-        this._content = ""
+        this._content = "";
         if (fs.existsSync(this._infoPlistPath)) {
             this._content = fs.readFileSync(this._infoPlistPath).toString();
         }
     }
 
     private static _getInfoplistPath(inExePath : string) {
-        let serverPath = inExePath;
+        const serverPath = inExePath;
         const type = os.type();
         const dirname = path.basename(serverPath);
         if (type === "Darwin" && dirname.endsWith(".app")) {
@@ -32,7 +32,7 @@ export class InfoPlistManager {
 
         const match = this._content.match(/CFBundleShortVersionString<\/key>\s*<string>(.*)<\/string>/mi);
         if (match !== null && match.length > 1) {
-            let matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/)
+            const matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/);
             if (matchVersion) {
                 if (matchVersion[2]) {
                     labeledVersion = LabeledVersion.fromString(matchVersion[2]);
@@ -52,7 +52,7 @@ export class InfoPlistManager {
     }
 
     public getExeName() : string {
-        let nameExecutable = ""
+        let nameExecutable = "";
         const match = this._content.match(/CFBundleExecutable<\/key>\s*<string>(.*)<\/string>/mi);
         if (match !== null && match.length > 1) {
             nameExecutable = match[1];
@@ -61,7 +61,7 @@ export class InfoPlistManager {
     }
 
     static fromExePath( inPath : string) : InfoPlistManager {
-        return new InfoPlistManager(InfoPlistManager._getInfoplistPath(inPath))
+        return new InfoPlistManager(InfoPlistManager._getInfoplistPath(inPath));
     }
     
 }

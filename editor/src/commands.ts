@@ -46,7 +46,7 @@ export function updateTool4D(ctx: Ctx): Cmd {
 
     return async () => {
         try {
-            await ctx.downloadLastTool4D()
+            await ctx.downloadLastTool4D();
             const userResponse = await vscode.window.showInformationMessage(
                 `The tool4D has been updated a restart is needed`,
                 "Reload now"
@@ -60,15 +60,14 @@ export function updateTool4D(ctx: Ctx): Cmd {
                 error,
             );
         }
-
-    }
+    };
 }
 
 export function display4DVersion(ctx: Ctx): Cmd {
 
     return async () => {
         try {
-            const version = ctx.get4DVersion()
+            const version = ctx.get4DVersion();
             const userResponse = await vscode.window.showInformationMessage(
                 `4D Version ${(await version).toString(true)}`,
             );
@@ -79,8 +78,7 @@ export function display4DVersion(ctx: Ctx): Cmd {
                 error,
             );
         }
-
-    }
+    };
 }
 
 
@@ -88,7 +86,7 @@ export function cleanUnusedToolVersions(ctx: Ctx): Cmd {
 
     return async () => {
         
-        return await ctx.cleanUnusedToolVersions()
-    }
+        return await ctx.cleanUnusedToolVersions();
+    };
 }
 

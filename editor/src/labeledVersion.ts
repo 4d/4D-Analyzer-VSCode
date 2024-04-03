@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-inferrable-types */
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -23,7 +24,7 @@ export class LabeledVersion {
     }
 
     clone() {
-        let labeledVersion = new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel, this.main)
+        const labeledVersion = new LabeledVersion(this.version, this.releaseVersion, this.subversion, this.changelist, this.isRRelease, this.channel, this.main);
         return labeledVersion;
     }
 
@@ -116,8 +117,8 @@ export class LabeledVersion {
         return result;
     }
 
-    private _getInfoplistPath(inExePath : string) {
-        let serverPath = inExePath;
+    private _getInfoplistPath(inExePath: string) {
+        const serverPath = inExePath;
         const type = os.type();
         const dirname = path.basename(serverPath);
         if (type === "Darwin" && dirname.endsWith(".app")) {
@@ -129,7 +130,7 @@ export class LabeledVersion {
         return serverPath;
     }
 
-    public get4DVersion(inExePath : string): LabeledVersion {
+    public get4DVersion(inExePath: string): LabeledVersion {
         let labeledVersion = new LabeledVersion(0, 0, 0, 0, false, "stable", false);
 
         const infoPlistPath = this._getInfoplistPath(inExePath);
@@ -137,7 +138,7 @@ export class LabeledVersion {
             const content: string = fs.readFileSync(infoPlistPath).toString();
             const match = content.match(/CFBundleShortVersionString<\/key>\s*<string>(.*)<\/string>/mi);
             if (match !== null && match.length > 1) {
-                let matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/)
+                const matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/);
                 if (matchVersion) {
                     if (matchVersion[2]) {
                         labeledVersion = LabeledVersion.fromString(matchVersion[2]);
@@ -154,6 +155,6 @@ export class LabeledVersion {
                 }
             }
         }
-        return labeledVersion
+        return labeledVersion;
     }
 }

@@ -6,13 +6,13 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as fs from "fs";
 
-//https://preprod-product-download.4d.com/release/20.x/latest/latest/win/tool4d_win.tar.xz?debug
+//https://resources-download.4d.com/release/20.x/latest/latest/win/tool4d_win.tar.xz?debug
 suite('Download tool', () => {
-    const downloadPath = getDocPath("Download")
+    const downloadPath = getDocPath("Download");
     if(fs.existsSync(downloadPath)) {
-        fs.rmSync(downloadPath, {recursive:true})
+        fs.rmSync(downloadPath, {recursive:true});
     }
-    fs.mkdirSync(downloadPath)
+    fs.mkdirSync(downloadPath);
 
 	const ext = vscode.extensions.getExtension('4D.4d-analyzer')!;
     test('Tool download stable', async () => {
@@ -21,7 +21,7 @@ suite('Download tool', () => {
 
         while (true) {
             try {
-                await requestLabelVersion(`https://preprod-product-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "stable")
+                await requestLabelVersion(`https://resources-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "stable");
                 number++;
             }
             catch (error) {
@@ -31,7 +31,7 @@ suite('Download tool', () => {
 
 
         number--;
-        let lastVersionAvailable = await requestLabelVersion(`https://preprod-product-download.4d.com/release/${number} Rx/latest/latest/win/tool4d_win.tar.xz`, "stable")
+        const lastVersionAvailable = await requestLabelVersion(`https://resources-download.4d.com/release/${number} Rx/latest/latest/win/tool4d_win.tar.xz`, "stable");
         lastVersionAvailable.changelist = 0;
 
 
@@ -48,7 +48,7 @@ suite('Download tool', () => {
 
         while (true) {
             try {
-                await requestLabelVersion(`https://preprod-product-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "stable")
+                await requestLabelVersion(`https://resources-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "stable");
                 number++;
             }
             catch (error) {
@@ -58,7 +58,7 @@ suite('Download tool', () => {
 
 
         number--;
-        let lastVersionAvailable = await requestLabelVersion(`https://preprod-product-download.4d.com/release/${number} Rx/beta/latest/win/tool4d_win.tar.xz`, "beta")
+        const lastVersionAvailable = await requestLabelVersion(`https://resources-download.4d.com/release/${number} Rx/beta/latest/win/tool4d_win.tar.xz`, "beta")
         lastVersionAvailable.changelist = 0;
 
 
@@ -75,39 +75,39 @@ suite('Download tool', () => {
 async function testDownloadR(downloadPath: string, labeledVersion: LabeledVersion, channel : string) {
     if (labeledVersion.releaseVersion >= 2) {
         try {
-            let toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R", channel, "")
-            let result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false)
-            assert(result.currentVersion)
-            assert(result.currentVersion.version === labeledVersion.version)
-            assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion)
-            assert(result.currentVersion.changelist > 0)
+            const toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R", channel, "");
+            const result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false);
+            assert(result.currentVersion);
+            assert(result.currentVersion.version === labeledVersion.version);
+            assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion);
+            assert(result.currentVersion.changelist > 0);
         } catch (e) {
-            console.log("ERROR", e)
-            assert(false)
+            console.log("ERROR", e);
+            assert(false);
         }
     }
     else //If We are a 20R2
     {
         try {
-            let toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R", channel, "")
-            let result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false)
-            assert(false)
+            const toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R", channel, "");
+            const result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false);
+            assert(false);
         } catch (e) {
-            assert(true)
+            assert(true);
         }
     }
 }
 
 async function testDownloadRVersion(downloadPath: string, labeledVersion: LabeledVersion, channel : string) {
     try {
-        let toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R" + labeledVersion.releaseVersion, channel, "")
-        let result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false)
-        assert(result.currentVersion)
-        assert(result.currentVersion.version === labeledVersion.version)
-        assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion)
-        assert(result.currentVersion.changelist > 0)
+        const toolPreparator = new ToolPreparator(String(labeledVersion.version) + "R" + labeledVersion.releaseVersion, channel, "");
+        const result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false);
+        assert(result.currentVersion);
+        assert(result.currentVersion.version === labeledVersion.version);
+        assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion);
+        assert(result.currentVersion.changelist > 0);
     } catch (e) {
-        assert(false)
+        assert(false);
     }
 }
 
@@ -115,18 +115,18 @@ async function testDownloadRVersion(downloadPath: string, labeledVersion: Labele
 async function testDownloadLTS(downloadPath: string, labeledVersion: LabeledVersion, channel : string) {
     if (labeledVersion.releaseVersion > 2) {
         try {
-            let toolPreparator = new ToolPreparator(String(labeledVersion.version), channel, "")
-            let result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false)
-            assert(result.currentVersion.version == labeledVersion.version)
-            assert(result.currentVersion.releaseVersion === 0)
-            assert(result.currentVersion.changelist > 0)
+            const toolPreparator = new ToolPreparator(String(labeledVersion.version), channel, "");
+            const result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false);
+            assert(result.currentVersion.version == labeledVersion.version);
+            assert(result.currentVersion.releaseVersion === 0);
+            assert(result.currentVersion.changelist > 0);
         } catch (e) {
-            assert(false)
+            assert(false);
         }
     }
     else //If We are a 20R2
     {
-        assert(true)
+        assert(true);
     }
 }
 
