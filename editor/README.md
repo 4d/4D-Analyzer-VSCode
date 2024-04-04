@@ -34,6 +34,11 @@ See the VSCode manual for more information on specific configurations.
 
 ### Extension Settings
 
+- **Server: Path**
+  - Setting: 4D-Analyzer.server.path
+  - Values: path
+  - Path to the **4D**, **4D Server** or **tool4d** application to use as LSP server.
+
 - **Diagnostics: Enable**
   - Setting: 4D-Analyzer.diagnostics.enable
   - Values: true (default) / false
@@ -42,12 +47,7 @@ See the VSCode manual for more information on specific configurations.
 - **Diagnostics: Scope**
   - Setting: 4D-Analyzer.diagnostics.scope
   - Values: "Workspace" (default) / "Document"
-  - Specifies if the Syntax Checking is performed on the current workspace or on the current document only.
-
-- **Server: Path**
-  - Setting: 4D-Analyzer.server.path
-  - Values: path
-  - Path to the **4D**, **4D Server** or **tool4d** application to use as LSP server.
+  - Specifies if the Syntax Checking is performed on the Workspace (the entire 4D project to which the current document belongs) or on the current document only.
 
 - **Trace: Server**
   - Setting: 4D-Analyzer.trace.server

@@ -83,20 +83,23 @@
 					"type": "string",
 					"scope": "machine",
 					"default": "",
-					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
+					"markdownDescription": "Path to the 4D, 4D Server or tool4d executable launched by the extension to use as LSP server.",
+					"order": 0
 				},
 				"4D-Analyzer.diagnostics.enable": {
 					"type": "boolean",
 					"scope": "machine",
 					"default": true,
-					"markdownDescription": "Enable/disable diagnostics"
+					"markdownDescription": "Enable/disable diagnostics",
+					"order": 1
 				},
 				"4D-Analyzer.diagnostics.scope": {
 					"type": "string",
 					"scope": "machine",
 					"enum": ["Document", "Workspace"],
 					"default": "Workspace",
-					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
+					"markdownDescription": "Precise the scope of the diagnostics. If 'Workspace' is selected, every 4D method/class of the project will be checked as soon as a method/class is opened/save. If 'Document' is selected, only the current document will be checked.",
+					"order": 2
 				}
 			}
 		},
