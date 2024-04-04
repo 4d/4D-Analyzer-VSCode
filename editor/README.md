@@ -78,12 +78,6 @@ More precision on automatic **tool4d** download and use in [this 4D blog post](h
   - Values: "Workspace" (default) / "Document"
   - Specifies if the Syntax Checking is performed on the current workspace or on the current document only.
 
-- **Server: Path**
-  - Setting: 4D-Analyzer.server.path
-  - Values: path
-  - Path to the **4D**, **4D Server** or **tool4d** application to use as LSP server.
-
-
 - **Trace: Server**
   - Setting: 4D-Analyzer.trace.server
   - Values: "off" (default) / "messages" / "verbose"
