@@ -139,7 +139,7 @@ export class ToolPreparator {
     private _computeSudoRights(): boolean {
         if (os.type() === "Linux") {
             try {
-                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 100 });
+                child_process.execSync("sudo -v", { shell: '/bin/bash', timeout: 1000 });
                 return true;
             } catch (err) {
                 return false;
