@@ -106,7 +106,7 @@
 		"commands": [
 			{
 			  "command": "4d-analyzer.checkWorkspaceSyntax",
-			  "title": "4D Analyzer: Check workspace syntax"
+			  "title": "4D Analyzer: Check syntax of current 4D project"
 			}
 		  ]
 	},
