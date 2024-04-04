@@ -20,18 +20,27 @@ export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
 };
 
-
 export class Ctx {
     private _client: LanguageClient;
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
+    private _workspaceDiagnostic : vscode.DiagnosticCollection;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._workspaceDiagnostic = vscode.languages.createDiagnosticCollection("4d_workspace");
+    }
+
+    public get config(): Config {
+        return this._config;
+    }
+
+    public get workspaceDiagnostic(): vscode.DiagnosticCollection {
+        return this._workspaceDiagnostic;
     }
 
     public get extensionContext(): vscode.ExtensionContext {
@@ -132,6 +141,7 @@ export class Ctx {
     }
 
     private _launch4D() {
+        this._config.init(this);
         this._config.checkSettings();
         let isDebug: boolean;
         isDebug = false;
@@ -210,7 +220,14 @@ export class Ctx {
                 fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
             },
             initializationOptions: this._config.cfg,
-            diagnosticCollectionName: "4d"
+            diagnosticCollectionName: "4d",
+            middleware: {
+                provideDiagnostics: (document, previousResultId, token, next) => {
+                    if(this._config.diagnosticEnabled)
+                        this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined);
+                    return next(document, previousResultId, token);
+                }
+            }
         };
         // Create the language client and start the client.
         this._client = new LanguageClient(
@@ -250,7 +267,8 @@ export class Ctx {
             filesStatus: { call: Commands.filesStatus },
             updateTool4D: { call: Commands.updateTool4D },
             display4DVersion: { call: Commands.display4DVersion },
-            cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions }
+            cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions },
+            checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax }
         };
 
         for (const [name, command] of Object.entries(this._commands)) {
@@ -277,3 +295,4 @@ export class Ctx {
 export interface Disposable {
     dispose(): void;
 }
+

@@ -11,6 +11,7 @@ import { InfoPlistManager } from './infoplist';
 export class Config {
 
     readonly rootSection = "4D-Analyzer";
+
     _tool4DPath: string;
     _ctx: Ctx;
     private readonly requiresReloadOpts = [
@@ -19,17 +20,19 @@ export class Config {
         "server.tool4d.location",
         "server.tool4d.enable",
         "server.tool4d.channel",
-        "diagnostics.enable"
+        "diagnostics.enable",
+        "diagnostics.scope"
     ]
+
         .map(opt => `${this.rootSection}.${opt}`);
 
     constructor(ctx: vscode.ExtensionContext) {
+        vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
     }
 
     init(ctx: Ctx) {
         this._ctx = ctx;
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.extensionContext.subscriptions);
     }
 
     get cfg(): vscode.WorkspaceConfiguration {
@@ -38,6 +41,14 @@ export class Config {
 
     public setTool4DPath(inPath: string) {
         this._tool4DPath = inPath;
+    }
+
+    public get diagnosticScope() : string{
+        return this.get<string>("diagnostics.scope");
+    }
+
+    public get diagnosticEnabled() : string{
+        return this.get<string>("diagnostics.enable");
     }
 
     private get<T>(path: string): T {
@@ -133,6 +144,15 @@ export class Config {
             if (userResponse === "Show Settings") {
                 vscode.commands.executeCommand('workbench.action.openSettings', '4D-Analyzer.server.path');
             }
+        }
+    }
+
+    private async onDidChangeActiveTextEditor(event: vscode.TextEditor) {
+        if(event)
+        {
+            await this._ctx?.client.sendNotification("experimental/didChangeActiveTextEditor", 
+            this._ctx?.client.code2ProtocolConverter.asTextDocumentIdentifier(
+                event.document));
         }
     }
 

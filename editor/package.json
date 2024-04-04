@@ -121,6 +121,14 @@
 					"default": "",
 					"markdownDescription": "tool4d download folder (only has an impact when the \"Automatic download and use of tool4d\" parameter is activated).",
 					"order": 3
+				},
+				"4D-Analyzer.diagnostics.scope": {
+					"type": "string",
+					"scope": "machine",
+					"enum": ["Document", "Workspace"],
+					"default": "Workspace",
+					"order": 6,
+					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
 				}
 			}
 		},
@@ -136,6 +144,10 @@
 			{
 				"command": "4d-analyzer.cleanUnusedToolVersions",
 				"title": "4D Analyzer: Clean all the unused tool4d versions previously downloaded"
+			},
+			{
+			  "command": "4d-analyzer.checkWorkspaceSyntax",
+			  "title": "4D Analyzer: Check workspace syntax"
 			}
 		  ]
 	},

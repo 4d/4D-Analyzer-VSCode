@@ -15,6 +15,8 @@ Release numbers indicate the minimal 4D release where the feature is available.
 - [Indentation](https://blog.4d.com/new-vs-code-editor-features-with-4d-v20/) (4D 20)
 - [Code formatting](https://blog.4d.com/format-your-4d-code-in-visual-studio-code/) (4D 20 R2)
 - [Show Documentation](https://blog.4d.com/vs-code-extension-show-4d-documentation/) (4D 20 R3)
+- [Workspace syntax checking](https://blog.4d.com/workspace-syntax-checking-in-vs-code-editor/) (4D 20 R5)
+
 
 ## Quick start
 
@@ -28,6 +30,7 @@ All 4D blog posts about this extension are available [here](https://blog.4d.com/
 This extension provides configurations through VSCode's configuration settings. 
 All configurations are under __4D-Analyzer.*__.
 See the VSCode manual for more information on specific configurations.
+
 More precision on automatic **tool4d** download and use in [this 4D blog post](https://blog.4d.com/auto-tool4d-download-in-4d-analyzer-extension-for-vs-code).
 
 ### Extension Settings
@@ -69,6 +72,17 @@ More precision on automatic **tool4d** download and use in [this 4D blog post](h
   - Setting: 4D-Analyzer.diagnostics.enable
   - Values: true (default) / false
   - Enables/disables the automatic Syntax Checking.
+
+- **Diagnostics: Scope**
+  - Setting: 4D-Analyzer.diagnostics.scope
+  - Values: "Workspace" (default) / "Document"
+  - Specifies if the Syntax Checking is performed on the current workspace or on the current document only.
+
+- **Server: Path**
+  - Setting: 4D-Analyzer.server.path
+  - Values: path
+  - Path to the **4D**, **4D Server** or **tool4d** application to use as LSP server.
+
 
 - **Trace: Server**
   - Setting: 4D-Analyzer.trace.server
