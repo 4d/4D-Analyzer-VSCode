@@ -5,7 +5,7 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.1.9",
+	"version": "0.2.0",
 	"preview": true,
 	"repository": {
 		"type": "git",
@@ -20,10 +20,9 @@
 		"4DM"
 	],
 	"engines": {
-		"vscode": "^1.64.0"
+		"vscode": "^1.78.0"
 	},
 	"activationEvents": [
-		"onLanguage:4d"
 	],
 	"main": "./out/extension",
 	"contributes": {
@@ -83,16 +82,62 @@
 					"type": "string",
 					"scope": "machine",
 					"default": "",
-					"markdownDescription": "Path to the 4D or 4D Server executable launched by the extension."
+					"markdownDescription": "Path to the 4D, 4D Server or tool4d executable launched by the extension to use as LSP server (only has an impact when the \"Automatic download and use of tool4d\" parameter is deactivated).",
+					"order": 4
 				},
 				"4D-Analyzer.diagnostics.enable": {
 					"type": "boolean",
 					"scope": "machine",
 					"default": true,
-					"markdownDescription": "Enable/disable diagnostics"
+					"markdownDescription": "Enable/disable diagnostics.",
+					"order": 5
+				},
+				"4D-Analyzer.server.tool4d.enable": {
+					"type": "boolean",
+					"scope": "machine",
+					"default": true,
+					"markdownDescription": "Automatic download and use of tool4d.",
+					"order": 0
+				},
+				"4D-Analyzer.server.tool4d.version": {
+					"type": "string",
+					"scope": "machine",
+					"default": "latest",
+					"pattern": "^([0-9]{2}(R[0-9]?)?)|latest$",
+					"markdownDescription": "tool4d version (latest, 20R, 20, ...). See extension documentation for more information (only has an impact when the \"Automatic download and use of tool4d\" parameter is activated).",
+					"order": 1
+				},
+				"4D-Analyzer.server.tool4d.channel": {
+					"type": "string",
+					"scope": "machine",
+					"default":"stable",
+					"enum": ["stable", "beta"],
+					"markdownDescription": "tool4d version channel (only has an impact when the \"Automatic download and use of tool4d\" parameter is activated).",
+					"order": 2
+				},
+				"4D-Analyzer.server.tool4d.location": {
+					"type": "string",
+					"scope": "machine",
+					"default": "",
+					"markdownDescription": "tool4d download folder (only has an impact when the \"Automatic download and use of tool4d\" parameter is activated).",
+					"order": 3
 				}
 			}
-		}
+		},
+		"commands": [
+			{
+			  "command": "4d-analyzer.updateTool4D",
+			  "title": "4D Analyzer: Update tool4d to latest version"
+			},
+			{
+				"command": "4d-analyzer.display4DVersion",
+				"title": "4D Analyzer: Display current 4D version"
+			},
+			{
+				"command": "4d-analyzer.cleanUnusedToolVersions",
+				"title": "4D Analyzer: Clean all the unused tool4d versions previously downloaded"
+			}
+		  ]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
@@ -106,20 +151,20 @@
 		"test": "tsc -b && sh ./scripts/e2e.sh"
 	},
 	"dependencies": {
-		"vscode-languageclient": "^8.0.2"
+		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.6",
 		"@types/mz": "2.7.8",
-		"@types/node": "^17.0.45",
-		"@types/vscode": "^1.64.0",
-		"@typescript-eslint/eslint-plugin": "^5.42.0",
-		"@typescript-eslint/parser": "^5.42.0",
+		"@types/node": "~17.0.45",
+		"@types/vscode": "~1.78.1",
+		"@typescript-eslint/eslint-plugin": "^6.15.0",
+		"@typescript-eslint/parser": "^6.15.0",
 		"@vscode/test-electron": "^2.3.8",
-		"esbuild": "^0.15.13",
-		"eslint": "^8.26.0",
+		"esbuild": "^0.19.10",
+		"eslint": "^8.56.0",
 		"mocha": "^10.2.0",
-		"typescript": "^4.8.4",
-		"@vscode/vsce": "^2.15.0"
+		"typescript": "^5.3.3",
+		"@vscode/vsce": "^2.22.0"
 	}
 }

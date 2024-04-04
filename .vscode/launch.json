@@ -29,6 +29,15 @@
         }
       },
       {
+        "name": "Launch Extension Debug Tool4D",
+        "type": "extensionHost",
+        "request": "launch",
+        "runtimeExecutable": "${execPath}",
+        "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
+        "env": {
+        }
+      },
+      {
         "name": "Launch Extension",
         "type": "extensionHost",
         "request": "launch",
