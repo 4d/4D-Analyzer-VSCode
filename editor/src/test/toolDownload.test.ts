@@ -58,7 +58,7 @@ suite('Download tool', () => {
 
 
         number--;
-        const lastVersionAvailable = await requestLabelVersion(`https://resources-download.4d.com/release/${number} Rx/beta/latest/win/tool4d_win.tar.xz`, "beta")
+        const lastVersionAvailable = await requestLabelVersion(`https://resources-download.4d.com/release/${number} Rx/latest/latest/win/tool4d_win.tar.xz?channel=beta`, "beta")
         lastVersionAvailable.changelist = 0;
 
 
