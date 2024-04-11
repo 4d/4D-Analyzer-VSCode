@@ -10,7 +10,8 @@
         "request": "launch",
         "runtimeExecutable": "${execPath}",
         "env": {
-         // "ANALYZER_4D_PATH":""
+          "ANALYZER_4D_PATH":"",
+          "TOOL4D_DOWNLOAD":"false"
         },
         "args": [
           "--extensionDevelopmentPath=${workspaceFolder}/editor",

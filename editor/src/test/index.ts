@@ -28,11 +28,12 @@ export function run(): Promise<void> {
 				return reject(err);
 			}
 
+
 			// Add files to the test suite
 			files.filter(f => {
-
+				if(!currentVersion)
+					return true;
 				const versionFile = tests[f] ? tests[f] : currentVersion;
-				console.log(f, versionFile, currentVersion, compareVersion(currentVersion, versionFile));
 				return compareVersion(currentVersion, versionFile) >= 0;
 			})
 				.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));

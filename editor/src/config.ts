@@ -7,6 +7,7 @@ import * as lc from "vscode-languageclient/node";
 import { Ctx } from "./ctx";
 import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
+import { Logger } from './logger';
 
 export class Config {
 
@@ -60,6 +61,10 @@ export class Config {
     }
 
     public IsTool4DEnabled(): boolean {
+        if(process.env["TOOL4D_DOWNLOAD"]!=undefined)
+        {
+            return process.env["TOOL4D_DOWNLOAD"] == 'true';
+        }
         return this._tool4dEnableFromSettings;
     }
 
@@ -101,7 +106,7 @@ export class Config {
 
     private get _serverPath() {
         const p = this._serverPathFromSettings;
-        if (this._tool4dEnableFromSettings) {
+        if (this.IsTool4DEnabled()) {
             return this._tool4DPath;
         }
         return p;

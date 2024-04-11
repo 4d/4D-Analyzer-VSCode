@@ -6,16 +6,22 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as fs from "fs";
 
+function prepareTargetFolder(inTarget)
+{
+    if(fs.existsSync(inTarget)) {
+        fs.rmSync(inTarget, {recursive:true});
+    }
+    fs.mkdirSync(inTarget);
+}
+
 //https://resources-download.4d.com/release/20.x/latest/latest/win/tool4d_win.tar.xz?debug
 suite('Download tool', () => {
     const downloadPath = getDocPath("Download");
-    if(fs.existsSync(downloadPath)) {
-        fs.rmSync(downloadPath, {recursive:true});
-    }
-    fs.mkdirSync(downloadPath);
 
 	const ext = vscode.extensions.getExtension('4D.4d-analyzer')!;
     test('Tool download stable', async () => {
+        prepareTargetFolder(downloadPath);
+
         let number = 21;
         await ext.activate();
 
@@ -41,8 +47,9 @@ suite('Download tool', () => {
         }
         await testDownloadLTS(downloadPath, lastVersionAvailable, "stable");
     });
-
     test('Tool download beta', async () => {
+        prepareTargetFolder(downloadPath);
+
         let number = 21;
         await ext.activate();
 
@@ -60,7 +67,6 @@ suite('Download tool', () => {
         number--;
         const lastVersionAvailable = await requestLabelVersion(`https://resources-download.4d.com/release/${number} Rx/latest/latest/win/tool4d_win.tar.xz?channel=beta`, "beta")
         lastVersionAvailable.changelist = 0;
-
 
         await testDownloadR(downloadPath, lastVersionAvailable, "beta");
         if (lastVersionAvailable.releaseVersion >= 2) {
@@ -82,8 +88,7 @@ async function testDownloadR(downloadPath: string, labeledVersion: LabeledVersio
             assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion);
             assert(result.currentVersion.changelist > 0);
         } catch (e) {
-            console.log("ERROR", e);
-            assert(false);
+            assert(false, e);
         }
     }
     else //If We are a 20R2
@@ -93,7 +98,7 @@ async function testDownloadR(downloadPath: string, labeledVersion: LabeledVersio
             const result = await toolPreparator.prepareLastToolWithoutProgress(downloadPath, false);
             assert(false);
         } catch (e) {
-            assert(true);
+            assert(true, e);
         }
     }
 }
@@ -107,7 +112,7 @@ async function testDownloadRVersion(downloadPath: string, labeledVersion: Labele
         assert(result.currentVersion.releaseVersion === labeledVersion.releaseVersion);
         assert(result.currentVersion.changelist > 0);
     } catch (e) {
-        assert(false);
+        assert(false, e);
     }
 }
 
@@ -121,7 +126,7 @@ async function testDownloadLTS(downloadPath: string, labeledVersion: LabeledVers
             assert(result.currentVersion.releaseVersion === 0);
             assert(result.currentVersion.changelist > 0);
         } catch (e) {
-            assert(false);
+            assert(false, e);
         }
     }
     else //If We are a 20R2
