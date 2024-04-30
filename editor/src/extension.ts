@@ -7,7 +7,7 @@ import { ExtensionContext } from 'vscode';
 import { Ctx } from './ctx';
 
 
-let ctx : Ctx;
+let ctx: Ctx;
 export function activate(context: ExtensionContext) {
 	ctx = new Ctx(context);
 	ctx.start();

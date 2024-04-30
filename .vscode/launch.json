@@ -10,7 +10,8 @@
         "request": "launch",
         "runtimeExecutable": "${execPath}",
         "env": {
-         // "ANALYZER_4D_PATH":""
+          "ANALYZER_4D_PATH":"",
+          "TOOL4D_DOWNLOAD":"false"
         },
         "args": [
           "--extensionDevelopmentPath=${workspaceFolder}/editor",
@@ -26,6 +27,15 @@
         "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
         "env": {
             "ANALYZER_4D_DEBUG":"true"
+        }
+      },
+      {
+        "name": "Launch Extension Debug Tool4D",
+        "type": "extensionHost",
+        "request": "launch",
+        "runtimeExecutable": "${execPath}",
+        "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
+        "env": {
         }
       },
       {

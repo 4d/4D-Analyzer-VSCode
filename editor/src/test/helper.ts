@@ -58,3 +58,21 @@ export async function setContentAtpos(content: string, inPosition : vscode.Posit
 	return editor.edit(eb => eb.insert(inPosition, content));
 }
 
+export function compareVersion(inVersionA : string, inVersionB : string) : number {
+	if(inVersionA === inVersionB)
+		return 0;
+	const regex = /^([0-9]+)(R([0-9]+))?$/;
+	const regexArrayA = regex.exec(inVersionA);
+	const regexArrayB = regex.exec(inVersionB);
+
+	const a = [Number(regexArrayA[1]), regexArrayA[3] ? Number(regexArrayA[3]):0]; 
+	const b = [Number(regexArrayB[1]), regexArrayB[3] ? Number(regexArrayB[3]):0]; 
+
+	if(a[0] === b[0])
+	{
+		return a[1] - b[1];
+	}
+	else
+		return a[0] - b[0];
+
+}
