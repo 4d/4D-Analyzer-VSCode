@@ -120,11 +120,11 @@ export class APIManager {
         }
         else if (type == "Darwin") {
             const arch = os.arch();
-            url += `mac/tool4d_mac`;
+            url += `mac/tool4d_`;
             if (arch === "arm" || arch === "arm64")
-                url += "_arm";
+                url += "arm64";
             else
-                url += "_x86";
+                url += "x86_64";
             url += ".tar.xz";
         }
         else if (type == "Windows_NT") {
