@@ -5,7 +5,7 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"preview": true,
 	"repository": {
 		"type": "git",
@@ -37,6 +37,16 @@
 					".4dm"
 				],
 				"configuration": "./language-configuration.json"
+			},
+			{
+				"id": "json",
+				"aliases": [ "JSON", "json" ],
+				"extensions": [ ".4DForm", ".4DProject" ]
+			},
+			{
+				"id": "xml",
+				"aliases": [ "XML", "xml" ],
+				"extensions": [ ".4DSettings", ".4DCatalog", ".4DPreferences" ]
 			}
 		],
 		"grammars": [
