@@ -6,7 +6,6 @@
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
 	"version": "0.2.2",
-	"preview": false,
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d/4D-Analyzer-VSCode"
