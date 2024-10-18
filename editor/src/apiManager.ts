@@ -13,7 +13,7 @@ export function requestLabelVersion(url: string, channel: string): Promise<Label
         const https = require('https');
         const proto = !url.charAt(4).localeCompare('s') ? https : http;
         return new Promise((resolve, reject) => {
-            const request = proto.get(url, response => {
+            const request = proto.get(url, {timeout:120}, response => {
                 if (response.statusCode === 302 || response.statusCode === 200) {
                     const regex = /_(([0-9]{2})(\.(x)|R([0-9])*)?|main)_([0-9]{6})/;
                     const version = new LabeledVersion(0, 0, 0, 0, false, channel, false);
