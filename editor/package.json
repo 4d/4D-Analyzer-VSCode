@@ -5,8 +5,8 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.2.1",
-	"preview": true,
+	"version": "0.2.2",
+	"preview": false,
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d/4D-Analyzer-VSCode"
@@ -20,7 +20,7 @@
 		"4DM"
 	],
 	"engines": {
-		"vscode": "^1.78.0"
+		"vscode": "^1.85.0"
 	},
 	"activationEvents": [
 	],
@@ -37,6 +37,16 @@
 					".4dm"
 				],
 				"configuration": "./language-configuration.json"
+			},
+			{
+				"id": "json",
+				"aliases": [ "JSON", "json" ],
+				"extensions": [ ".4DForm", ".4DProject" ]
+			},
+			{
+				"id": "xml",
+				"aliases": [ "XML", "xml" ],
+				"extensions": [ ".4DSettings", ".4DCatalog", ".4DPreferences" ]
 			}
 		],
 		"grammars": [
@@ -166,17 +176,17 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/mocha": "^10.0.6",
+		"@types/mocha": "^10.0.9",
 		"@types/mz": "2.7.8",
-		"@types/node": "~17.0.45",
-		"@types/vscode": "~1.78.1",
-		"@typescript-eslint/eslint-plugin": "^6.15.0",
-		"@typescript-eslint/parser": "^6.15.0",
-		"@vscode/test-electron": "^2.3.8",
-		"esbuild": "^0.19.10",
-		"eslint": "^8.56.0",
-		"mocha": "^10.2.0",
-		"typescript": "^5.3.3",
-		"@vscode/vsce": "^2.22.0"
+		"@types/node": "~20.14.2",
+		"@types/vscode": "~1.85.0",
+		"@typescript-eslint/eslint-plugin": "^7.12.0",
+		"@typescript-eslint/parser": "^7.12.0",
+		"@vscode/test-electron": "^2.4.1",
+		"esbuild": "^0.21.5",
+		"eslint": "^8.57.0",
+		"mocha": "^10.4.0",
+		"typescript": "^5.4.5",
+		"@vscode/vsce": "^3.1.1"
 	}
 }

@@ -1,6 +1,6 @@
 # 4D Analyzer
 
-This extension developed by **[4D](https://www.4d.com/)** provides support for the **[4D language](https://developer.4d.com/docs/Concepts/about,)** through the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/).
+This extension developed by **[4D](https://www.4d.com/)** provides support for the **[4D language](https://developer.4d.com/docs/Concepts/about/)** through the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/).
 
 ## Features
 

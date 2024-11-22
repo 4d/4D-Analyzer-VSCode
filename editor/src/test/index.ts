@@ -8,7 +8,7 @@ import * as glob from 'glob';
 import { compareVersion } from './helper';
 
 
-export function run(): Promise<void> {
+export async function run(): Promise<void> {
 	// Create the mocha test
 	const mocha = new Mocha({
 		ui: 'tdd',
@@ -21,36 +21,31 @@ export function run(): Promise<void> {
 	const tests = {
 		"format.test.js": "20R3"
 	};
+	
+	const g = new glob.Glob('**.test.js', { cwd: testsRoot });
+	for await (const f of g) {
+		if (!currentVersion)
+			continue;
+		const versionFile = tests[f] ? tests[f] : currentVersion;
+
+		if (compareVersion(currentVersion, versionFile) >= 0) {
+			mocha.addFile(path.resolve(testsRoot, f));
+		}
+	}
 
 	return new Promise((resolve, reject) => {
-		glob('**.test.js', { cwd: testsRoot }, (err, files) => {
-			if (err) {
-				return reject(err);
-			}
-
-
-			// Add files to the test suite
-			files.filter(f => {
-				if(!currentVersion)
-					return true;
-				const versionFile = tests[f] ? tests[f] : currentVersion;
-				return compareVersion(currentVersion, versionFile) >= 0;
-			})
-				.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
-
-			try {
-				// Run the mocha test
-				mocha.run(failures => {
-					if (failures > 0) {
-						reject(new Error(`${failures} tests failed.`));
-					} else {
-						resolve();
-					}
-				});
-			} catch (err) {
-				console.error(err);
-				reject(err);
-			}
-		});
+		try {
+			// Run the mocha test
+			mocha.run(failures => {
+				if (failures > 0) {
+					reject(new Error(`${failures} tests failed.`));
+				} else {
+					resolve();
+				}
+			});
+		} catch (err) {
+			console.error(err);
+			reject(err);
+		}
 	});
 }
