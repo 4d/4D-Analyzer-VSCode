@@ -10,7 +10,8 @@
         "request": "launch",
         "runtimeExecutable": "${execPath}",
         "env": {
-          "ANALYZER_4D_PATH":"",
+          "ANALYZER_4D_PATH":"TO_REPLACE",
+          "VERSION_4D":"TO_REPLACE",
           "TOOL4D_DOWNLOAD":"false"
         },
         "args": [
