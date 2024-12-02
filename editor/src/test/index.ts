@@ -24,10 +24,10 @@ export async function run(): Promise<void> {
 	
 	const g = new glob.Glob('**.test.js', { cwd: testsRoot });
 	for await (const f of g) {
+		console.log(f);
 		if (!currentVersion)
 			continue;
 		const versionFile = tests[f] ? tests[f] : currentVersion;
-
 		if (compareVersion(currentVersion, versionFile) >= 0) {
 			mocha.addFile(path.resolve(testsRoot, f));
 		}
