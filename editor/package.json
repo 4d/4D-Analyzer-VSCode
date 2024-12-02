@@ -21,8 +21,7 @@
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"activationEvents": [
-	],
+	"activationEvents": [],
 	"main": "./out/extension",
 	"contributes": {
 		"languages": [
@@ -39,13 +38,26 @@
 			},
 			{
 				"id": "json",
-				"aliases": [ "JSON", "json" ],
-				"extensions": [ ".4DForm", ".4DProject" ]
+				"aliases": [
+					"JSON",
+					"json"
+				],
+				"extensions": [
+					".4DForm",
+					".4DProject"
+				]
 			},
 			{
 				"id": "xml",
-				"aliases": [ "XML", "xml" ],
-				"extensions": [ ".4DSettings", ".4DCatalog", ".4DPreferences" ]
+				"aliases": [
+					"XML",
+					"xml"
+				],
+				"extensions": [
+					".4DSettings",
+					".4DCatalog",
+					".4DPreferences"
+				]
 			}
 		],
 		"grammars": [
@@ -119,8 +131,11 @@
 				"4D-Analyzer.server.tool4d.channel": {
 					"type": "string",
 					"scope": "machine",
-					"default":"stable",
-					"enum": ["stable", "beta"],
+					"default": "stable",
+					"enum": [
+						"stable",
+						"beta"
+					],
 					"markdownDescription": "tool4d version channel (only has an impact when the \"Automatic download and use of tool4d\" parameter is activated).",
 					"order": 2
 				},
@@ -134,7 +149,10 @@
 				"4D-Analyzer.diagnostics.scope": {
 					"type": "string",
 					"scope": "machine",
-					"enum": ["Document", "Workspace"],
+					"enum": [
+						"Document",
+						"Workspace"
+					],
 					"default": "Workspace",
 					"order": 6,
 					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
@@ -143,8 +161,8 @@
 		},
 		"commands": [
 			{
-			  "command": "4d-analyzer.updateTool4D",
-			  "title": "4D Analyzer: Update tool4d to latest version"
+				"command": "4d-analyzer.updateTool4D",
+				"title": "4D Analyzer: Update tool4d to latest version"
 			},
 			{
 				"command": "4d-analyzer.display4DVersion",
@@ -155,10 +173,10 @@
 				"title": "4D Analyzer: Clean all the unused tool4d versions previously downloaded"
 			},
 			{
-			  "command": "4d-analyzer.checkWorkspaceSyntax",
-			  "title": "4D Analyzer: Check workspace syntax"
+				"command": "4d-analyzer.checkWorkspaceSyntax",
+				"title": "4D Analyzer: Check workspace syntax"
 			}
-		  ]
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
@@ -182,10 +200,11 @@
 		"@typescript-eslint/eslint-plugin": "^7.12.0",
 		"@typescript-eslint/parser": "^7.12.0",
 		"@vscode/test-electron": "^2.4.1",
+		"@vscode/vsce": "^3.1.1",
 		"esbuild": "^0.21.5",
 		"eslint": "^8.57.0",
 		"mocha": "^10.4.0",
-		"typescript": "^5.4.5",
-		"@vscode/vsce": "^3.1.1"
+		"glob": "^11.0.0",
+		"typescript": "^5.4.5"
 	}
 }
