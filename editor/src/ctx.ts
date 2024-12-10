@@ -268,7 +268,8 @@ export class Ctx {
             updateTool4D: { call: Commands.updateTool4D },
             display4DVersion: { call: Commands.display4DVersion },
             cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions },
-            checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax }
+            checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax },
+            createNewProject: { call: Commands.createNewProject },
         };
 
         for (const [name, command] of Object.entries(this._commands)) {

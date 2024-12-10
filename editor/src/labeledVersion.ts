@@ -117,6 +117,16 @@ export class LabeledVersion {
         return result;
     }
 
+    public display(): string {
+        let result = String(this.version);
+        if (this.isRRelease) {
+            result += "R" + this.releaseVersion;
+        }
+
+
+        return result;
+    }
+
     private _getInfoplistPath(inExePath: string) {
         const serverPath = inExePath;
         const type = os.type();
