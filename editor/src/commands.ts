@@ -4,6 +4,8 @@ import * as vscode from "vscode";
 import { WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
 import { LabeledVersion } from "./labeledVersion";
 import { Logger } from "./logger";
+import * as fs from "fs";
+import path = require("path");
 
 export type Cmd = (...args: any[]) => unknown;
 
@@ -143,3 +145,31 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
     };
 }
 
+export function createNewProject(ctx: Ctx): Cmd {
+
+    return async () => {
+        const uri = await vscode.window.showSaveDialog({
+        })
+        if (uri) {
+            const parsed_uri = path.parse(uri.path);
+            const new_project_name = parsed_uri.name;
+
+            //main folder
+            fs.mkdirSync(uri.path);
+            const project_folder = path.join(uri.path, "Project");
+            fs.mkdirSync(project_folder);
+
+            //create .4DProject
+            const content = {
+                "compatibilityVersion": ctx.get4DVersion().display(),
+                "tokenizedText" : false,
+            }
+            fs.writeFileSync(path.join(project_folder, `${new_project_name}.4DProject`), JSON.stringify(content, null, 4));
+
+            const sources = path.join(project_folder, "Sources");
+            fs.mkdirSync(sources);
+            fs.mkdirSync(path.join(sources, "Methods"));
+            fs.mkdirSync(path.join(sources, "Classes"));
+        }
+    };
+}
