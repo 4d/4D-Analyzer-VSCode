@@ -175,6 +175,10 @@
 			{
 				"command": "4d-analyzer.checkWorkspaceSyntax",
 				"title": "4D Analyzer: Check workspace syntax"
+			},
+			{
+				"command": "4d-analyzer.createNewProject",
+				"title": "4D Analyzer: Create a new project"
 			}
 		]
 	},
