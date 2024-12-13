@@ -5,7 +5,7 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d/4D-Analyzer-VSCode"
@@ -197,18 +197,18 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/mocha": "^10.0.9",
+		"@types/mocha": "^10.0.10",
 		"@types/mz": "2.7.8",
-		"@types/node": "~20.14.2",
+		"@types/node": "~22.10.2",
 		"@types/vscode": "~1.85.0",
-		"@typescript-eslint/eslint-plugin": "^7.12.0",
-		"@typescript-eslint/parser": "^7.12.0",
+		"@typescript-eslint/eslint-plugin": "^8.18",
+		"@typescript-eslint/parser": "^8.18",
 		"@vscode/test-electron": "^2.4.1",
-		"@vscode/vsce": "^3.1.1",
-		"esbuild": "^0.21.5",
-		"eslint": "^8.57.0",
-		"mocha": "^10.4.0",
-		"glob": "^11.0.0",
-		"typescript": "^5.4.5"
+		"@vscode/vsce": "^3.2.1",
+		"esbuild": "^0.24.0",
+		"eslint": "^9.16.0",
+		"mocha": "^11.0.1",
+		"glob": "^11.0",
+		"typescript": "^5.7.2"
 	}
 }
