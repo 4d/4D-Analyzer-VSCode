@@ -19,7 +19,7 @@ jobs:
           node-version: 22.x
       - name: Download artifact
         id: download-artifact
-        uses: dawidd6/action-download-artifact@v5
+        uses: dawidd6/action-download-artifact@v7
         with:
           workflow: build_workflow.yml
           name: package
