@@ -151,12 +151,12 @@ export function createNewProject(ctx: Ctx): Cmd {
         const uri = await vscode.window.showSaveDialog({
         })
         if (uri) {
-            const parsed_uri = path.parse(uri.path);
+            const parsed_uri = path.parse(uri.fsPath);
             const new_project_name = parsed_uri.name;
 
             //main folder
-            fs.mkdirSync(uri.path);
-            const project_folder = path.join(uri.path, "Project");
+            fs.mkdirSync(uri.fsPath);
+            const project_folder = path.join(uri.fsPath, "Project");
             fs.mkdirSync(project_folder);
 
             //create .4DProject
