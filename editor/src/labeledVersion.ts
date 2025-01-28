@@ -122,9 +122,17 @@ export class LabeledVersion {
         if (this.isRRelease) {
             result += "R" + this.releaseVersion;
         }
-
-
         return result;
+    }
+
+    public toDigitOnly(): number {
+        let temp = String(this.version);
+        if (this.isRRelease) {
+            temp += this.releaseVersion;
+            if(this.releaseVersion < 10)
+                temp += '0';
+        }
+        return Number(temp);
     }
 
     private _getInfoplistPath(inExePath: string) {
