@@ -126,14 +126,23 @@ export class LabeledVersion {
         return result;
     }
 
-    public toDigitOnly(): number {
-        let temp = String(this.version);
-        if (this.isRRelease) {
-            temp += this.releaseVersion;
-            if(this.releaseVersion < 10)
+    public toCompatibilityVersion(): any {
+        if (this.compare(LabeledVersion.fromString("20R9")) >= 0) {
+            let temp = String(this.version);
+            if (this.isRRelease) {
+                temp += this.releaseVersion.toString(16).toUpperCase();
                 temp += '0';
+            }
+            return temp;
         }
-        return Number(temp);
+        else {
+            let temp = String(this.version);
+            if (this.isRRelease) {
+                temp += this.releaseVersion.toString();
+                temp += '0';
+            }
+            return Number(temp);
+        }
     }
 
     private _getInfoplistPath(inExePath: string) {

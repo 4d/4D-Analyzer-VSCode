@@ -161,7 +161,7 @@ export function createNewProject(ctx: Ctx): Cmd {
 
             //create .4DProject
             const content = {
-                "compatibilityVersion": ctx.get4DVersion().toDigitOnly(),
+                "compatibilityVersion": ctx.get4DVersion().toCompatibilityVersion(),
                 "tokenizedText" : false,
             }
             fs.writeFileSync(path.join(project_folder, `${new_project_name}.4DProject`), JSON.stringify(content, null, 4));
