@@ -2,6 +2,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Logger } from './logger';
 
 
 export class LabeledVersion {
@@ -125,14 +126,23 @@ export class LabeledVersion {
         return result;
     }
 
-    public toDigitOnly(): number {
-        let temp = String(this.version);
-        if (this.isRRelease) {
-            temp += this.releaseVersion;
-            if(this.releaseVersion < 10)
+    public toCompatibilityVersion(): any {
+        if (this.compare(LabeledVersion.fromString("20R9")) >= 0) {
+            let temp = String(this.version);
+            if (this.isRRelease) {
+                temp += this.releaseVersion.toString(16).toUpperCase();
                 temp += '0';
+            }
+            return temp;
         }
-        return Number(temp);
+        else {
+            let temp = String(this.version);
+            if (this.isRRelease) {
+                temp += this.releaseVersion.toString();
+                temp += '0';
+            }
+            return Number(temp);
+        }
     }
 
     private _getInfoplistPath(inExePath: string) {
@@ -156,7 +166,7 @@ export class LabeledVersion {
             const content: string = fs.readFileSync(infoPlistPath).toString();
             const match = content.match(/CFBundleShortVersionString<\/key>\s*<string>(.*)<\/string>/mi);
             if (match !== null && match.length > 1) {
-                const matchVersion = match[1].match(/(([0-9]*R[0-9])|[0-9]+)\.([0-9]{2,})/);
+                const matchVersion = match[1].match(/(([0-9]+R[0-9]+)|[0-9]+)\.([0-9]{2,})/);
                 if (matchVersion) {
                     if (matchVersion[2]) {
                         labeledVersion = LabeledVersion.fromString(matchVersion[2]);

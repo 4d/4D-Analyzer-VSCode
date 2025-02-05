@@ -68,7 +68,7 @@ export class APIManager {
     public async getLastMajorVersionAvailable(inStartMajorVersion: number, inChannel: string): Promise<number> {
         const labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, false, inChannel, false);
         while (true) {
-            const url = this.getURLTool4D(labelVersion, "Windows_NT");
+            const url = this.getURLTool4D(labelVersion);
             try {
                 await requestLabelVersion(url, labelVersion.channel);
                 labelVersion.version += 1;
