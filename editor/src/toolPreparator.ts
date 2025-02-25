@@ -169,6 +169,8 @@ export class ToolPreparator {
 
         inProgress?.report({ increment: 10 });
         progress += 10;
+        let sudoPassword : string | undefined= undefined;
+
         try {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._APIManager.getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
@@ -181,10 +183,19 @@ export class ToolPreparator {
             if (labeledVersionCloud.changelist === 0 && labelVersionAvailableLocally.changelist === 0) { //version unknown
                 throw new Error(`Tool4D ${labeledVersionWanted.toString(false)} does not exist`);
             }
-
             if (os.type() === "Linux") {
                 if (!this._computeSudoRights()) {
-                    throw new Error(`Missing sudo rights`);
+                    let inputOption : vscode.InputBoxOptions = {
+                        prompt: "Please enter your sudo password",
+                        password: true
+                    };
+                    const userResponse = await vscode.window.showInputBox(inputOption);
+                    if (userResponse) {
+                        sudoPassword = userResponse;
+                    }
+                    else {
+                        throw new Error(`Missing sudo rights`);
+                    }
                 }
             }
 
@@ -275,10 +286,10 @@ export class ToolPreparator {
                 try {
                     progress += 10;
                     inProgress?.report({ message: `Install ${labelVersionToGet.toString(true)} ...`, increment: 10 });
-
-                    child_process.execSync(`sudo dpkg --remove tool4d`, { shell: '/bin/bash' }); //remove previous version
-                    child_process.execSync(`sudo apt-get update`, { shell: '/bin/bash' }); //update apt to get missing packages
-                    child_process.execSync(`sudo apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }); //install tool4d
+                    const prepareSudo = sudoPassword ? `echo ${sudoPassword} | sudo -S` : "sudo";
+                    child_process.execSync(`${prepareSudo} dpkg --remove tool4d`, { shell: '/bin/bash' }); //remove previous version
+                    child_process.execSync(`${prepareSudo} apt-get update`, { shell: '/bin/bash' }); //update apt to get missing packages
+                    child_process.execSync(`${prepareSudo} apt --fix-broken install --yes ${debPath}`, { shell: '/bin/bash' }); //install tool4d
                     result.path = "/opt/tool4d/tool4d"; //always there, it depends on the .deb
                 } catch (err) {
                     throw new Error("Cannot install the tool4D:\n" + err);
