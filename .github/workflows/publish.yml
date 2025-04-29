@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # If you have submodules, set this to true
       - name: Install Nodejs
         uses: actions/setup-node@v4
         with:

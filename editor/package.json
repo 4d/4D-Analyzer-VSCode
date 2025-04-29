@@ -64,7 +64,7 @@
 			{
 				"language": "4d",
 				"scopeName": "source.4dm",
-				"path": "./syntaxes/4d.tmLanguage.json"
+				"path": "./syntaxes/language-4d/syntaxes/4d.tmLanguage.json"
 			}
 		],
 		"semanticTokenTypes": [
