@@ -6,9 +6,24 @@ import * as path from 'path';
 import * as Mocha from 'mocha';
 import * as glob from 'glob';
 import { compareVersion } from './helper';
+import * as fs from 'fs';
 
+function loadArgs(inRoot) {
+	const data = fs.readFileSync(path.join(inRoot, '../../.args.json'), 'utf8');
 
+	try {
+		const args = JSON.parse(data);
+		for (const key in args) {
+			process.env[key] = args[key];
+		}
+	} catch (parseError) {
+		console.error('Error parsing args.json:', parseError);
+	}
+
+}
 export async function run(): Promise<void> {
+
+	
 	// Create the mocha test
 	const mocha = new Mocha({
 		ui: 'tdd',
@@ -17,6 +32,7 @@ export async function run(): Promise<void> {
 	mocha.timeout(100000);
 
 	const testsRoot = __dirname;
+	loadArgs(testsRoot);
 	const currentVersion: string = process.env["VERSION_4D"];
 	const tests = {
 		"format.test.js": "20R3"
@@ -24,7 +40,6 @@ export async function run(): Promise<void> {
 	
 	const g = new glob.Glob('**.test.js', { cwd: testsRoot });
 	for await (const f of g) {
-		console.log(f);
 		if (!currentVersion)
 			continue;
 		const versionFile = tests[f] ? tests[f] : currentVersion;
