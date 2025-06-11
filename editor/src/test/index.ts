@@ -11,7 +11,6 @@ import * as fs from 'fs';
 function loadArgs(inRoot) {
 	const data = fs.readFileSync(path.join(inRoot, '../../.args.json'), 'utf8');
 
-	console.log("data", data);
 	try {
 		const args = JSON.parse(data);
 		for (const key in args) {
@@ -45,7 +44,6 @@ export async function run(): Promise<void> {
 			continue;
 		const versionFile = tests[f] ? tests[f] : currentVersion;
 		if (compareVersion(currentVersion, versionFile) >= 0) {
-					console.log(f);
 			mocha.addFile(path.resolve(testsRoot, f));
 		}
 	}
