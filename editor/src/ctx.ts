@@ -12,7 +12,7 @@ import {
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
-import {Logger} from "./logger";
+import { Logger } from "./logger";
 import { existsSync, mkdirSync, readdirSync, rmdirSync, rm } from "fs";
 import path = require('path');
 
@@ -25,7 +25,7 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
-    private _workspaceDiagnostic : vscode.DiagnosticCollection;
+    private _workspaceDiagnostic: vscode.DiagnosticCollection;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
@@ -83,7 +83,7 @@ export class Ctx {
     }
 
 
-    public async prepareTool4D(inVersion: string, inLocation: string, inChannel : string): Promise<ResultUpdate> {
+    public async prepareTool4D(inVersion: string, inLocation: string, inChannel: string): Promise<ResultUpdate> {
         const toolPreparator: ToolPreparator = new ToolPreparator(inVersion, inChannel, this._config.tool4dAPIKEY());
         const outLocation = !inLocation ? this.extensionContext.globalStorageUri.fsPath : inLocation;
         return toolPreparator.prepareTool4D(outLocation);
@@ -100,29 +100,27 @@ export class Ctx {
         }
 
         const location = path.join(!this._config.tool4DLocation() ? this.extensionContext.globalStorageUri.fsPath : this._config.tool4DLocation(), "tool4d");
-        if(!this._config.serverPath) //no path are ready
+        if (!this._config.serverPath) //no path are ready
         {
             rmdirSync(location);
         }
-        else
-        {
+        else {
             const labeledVersion = this.get4DVersion();
 
             const labeledVersionWithoutChangelist = labeledVersion.clone();
             labeledVersionWithoutChangelist.changelist = 0;
             const directories = getDirectories(location);
-            directories.forEach(async directory=> {
+            directories.forEach(async directory => {
                 const currentLabeledFolder = LabeledVersion.fromString(directory);
 
-                if(currentLabeledFolder.compare(labeledVersionWithoutChangelist) != 0){
-                    await rm(path.join(location, directory),{recursive:true}, ()=>{});
+                if (currentLabeledFolder.compare(labeledVersionWithoutChangelist) != 0) {
+                    await rm(path.join(location, directory), { recursive: true }, () => { });
                 }
-                else
-                {
+                else {
                     const directoriesChangelist = getDirectories(path.join(location, directory));
                     directoriesChangelist.forEach(async dir => {
-                        if(Number(dir)!= labeledVersion.changelist){
-                            await rm(path.join(location, directory, dir),{recursive:true}, ()=>{});
+                        if (Number(dir) != labeledVersion.changelist) {
+                            await rm(path.join(location, directory, dir), { recursive: true }, () => { });
                         }
                     });
                 }
@@ -214,7 +212,10 @@ export class Ctx {
         // Options to control the language client
         const clientOptions: LanguageClientOptions = {
             // Register the server for plain text documents
-            documentSelector: [{ scheme: 'file', language: '4d' }],
+            documentSelector: [
+                { scheme: 'file', language: '4d' }, 
+                { scheme: 'file', language: '4qs' }
+            ],
             synchronize: {
                 // Notify the server about file changes to '.clientrc files contained in the workspace
                 fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
@@ -223,7 +224,7 @@ export class Ctx {
             diagnosticCollectionName: "4d",
             middleware: {
                 provideDiagnostics: (document, previousResultId, token, next) => {
-                    if(this._config.diagnosticEnabled)
+                    if (this._config.diagnosticEnabled)
                         this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined);
                     return next(document, previousResultId, token);
                 }
@@ -250,7 +251,7 @@ export class Ctx {
                     this._config.setTool4DPath(result.path);
                     this._launch4D();
                 })
-                .catch((error : Error) => {
+                .catch((error: Error) => {
                     const userResponse = vscode.window.showErrorMessage(
                         error.message
                     );
@@ -262,7 +263,7 @@ export class Ctx {
     }
 
     public registerCommands() {
-        
+
         this._commands = {
             filesStatus: { call: Commands.filesStatus },
             updateTool4D: { call: Commands.updateTool4D },

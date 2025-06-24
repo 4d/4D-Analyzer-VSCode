@@ -37,6 +37,17 @@
 				"configuration": "./language-configuration.json"
 			},
 			{
+				"id": "4qs",
+				"aliases": [
+					"4QS",
+					"4qs"
+				],
+				"extensions": [
+					".4qs"
+				],
+				"configuration": "./language-configuration.json"
+			},
+			{
 				"id": "json",
 				"aliases": [
 					"JSON",
