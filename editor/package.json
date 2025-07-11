@@ -4,6 +4,7 @@
 	"description": "LSP connector for 4D code",
 	"license": "4D",
 	"publisher": "4D",
+	"type": "module",
 	"icon": "images/4D-icon.png",
 	"version": "0.2.5",
 	"repository": {
@@ -201,7 +202,7 @@
 		"test-compile": "tsc -p ./",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
-		"lint": "eslint ./src",
+		"lint": "eslint ./src/",
 		"pretest": "npm run compile",
 		"test": "node ./out/test/runTest.js"
 	},

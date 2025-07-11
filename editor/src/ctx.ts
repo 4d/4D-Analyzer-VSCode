@@ -13,8 +13,8 @@ import { workspace } from 'vscode';
 import * as child_process from 'child_process';
 import * as net from 'net';
 import { Logger } from "./logger";
-import { existsSync, mkdirSync, readdirSync, rmdirSync, rm } from "fs";
-import path = require('path');
+import { existsSync, readdirSync, rmdirSync, rm } from "fs";
+import * as path from "path";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -114,13 +114,13 @@ export class Ctx {
                 const currentLabeledFolder = LabeledVersion.fromString(directory);
 
                 if (currentLabeledFolder.compare(labeledVersionWithoutChangelist) != 0) {
-                    await rm(path.join(location, directory), { recursive: true }, () => { });
+                    rm(path.join(location, directory), { recursive: true }, () => { });
                 }
                 else {
                     const directoriesChangelist = getDirectories(path.join(location, directory));
                     directoriesChangelist.forEach(async dir => {
                         if (Number(dir) != labeledVersion.changelist) {
-                            await rm(path.join(location, directory, dir), { recursive: true }, () => { });
+                            rm(path.join(location, directory, dir), { recursive: true }, () => { });
                         }
                     });
                 }

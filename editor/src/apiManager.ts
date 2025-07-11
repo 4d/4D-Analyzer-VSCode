@@ -4,13 +4,12 @@ import * as os from 'os';
 import { Logger } from './logger';
 import { existsSync, mkdirSync } from "fs";
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 
 export function requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
     async function download(url: string): Promise<LabeledVersion> {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const http = require('http');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const https = require('https');
+
         const proto = !url.charAt(4).localeCompare('s') ? https : http;
         return new Promise((resolve, reject) => {
             const request = proto.get(url, {timeout:120}, response => {
@@ -189,11 +188,7 @@ export class APIManager {
     }
 
     private _download(inURL: string, filePath: string): Promise<object> {
-        async function download(inURL, filePath): Promise<object> {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const http = require('http');
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const https = require('https');
+        async function download(inURL : string, filePath : string): Promise<object> {
             const proto = !inURL.charAt(4).localeCompare('s') ? https : http;
 
             return new Promise((resolve, reject) => {

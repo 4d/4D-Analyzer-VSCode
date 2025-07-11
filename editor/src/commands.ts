@@ -3,9 +3,8 @@ import { Ctx } from "./ctx";
 import * as vscode from "vscode";
 import { WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
 import { LabeledVersion } from "./labeledVersion";
-import { Logger } from "./logger";
 import * as fs from "fs";
-import path = require("path");
+import * as path from "path";
 
 export type Cmd = (...args: any[]) => unknown;
 
@@ -75,7 +74,7 @@ export function display4DVersion(ctx: Ctx): Cmd {
         try {
             const version = ctx.get4DVersion();
             const userResponse = await vscode.window.showInformationMessage(
-                `4D Version ${(await version).toString(true)}`,
+                `4D Version ${version.toString(true)}`,
             );
 
 
@@ -149,7 +148,7 @@ export function createNewProject(ctx: Ctx): Cmd {
 
     return async () => {
         const uri = await vscode.window.showSaveDialog({
-        })
+        });
         if (uri) {
             const parsed_uri = path.parse(uri.fsPath);
             const new_project_name = parsed_uri.name;
@@ -163,7 +162,7 @@ export function createNewProject(ctx: Ctx): Cmd {
             const content = {
                 "compatibilityVersion": ctx.get4DVersion().toCompatibilityVersion(),
                 "tokenizedText" : false,
-            }
+            };
             fs.writeFileSync(path.join(project_folder, `${new_project_name}.4DProject`), JSON.stringify(content, null, 4));
 
             const sources = path.join(project_folder, "Sources");

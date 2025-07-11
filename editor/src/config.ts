@@ -7,7 +7,6 @@ import * as lc from "vscode-languageclient/node";
 import { Ctx } from "./ctx";
 import { LabeledVersion } from './labeledVersion';
 import { InfoPlistManager } from './infoplist';
-import { Logger } from './logger';
 
 export class Config {
 

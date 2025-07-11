@@ -15,7 +15,7 @@ suite('Go To Def', () => {
 
 async function testGoToDef(docUri: vscode.Uri) {
 
-	const pos = new vscode.Position(35,0)
+	const pos = new vscode.Position(35,0);
 	await activate(docUri);
 	await setContentAtpos("__method_goToDef_1()", pos);
 
@@ -23,7 +23,7 @@ async function testGoToDef(docUri: vscode.Uri) {
 		'vscode.executeDefinitionProvider',
 		docUri,
 		new vscode.Position(pos.line, 1)
-	)) as vscode.Location[]
-	assert(definition.length > 0)
+	)) as vscode.Location[];
+	assert(definition.length > 0);
 	
 } 
