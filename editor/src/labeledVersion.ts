@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-inferrable-types */
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { Logger } from './logger';
 
 
 export class LabeledVersion {
