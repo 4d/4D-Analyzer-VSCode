@@ -3,7 +3,6 @@
 !language-configuration.json
 !LICENSE.md
 !out/extension.js
-!package-lock.json
 !package.json
 !syntaxes/language-4d/syntaxes/4d.tmLanguage.json
 !README.md
