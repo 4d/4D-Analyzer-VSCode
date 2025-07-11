@@ -5,4 +5,5 @@
 !out/extension.js
 !package.json
 !syntaxes/language-4d/syntaxes/4d.tmLanguage.json
+!syntaxes/language-4qs/syntaxes/4qs.tmLanguage.json
 !README.md
