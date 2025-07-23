@@ -4,7 +4,6 @@
 	"description": "LSP connector for 4D code",
 	"license": "4D",
 	"publisher": "4D",
-	"type": "module",
 	"icon": "images/4D-icon.png",
 	"version": "0.2.5",
 	"repository": {
