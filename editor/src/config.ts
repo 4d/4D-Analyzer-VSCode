@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { setTimeout, clearTimeout } from 'timers';
 
 import * as lc from "vscode-languageclient/node";
 import { Ctx } from "./ctx";
@@ -15,6 +16,7 @@ export class Config {
 
     _tool4DPath: string;
     _ctx: Ctx;
+    private _analysisTimeout: any;
     private readonly requiresReloadOpts = [
         "server.path",
         "server.tool4d.version",
@@ -22,7 +24,9 @@ export class Config {
         "server.tool4d.enable",
         "server.tool4d.channel",
         "diagnostics.enable",
-        "diagnostics.scope"
+        "diagnostics.scope",
+        "realtime.enable",
+        "realtime.debounceMs"
     ]
 
         .map(opt => `${this.rootSection}.${opt}`);
@@ -30,6 +34,7 @@ export class Config {
     constructor(ctx: vscode.ExtensionContext) {
         vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
+        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
     }
 
     init(ctx: Ctx) {
@@ -50,6 +55,14 @@ export class Config {
 
     public get diagnosticEnabled() : string{
         return this.get<string>("diagnostics.enable");
+    }
+
+    public get realtimeEnabled(): boolean {
+        return this.get<boolean>("realtime.enable") ?? true;
+    }
+
+    public get realtimeDebounceMs(): number {
+        return this.get<number>("realtime.debounceMs") ?? 500;
     }
 
     private get<T>(path: string): T {
@@ -181,6 +194,32 @@ export class Config {
 
         if (userResponse === "Reload now") {
             await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+    }
+
+    private async onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
+        if (event.document.languageId === '4d' && this.realtimeEnabled && this._ctx?.client) {
+            // Clear any existing timeout
+            if (this._analysisTimeout) {
+                clearTimeout(this._analysisTimeout);
+            }
+            
+            // Debounce the analysis
+            this._analysisTimeout = setTimeout(async () => {
+                try {
+                    // Send document change notification to language server
+                    await this._ctx.client.sendNotification("textDocument/didChange", {
+                        textDocument: this._ctx.client.code2ProtocolConverter.asVersionedTextDocumentIdentifier(event.document),
+                        contentChanges: event.contentChanges.map(change => ({
+                            range: change.range ? this._ctx.client.code2ProtocolConverter.asRange(change.range) : undefined,
+                            rangeLength: change.rangeLength,
+                            text: change.text
+                        }))
+                    });
+                } catch (error) {
+                    Logger.debugLog("Error sending real-time document change:", error);
+                }
+            }, this.realtimeDebounceMs);
         }
     }
 }

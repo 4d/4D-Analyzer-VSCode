@@ -216,8 +216,11 @@ export class Ctx {
             // Register the server for plain text documents
             documentSelector: [{ scheme: 'file', language: '4d' }],
             synchronize: {
-                // Notify the server about file changes to '.clientrc files contained in the workspace
-                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+                // Notify the server about file changes to 4D project files
+                fileEvents: [
+                    workspace.createFileSystemWatcher('**/.4DSettings'),
+                    workspace.createFileSystemWatcher('**/*.4dm')
+                ]
             },
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
@@ -226,6 +229,14 @@ export class Ctx {
                     if(this._config.diagnosticEnabled)
                         this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined);
                     return next(document, previousResultId, token);
+                },
+                // Add real-time document change handling
+                didChange: (event, next) => {
+                    // Send changes immediately for 4D files if real-time is enabled
+                    if (event.document.languageId === '4d' && this._config.realtimeEnabled) {
+                        return next(event);
+                    }
+                    return next(event);
                 }
             }
         };

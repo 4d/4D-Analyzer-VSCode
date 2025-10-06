@@ -156,6 +156,22 @@
 					"default": "Workspace",
 					"order": 6,
 					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
+				},
+				"4D-Analyzer.realtime.enable": {
+					"type": "boolean",
+					"scope": "window",
+					"default": false,
+					"order": 7,
+					"markdownDescription": "Enable real-time analysis as you type (may impact performance on large files)"
+				},
+				"4D-Analyzer.realtime.debounceMs": {
+					"type": "number",
+					"scope": "window",
+					"default": 500,
+					"minimum": 100,
+					"maximum": 2000,
+					"order": 8,
+					"markdownDescription": "Delay in milliseconds before triggering analysis after typing stops (100-2000ms)"
 				}
 			}
 		},
