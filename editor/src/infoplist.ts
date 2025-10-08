@@ -16,6 +16,12 @@ export class InfoPlistManager {
 
     private static _getInfoplistPath(inExePath : string) {
         const serverPath = inExePath;
+        
+        // Return early if serverPath is not set
+        if (!serverPath) {
+            return "";
+        }
+        
         const type = os.type();
         const dirname = path.basename(serverPath);
         if (type === "Darwin" && dirname.endsWith(".app")) {
