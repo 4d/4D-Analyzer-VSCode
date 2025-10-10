@@ -138,6 +138,91 @@ export class Ctx {
         return this._config.get4DVersion();
     }
 
+    private _registerOnSaveHandler() {
+        // Register onDidSaveTextDocument event listener
+        const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
+
+            if (!this._config.diagnosticEnabled) {
+                return;
+            }
+
+            if (document.languageId !== '4d' && document.languageId !== '4qs') {
+                return;
+            }
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await this._triggerDiagnostics(document);
+
+            } catch (error) {
+            }
+        });
+
+        this._extensionContext.subscriptions.push(onSaveDisposable);
+    }
+
+    private async _triggerDiagnostics(document: vscode.TextDocument) {
+        if (!this._client) {
+            return;
+        }
+
+        try {
+
+            const textDocumentIdentifier = this._client.code2ProtocolConverter.asTextDocumentIdentifier(document);
+            const documentUri = vscode.Uri.parse(textDocumentIdentifier.uri);
+
+            const clientDiagnostics = this._client.diagnostics;
+
+            // Always clear diagnostics for the saved document before requesting new ones
+            this._workspaceDiagnostic.delete(documentUri);
+            clientDiagnostics?.delete(documentUri);
+
+            try {
+                Logger.debugLog("Requesting diagnostics using workspace method for single document");
+                const response = await this._client.sendRequest('experimental/checkSyntax', textDocumentIdentifier) as any;
+
+                if (response && response.items && response.items.length > 0) {
+                    Logger.debugLog("Got diagnostic response, updating diagnostics");
+
+                    // Process the diagnostics response similar to workspace command
+                    response.items.forEach((diagItem: any) => {
+                        const diagURI = vscode.Uri.parse(diagItem.uri);
+
+                        const diagnostics: vscode.Diagnostic[] = diagItem.items.map((diag: any) => {
+                            const range = new vscode.Range(
+                                diag.range.start.line,
+                                diag.range.start.character,
+                                diag.range.end.line,
+                                diag.range.end.character
+                            );
+                            return new vscode.Diagnostic(range, diag.message, diag.severity - 1);
+                        });
+
+
+                        if (diagnostics.length > 0) {
+                            this._workspaceDiagnostic.set(diagURI, diagnostics);
+                            clientDiagnostics?.set(diagURI, diagnostics);
+                            Logger.debugLog(`Set ${diagnostics.length} diagnostics for document`);
+                        } else {
+                            this._workspaceDiagnostic.delete(diagURI);
+                            clientDiagnostics?.delete(diagURI);
+                            Logger.debugLog(`Cleared diagnostics for document`);
+                        }
+                    });
+                } else {
+                    Logger.debugLog("Diagnostic response empty; ensuring document diagnostics cleared");
+                    this._workspaceDiagnostic.delete(documentUri);
+                    clientDiagnostics?.delete(documentUri);
+                }
+            } catch (diagnosticError) {
+
+            }
+
+        } catch (error) {
+        }
+    }
+
+
     private _launch4D() {
         this._config.init(this);
         this._config.checkSettings();
@@ -213,19 +298,23 @@ export class Ctx {
         const clientOptions: LanguageClientOptions = {
             // Register the server for plain text documents
             documentSelector: [
-                { scheme: 'file', language: '4d' }, 
+                { scheme: 'file', language: '4d' },
                 { scheme: 'file', language: '4qs' }
             ],
             synchronize: {
                 // Notify the server about file changes to '.clientrc files contained in the workspace
-                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings'),
+                // Configure textDocument sync options to include save notifications
+                configurationSection: '4D-Analyzer'
             },
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
             middleware: {
                 provideDiagnostics: (document, previousResultId, token, next) => {
-                    if (this._config.diagnosticEnabled)
-                        this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined);
+                    if (this._config.diagnosticEnabled) {
+                        const uri = document instanceof vscode.Uri ? document : document.uri;
+                        this._workspaceDiagnostic.delete(uri);  // reliably clear
+                    }
                     return next(document, previousResultId, token);
                 }
             }
@@ -243,6 +332,9 @@ export class Ctx {
 
     public start() {
         this._config = new Config(this._extensionContext);
+
+        this._registerOnSaveHandler();
+
         if (this._config.IsTool4DEnabled()) {
             this.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
                 .then(result => {

@@ -21,7 +21,7 @@ export class Config {
         "server.tool4d.enable",
         "server.tool4d.channel",
         "diagnostics.enable",
-        "diagnostics.scope"
+        "diagnostics.scope",
     ]
 
         .map(opt => `${this.rootSection}.${opt}`);
@@ -47,8 +47,8 @@ export class Config {
         return this.get<string>("diagnostics.scope");
     }
 
-    public get diagnosticEnabled() : string{
-        return this.get<string>("diagnostics.enable");
+    public get diagnosticEnabled() : boolean{
+        return this.get<boolean>("diagnostics.enable");
     }
 
     private get<T>(path: string): T {
