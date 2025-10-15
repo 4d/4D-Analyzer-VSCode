@@ -6,7 +6,8 @@ import { ResultUpdate, ToolPreparator } from "./toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
-    StreamInfo
+    StreamInfo,
+    Diagnostic
 } from 'vscode-languageclient/node';
 
 import { workspace } from 'vscode';
@@ -15,6 +16,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
+import { DiagnosticFeature } from 'vscode-languageclient/lib/common/diagnostic';
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -25,22 +27,16 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
-    private _workspaceDiagnostic: vscode.DiagnosticCollection;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
-        this._workspaceDiagnostic = vscode.languages.createDiagnosticCollection("4d_workspace");
     }
 
     public get config(): Config {
         return this._config;
-    }
-
-    public get workspaceDiagnostic(): vscode.DiagnosticCollection {
-        return this._workspaceDiagnostic;
     }
 
     public get extensionContext(): vscode.ExtensionContext {
@@ -213,22 +209,17 @@ export class Ctx {
         const clientOptions: LanguageClientOptions = {
             // Register the server for plain text documents
             documentSelector: [
-                { scheme: 'file', language: '4d' }, 
+                { scheme: 'file', language: '4d' },
                 { scheme: 'file', language: '4qs' }
             ],
             synchronize: {
                 // Notify the server about file changes to '.clientrc files contained in the workspace
-                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings')
+                fileEvents: workspace.createFileSystemWatcher('**/.4DSettings'),
+                // Configure textDocument sync options to include save notifications
+                configurationSection: '4D-Analyzer'
             },
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
-            middleware: {
-                provideDiagnostics: (document, previousResultId, token, next) => {
-                    if (this._config.diagnosticEnabled)
-                        this._workspaceDiagnostic.set(document instanceof vscode.Uri ? document : document.uri, undefined);
-                    return next(document, previousResultId, token);
-                }
-            }
         };
         // Create the language client and start the client.
         this._client = new LanguageClient(
@@ -243,6 +234,7 @@ export class Ctx {
 
     public start() {
         this._config = new Config(this._extensionContext);
+
         if (this._config.IsTool4DEnabled()) {
             this.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
                 .then(result => {
