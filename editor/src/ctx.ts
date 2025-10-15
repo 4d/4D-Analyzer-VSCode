@@ -7,7 +7,6 @@ import {
     LanguageClient,
     LanguageClientOptions,
     StreamInfo,
-    Diagnostic
 } from 'vscode-languageclient/node';
 
 import { workspace } from 'vscode';
@@ -16,7 +15,6 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
-import { DiagnosticFeature } from 'vscode-languageclient/lib/common/diagnostic';
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
