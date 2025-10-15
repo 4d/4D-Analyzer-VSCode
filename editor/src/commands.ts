@@ -123,7 +123,7 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
             );
 
             const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
-            const diagnosticCollection = ctx.workspaceDiagnostic;
+            const diagnosticCollection = ctx.client.diagnostics;
             diagnosticCollection.clear();
             response.items.forEach(diagWorkspace => {
                 const diagnostics: vscode.Diagnostic[] = [];
