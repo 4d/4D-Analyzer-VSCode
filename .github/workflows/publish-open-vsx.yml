@@ -1,0 +1,37 @@
+# This workflow publishes the extension to Open VSX Registry (used by Cursor and other editors)
+# For more information see: https://open-vsx.org/
+
+name: publish-open-vsx
+
+on:
+  workflow_call:
+
+jobs:
+  publish-open-vsx:
+    name: publish-open-vsx
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # If you have submodules, set this to true
+      - name: Install Nodejs
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v7
+        with:
+          workflow: build_workflow.yml
+          name: package
+          path: ./editor/dist
+
+      - name: Publish Extension (Open VSX Registry, release)
+        working-directory: editor
+        run: |
+          npm i
+          npm install --global @vscode/vsce
+          npm install --global ovsx
+          # Publish to Open VSX Registry
+          ovsx publish ./dist/*.vsix --pat ${{ secrets.OPEN_VSX_TOKEN }}
