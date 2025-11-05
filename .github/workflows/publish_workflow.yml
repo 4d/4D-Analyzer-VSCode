@@ -12,3 +12,7 @@ jobs:
     needs: call-build
     uses: ./.github/workflows/publish.yml
     secrets: inherit
+  call-publish-open-vsx:
+    needs: call-build
+    uses: ./.github/workflows/publish-open-vsx.yml
+    secrets: inherit
