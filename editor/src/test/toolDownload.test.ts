@@ -55,7 +55,7 @@ suite('Download tool', () => {
 
         while (true) {
             try {
-                await requestLabelVersion(`https://resources-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "stable");
+                await requestLabelVersion(`https://resources-download.4d.com/release/${number}.x/latest/latest/win/tool4d_win.tar.xz`, "beta");
                 number++;
             }
             catch (error) {
