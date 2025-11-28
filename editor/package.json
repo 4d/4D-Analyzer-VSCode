@@ -37,6 +37,17 @@
 				"configuration": "./language-configuration.json"
 			},
 			{
+				"id": "4qs",
+				"aliases": [
+					"4QS",
+					"4qs"
+				],
+				"extensions": [
+					".4qs"
+				],
+				"configuration": "./language-configuration.json"
+			},
+			{
 				"id": "json",
 				"aliases": [
 					"JSON",
@@ -190,7 +201,7 @@
 		"test-compile": "tsc -p ./",
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
-		"lint": "eslint ./src",
+		"lint": "eslint ./src/",
 		"pretest": "npm run compile",
 		"test": "node ./out/test/runTest.js"
 	},

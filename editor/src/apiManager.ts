@@ -4,20 +4,20 @@ import * as os from 'os';
 import { Logger } from './logger';
 import { existsSync, mkdirSync } from "fs";
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 
 export function requestLabelVersion(url: string, channel: string): Promise<LabeledVersion> {
     async function download(url: string): Promise<LabeledVersion> {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const http = require('http');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const https = require('https');
+
         const proto = !url.charAt(4).localeCompare('s') ? https : http;
         return new Promise((resolve, reject) => {
             const request = proto.get(url, {timeout:120}, response => {
                 if (response.statusCode === 302 || response.statusCode === 200) {
-                    const regex = /_(([0-9]{2})(\.(x)|R([0-9])*)?|main)_([0-9]{6})/;
+                    const regex = /_(([0-9]{2})(\.(x)|R([0-9]+)*)?|main)_([0-9]{6})/;
                     const version = new LabeledVersion(0, 0, 0, 0, false, channel, false);
                     const resultRegex = regex.exec(response.headers.location);
+
                     if (resultRegex) {
                         if (resultRegex[1] && resultRegex[1] === "main") {
                             version.isRRelease = true;
@@ -81,10 +81,25 @@ export class APIManager {
         return labelVersion.version - 1;
     }
 
+    public async HasRReleaseVersionAvailable(inStartMajorVersion: number, inChannel: string): Promise<boolean> {
+        const labelVersion = new LabeledVersion(inStartMajorVersion, 0, 0, 0, true, inChannel, false);
+        let hasRRelease = true;
+        const url = this.getURLTool4D(labelVersion);
+
+        try {
+            await requestLabelVersion(url, labelVersion.channel);
+        }
+        catch (error) {
+            hasRRelease = false;
+        }
+        return hasRRelease;
+    }
+
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/mac/tool4d_v20R3_mac_x86.tar.xz
     //https://resources-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx released
     //https://resources-download.4d.com/release/20%20Rx/latest/latest/win/tool4d_win.tar.xz => Last Rx beta
     //https://resources-download.4d.com/release/20%20Rx/20%20R3/latest/win/tool4d_win.tar.xz => Last 20R3 release
+    //https://resources-download.4d.com/release/21.x/latest/latest/win/tool4d_win.tar.xz => Last 21.x stable
     /*
         Starting from 20R5
         Linux has tar.xz and .deb
@@ -189,11 +204,7 @@ export class APIManager {
     }
 
     private _download(inURL: string, filePath: string): Promise<object> {
-        async function download(inURL, filePath): Promise<object> {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const http = require('http');
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const https = require('https');
+        async function download(inURL : string, filePath : string): Promise<object> {
             const proto = !inURL.charAt(4).localeCompare('s') ? https : http;
 
             return new Promise((resolve, reject) => {

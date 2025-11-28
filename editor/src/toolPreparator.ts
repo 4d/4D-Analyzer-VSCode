@@ -65,7 +65,8 @@ export class ToolPreparator {
             const versions = getDirectories(inRootFolder)
                 .map(version => LabeledVersion.fromString(version))
                 .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
-                .sort((a, b) => a.version - b.version);
+                .sort((a, b) => { if(a.version == b.version){ return a.releaseVersion - b.releaseVersion } 
+                else { return a.version - b.version } });
 
             if (versions.length > 0) {
                 localLabelVersion = versions[versions.length - 1];
@@ -174,8 +175,10 @@ export class ToolPreparator {
         try {
             if (labeledVersionWanted.isLatest() && !labeledVersionWanted.isMain()) {
                 lastMajorVersion = await this._APIManager.getLastMajorVersionAvailable(21, labeledVersionWanted.channel);
+                const hasRRelease = await this._APIManager.HasRReleaseVersionAvailable(lastMajorVersion, labeledVersionWanted.channel);
                 labeledVersionWanted.version = lastMajorVersion;
-                Logger.get().log("lastVersion available is", labeledVersionWanted.version);
+                labeledVersionWanted.isRRelease = hasRRelease;
+                Logger.get().log("lastVersion major version available is", labeledVersionWanted.version);
             }
 
 
