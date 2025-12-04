@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
 import { LabeledVersion } from './labeledVersion';
-import { ResultUpdate, ToolPreparator } from "./toolPreparator";
+import { ResultUpdate, ToolPreparator } from "./tool4D/toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -15,6 +15,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
+import {PackageManager} from "@4dsas/package-manager"; 
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -25,6 +26,7 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
+    private _listOpenedDB: Set<string> = new Set();
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
@@ -218,6 +220,21 @@ export class Ctx {
             },
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
+            middleware: {
+                didOpen:  async (document, next) => {
+                    const project = this._onFileOpened(document);
+
+                    //If first time opening a file from that project, start downloading packages
+                    if( project && !this._listOpenedDB.has(project)) {
+                        this._listOpenedDB.add(project);
+                        //Start downloading packages for that project
+                        const packageManager = new PackageManager(project);
+                        packageManager.initialize();
+                        await packageManager.fetch();
+                    }
+                    return next(document);
+                }
+            }
         };
         // Create the language client and start the client.
         this._client = new LanguageClient(
@@ -249,6 +266,34 @@ export class Ctx {
         }
         else {
             this._launch4D();
+        }
+    }
+
+    private _onFileOpened(document: vscode.TextDocument) : string | undefined{
+        // Callback when a file is opened
+        Logger.debugLog(`File opened: ${document.fileName} (${document.languageId})`);
+
+        if (document.languageId === '4d' || document.languageId === '4qs') {
+            //Find 4D Project path and store it, recursive solution going up the folder tree until .4DProject is found
+            //The .4DProject is in a folder called Project
+
+            let folderPath = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
+            let currentPath = path.dirname(document.uri.fsPath);
+
+            while (currentPath && currentPath !== folderPath) {
+
+                const projectName = path.basename(currentPath);
+                const projectFilePath = path.join(currentPath, "Project");
+                if(existsSync(path.join(projectFilePath, projectName + ".4DProject"))) {
+                    return projectFilePath;
+                }
+
+                const parentPath = path.dirname(currentPath);
+                if (parentPath === currentPath) {
+                    break; // Reached the root directory
+                }
+                currentPath = parentPath;
+            }
         }
     }
 

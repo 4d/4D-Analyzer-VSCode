@@ -206,7 +206,8 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"dependencies": {
-		"vscode-languageclient": "^9.0.1"
+		"vscode-languageclient": "^9.0.1",
+		"@4dsas/package-manager": "file:../../packageManager"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.10",
