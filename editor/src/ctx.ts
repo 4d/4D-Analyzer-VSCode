@@ -8,6 +8,7 @@ import {
     LanguageClientOptions,
     StreamInfo,
 } from 'vscode-languageclient/node';
+import * as ext from "./lsp_ext";
 
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
@@ -15,7 +16,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
-import {PackageManager} from "@4dsas/package-manager"; 
+import { FetchResult, PackageManager } from "@4dsas/package-manager";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -221,18 +222,38 @@ export class Ctx {
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
             middleware: {
-                didOpen:  async (document, next) => {
+                didOpen: async (document, next) => {
                     const project = this._onFileOpened(document);
 
                     //If first time opening a file from that project, start downloading packages
-                    if( project && !this._listOpenedDB.has(project)) {
+                    if (project && !this._listOpenedDB.has(project)) {
                         this._listOpenedDB.add(project);
                         //Start downloading packages for that project
                         const packageManager = new PackageManager(project);
                         packageManager.initialize();
-                        await packageManager.fetch();
+                        const params = this._client.code2ProtocolConverter.asTextDocumentIdentifier(
+                            vscode.window.activeTextEditor.document
+                        );
+
+                        return new Promise<void>(async (resolve, reject) => {
+                            next(document);
+                            if (await this._client.sendRequest(ext.needFetch, params)) {
+                                packageManager.fetch().then(async (result) => {
+                                    await this._client.sendRequest(ext.installComponents, params);
+                                }).catch(() => {
+                                    // Handle errors if needed
+                                });
+                            }
+                            else {
+                                //TODO: should have a progress indicator
+                                await this._client.sendRequest(ext.installComponents, params);
+                            }
+                            resolve();
+                        });
                     }
+
                     return next(document);
+
                 }
             }
         };
@@ -269,7 +290,7 @@ export class Ctx {
         }
     }
 
-    private _onFileOpened(document: vscode.TextDocument) : string | undefined{
+    private _onFileOpened(document: vscode.TextDocument): string | undefined {
         // Callback when a file is opened
         Logger.debugLog(`File opened: ${document.fileName} (${document.languageId})`);
 
@@ -284,7 +305,7 @@ export class Ctx {
 
                 const projectName = path.basename(currentPath);
                 const projectFilePath = path.join(currentPath, "Project");
-                if(existsSync(path.join(projectFilePath, projectName + ".4DProject"))) {
+                if (existsSync(path.join(projectFilePath, projectName + ".4DProject"))) {
                     return projectFilePath;
                 }
 
