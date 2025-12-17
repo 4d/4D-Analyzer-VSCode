@@ -9,12 +9,18 @@ export const checkWorkspaceSyntax = new lc.RequestType<lc.TextDocumentIdentifier
     "experimental/checkSyntax"
 );
 
+export const notif_needFetchNotification = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "dependency/fetch"
+);
 
-export const installComponents = new lc.RequestType<lc.TextDocumentIdentifier, void, void>(
+export const notif_installComponents = new lc.NotificationType<lc.TextDocumentIdentifier>(
     "dependency/installComponents"
 );
 
+export const notif_installComponents_progress = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "dependency/installComponents/progress"
+);
 
-export const needFetch = new lc.RequestType<lc.TextDocumentIdentifier, boolean, void>(
-    "dependency/shouldFetch"
+export const notif_installComponents_before = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "dependency/installComponents/before"
 );

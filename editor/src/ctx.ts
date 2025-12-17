@@ -27,7 +27,6 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
-    private _listOpenedDB: Set<string> = new Set();
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
@@ -221,41 +220,6 @@ export class Ctx {
             },
             initializationOptions: this._config.cfg,
             diagnosticCollectionName: "4d",
-            middleware: {
-                didOpen: async (document, next) => {
-                    const project = this._onFileOpened(document);
-
-                    //If first time opening a file from that project, start downloading packages
-                    if (project && !this._listOpenedDB.has(project)) {
-                        this._listOpenedDB.add(project);
-                        //Start downloading packages for that project
-                        const packageManager = new PackageManager(project);
-                        packageManager.initialize();
-                        const params = this._client.code2ProtocolConverter.asTextDocumentIdentifier(
-                            vscode.window.activeTextEditor.document
-                        );
-
-                        return new Promise<void>(async (resolve, reject) => {
-                            next(document);
-                            if (await this._client.sendRequest(ext.needFetch, params)) {
-                                packageManager.fetch().then(async (result) => {
-                                    await this._client.sendRequest(ext.installComponents, params);
-                                }).catch(() => {
-                                    // Handle errors if needed
-                                });
-                            }
-                            else {
-                                //TODO: should have a progress indicator
-                                await this._client.sendRequest(ext.installComponents, params);
-                            }
-                            resolve();
-                        });
-                    }
-
-                    return next(document);
-
-                }
-            }
         };
         // Create the language client and start the client.
         this._client = new LanguageClient(
@@ -264,7 +228,23 @@ export class Ctx {
             serverOptions,
             clientOptions
         );
+        this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
+            const packageManager = new PackageManager(params.uri);
+            packageManager.initialize();
+            packageManager.fetch().then(()=> {
+                this._client.sendNotification(ext.notif_installComponents, params);
+            });
+            return true; 
+        });
 
+        this._client.onNotification(ext.notif_installComponents_before, async (params) => {
+            this._client.sendNotification(ext.notif_installComponents, params);
+            return true; 
+        });
+
+        this._client.onNotification(ext.notif_installComponents_progress, async (params) => {
+            return true; 
+        });
         this._client.start();
     }
 
@@ -287,34 +267,6 @@ export class Ctx {
         }
         else {
             this._launch4D();
-        }
-    }
-
-    private _onFileOpened(document: vscode.TextDocument): string | undefined {
-        // Callback when a file is opened
-        Logger.debugLog(`File opened: ${document.fileName} (${document.languageId})`);
-
-        if (document.languageId === '4d' || document.languageId === '4qs') {
-            //Find 4D Project path and store it, recursive solution going up the folder tree until .4DProject is found
-            //The .4DProject is in a folder called Project
-
-            let folderPath = vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
-            let currentPath = path.dirname(document.uri.fsPath);
-
-            while (currentPath && currentPath !== folderPath) {
-
-                const projectName = path.basename(currentPath);
-                const projectFilePath = path.join(currentPath, "Project");
-                if (existsSync(path.join(projectFilePath, projectName + ".4DProject"))) {
-                    return projectFilePath;
-                }
-
-                const parentPath = path.dirname(currentPath);
-                if (parentPath === currentPath) {
-                    break; // Reached the root directory
-                }
-                currentPath = parentPath;
-            }
         }
     }
 
