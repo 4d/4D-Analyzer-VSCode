@@ -16,7 +16,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
-import { FetchResult, PackageManager } from "@4dsas/package-manager";
+import { FetchOptions, FetchResult, PackageManager } from "@4dsas/package-manager";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -229,21 +229,41 @@ export class Ctx {
             clientOptions
         );
         this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
-            const packageManager = new PackageManager(params.uri);
-            packageManager.initialize();
-            packageManager.fetch().then(()=> {
+            
+            const GITHUB_AUTH_PROVIDER_ID = 'github';
+            // The GitHub Authentication Provider accepts the scopes described here:
+            // https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/
+            //repo: Full control of private repositories
+            //public_repo: Access public repositories
+            const SCOPES = ['repo', 'public_repo'];
+
+
+            const parsed = vscode.Uri.parse(params.uri).fsPath;
+            const packageFolder = path.dirname(path.dirname(parsed));
+
+            const packageManager = new PackageManager(packageFolder);
+            await packageManager.initialize();
+            const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: false });
+            if(!session){
+                //Error message user interface
+                vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
+                return;
+            }
+            let options: FetchOptions = {};
+            options.githubToken = session.accessToken;
+            packageManager.fetch(options).then(() => {
                 this._client.sendNotification(ext.notif_installComponents, params);
             });
-            return true; 
+            return true;
         });
 
         this._client.onNotification(ext.notif_installComponents_before, async (params) => {
             this._client.sendNotification(ext.notif_installComponents, params);
-            return true; 
+            return true;
         });
 
         this._client.onNotification(ext.notif_installComponents_progress, async (params) => {
-            return true; 
+            return true;
         });
         this._client.start();
     }
