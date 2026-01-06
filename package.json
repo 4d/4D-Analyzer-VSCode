@@ -6,6 +6,8 @@
   ],
   "scripts": {
     "build": "npm run build -ws",
+    "watch": "npm run watch --workspace=editor",
+    "prepack": "npm run build",
     "pack": "npm run pack --workspace=editor"
   }
 }

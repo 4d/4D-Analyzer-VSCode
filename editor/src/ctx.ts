@@ -229,6 +229,7 @@ export class Ctx {
             clientOptions
         );
         this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
+            Logger.debugLog("Fetch...", params.uri);
 
             const GITHUB_AUTH_PROVIDER_ID = 'github';
             // The GitHub Authentication Provider accepts the scopes described here:
@@ -237,15 +238,18 @@ export class Ctx {
             //public_repo: Access public repositories
             const SCOPES = ['repo', 'public_repo'];
             
-            const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: false });
+            const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: true });
             if (!session) {
                 //Error message user interface
                 vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
                 return;
             }
+            Logger.debugLog("session", session.accessToken);
+
             const parsed = vscode.Uri.parse(params.uri).fsPath;
 
             const packageFolder = path.dirname(path.dirname(parsed));
+            Logger.debugLog("packageFolder ", packageFolder);
 
             const packageManager = new PackageManager(packageFolder, undefined, session.accessToken);
             await packageManager.initialize();
