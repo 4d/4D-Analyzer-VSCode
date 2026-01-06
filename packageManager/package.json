@@ -2,28 +2,20 @@
   "name": "@4dsas/package-manager",
   "version": "0.1.0",
   "description": "A package manager for 4D projects",
-  "type": "module",
   "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.cts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.cts",
+      "default": "./dist/index.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsdown src/index.ts --format cjs,esm --dts --clean",
-    "dev": "tsdown src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsdown src/index.ts --format cjs --dts --clean",
+    "dev": "tsdown src/index.ts --format cjs --dts --watch",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
@@ -59,7 +51,7 @@
     "eslint": "^8.56.0",
     "prettier": "^3.1.1",
     "tsdown": "^0.17.0-beta.4",
-    "typescript": "^5.3.3",
+    "typescript": "^5.9.3",
     "vitest": "^2.1.8"
   },
   "dependencies": {
