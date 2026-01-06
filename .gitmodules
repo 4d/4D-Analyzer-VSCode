@@ -1,3 +1,6 @@
 [submodule "language-4d"]
 	path = editor/syntaxes/language-4d
 	url = https://github.com/4d/language-4d
+[submodule "packageManager"]
+	path = packageManager
+	url = git@github.com:guillaume-kotulski/packageManager.git

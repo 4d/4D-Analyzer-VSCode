@@ -194,12 +194,14 @@
 		]
 	},
 	"scripts": {
+		"pack": "vsce package",
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
-		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --metafile=meta.json --external:vscode --format=cjs --platform=node",
 		"esbuild": "npm run esbuild-base -- --sourcemap",
 		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
 		"test-compile": "tsc -p ./",
 		"compile": "tsc -b",
+		"build": "tsc -b",
 		"watch": "tsc -b -w",
 		"lint": "eslint ./src/",
 		"pretest": "npm run compile",
@@ -207,7 +209,7 @@
 	},
 	"dependencies": {
 		"vscode-languageclient": "^9.0.1",
-		"@4dsas/package-manager": "file:../../packageManager"
+		"@4dsas/package-manager": "*"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.10",
