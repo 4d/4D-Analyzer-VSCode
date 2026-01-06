@@ -1,0 +1,72 @@
+{
+  "name": "@4dsas/package-manager",
+  "version": "0.1.0",
+  "description": "A package manager for 4D projects",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsdown src/index.ts --format cjs,esm --dts --watch",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "dependencies",
+    "github",
+    "octokit",
+    "package-manager",
+    "npm",
+    "typescript"
+  ],
+  "author": "Guillaume Kotulski",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/guillaume-kotulski/packageManager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guillaume-kotulski/packageManager/issues"
+  },
+  "homepage": "https://github.com/guillaume-kotulski/packageManager#readme",
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^24.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "tsdown": "^0.17.0-beta.4",
+    "typescript": "^5.3.3",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "adm-zip": "^0.5.16"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
