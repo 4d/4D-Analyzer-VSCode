@@ -17,8 +17,9 @@ export const notif_installComponents = new lc.NotificationType<lc.TextDocumentId
     "dependency/installComponents"
 );
 
-export const notif_installComponents_progress = new lc.NotificationType<lc.TextDocumentIdentifier>(
-    "dependency/installComponents/progress"
+
+export const notif_installComponents_done = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "dependency/installComponents/done"
 );
 
 export const notif_installComponents_before = new lc.NotificationType<lc.TextDocumentIdentifier>(

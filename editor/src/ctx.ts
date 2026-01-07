@@ -228,8 +228,15 @@ export class Ctx {
             serverOptions,
             clientOptions
         );
+
+        const statusBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Left,
+            100
+        );
         this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
             Logger.debugLog("Fetch...", params.uri);
+            statusBarItem.text = "$(sync~spin) Fetch...";
+            statusBarItem.show();
 
             const GITHUB_AUTH_PROVIDER_ID = 'github';
             // The GitHub Authentication Provider accepts the scopes described here:
@@ -237,35 +244,36 @@ export class Ctx {
             //repo: Full control of private repositories
             //public_repo: Access public repositories
             const SCOPES = ['repo', 'public_repo'];
-            
+
             const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: true });
             if (!session) {
                 //Error message user interface
                 vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
                 return;
             }
-            Logger.debugLog("session", session.accessToken);
 
             const parsed = vscode.Uri.parse(params.uri).fsPath;
-
             const packageFolder = path.dirname(path.dirname(parsed));
-            Logger.debugLog("packageFolder ", packageFolder);
 
             const packageManager = new PackageManager(packageFolder, undefined, session.accessToken);
             await packageManager.initialize();
             let options: FetchOptions = {};
             packageManager.fetch(options).then(() => {
+                statusBarItem.text = "$(sync~spin) Install components...";
                 this._client.sendNotification(ext.notif_installComponents, params);
             });
             return true;
         });
 
         this._client.onNotification(ext.notif_installComponents_before, async (params) => {
+            statusBarItem.text = "$(sync~spin) Install components...";
+            statusBarItem.show();
             this._client.sendNotification(ext.notif_installComponents, params);
             return true;
         });
 
-        this._client.onNotification(ext.notif_installComponents_progress, async (params) => {
+        this._client.onNotification(ext.notif_installComponents_done, async (params) => {
+            statusBarItem.hide();
             return true;
         });
         this._client.start();
