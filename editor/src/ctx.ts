@@ -27,12 +27,16 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
+    private _transportServer: net.Server | null;
+    private _languageServerProcess: child_process.ChildProcess | null;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._transportServer = null;
+        this._languageServerProcess = null;
     }
 
     public get config(): Config {
@@ -47,9 +51,6 @@ export class Ctx {
         return this._client;
     }
 
-    public set client(inClient: LanguageClient) {
-        this._client = inClient;
-    }
 
     private _getServerPath(isDebug: boolean): string {
         let serverPath: string = this._config.serverPath;
@@ -169,6 +170,19 @@ export class Ctx {
                     resolve({ reader: socket, writer: socket, detached: false });
                 });
 
+                this._transportServer = server;
+
+                server.on('error', (error) => {
+                    Logger.debugLog(error);
+                    try {
+                        server.close();
+                    } catch (closeError) {
+                        Logger.debugLog(closeError);
+                    }
+                    this._transportServer = null;
+                    reject(error);
+                });
+
                 // Listen on random port
                 server.listen(port, '127.0.0.1', () => {
                     Logger.debugLog(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
@@ -177,6 +191,8 @@ export class Ctx {
                         const childProcess = child_process.spawn(serverPath, [
                             '--lsp=' + (server.address() as net.AddressInfo).port,
                         ]);
+
+                        this._languageServerProcess = childProcess;
 
                         childProcess.stderr.on('data', (chunk: Buffer) => {
                             const str = chunk.toString();
@@ -191,12 +207,18 @@ export class Ctx {
                             if (code !== 0) {
                                 this._client.outputChannel.show();
                             }
+                            if (this._languageServerProcess === childProcess) {
+                                this._languageServerProcess = null;
+                            }
                         });
 
-
-                        server.on('close', function () {
+                        server.on('close', () => {
                             Logger.debugLog("KILL");
+                            if (this._languageServerProcess === childProcess) {
+                                this._languageServerProcess = null;
+                            }
                             childProcess.kill();
+                            this._transportServer = null;
                         });
 
                         return childProcess;
@@ -310,6 +332,7 @@ export class Ctx {
             cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions },
             checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax },
             createNewProject: { call: Commands.createNewProject },
+            restartLanguageServer: { call: Commands.restartLanguageServer },
         };
 
         for (const [name, command] of Object.entries(this._commands)) {
@@ -330,6 +353,44 @@ export class Ctx {
         }
 
         return this._client.stop();
+    }
+
+    resetClient() {
+        this._client = null;
+    }
+
+    async restart() {
+        if (this._client) {
+            const stopPromise = this._client.stop();
+            if (stopPromise) {
+                await stopPromise;
+            }
+            this._client.dispose();
+            this._client = null;
+        }
+
+        if (this._languageServerProcess) {
+            try {
+                this._languageServerProcess.kill();
+            } catch (error) {
+                Logger.debugLog(error);
+            }
+            this._languageServerProcess = null;
+        }
+
+        if (this._transportServer) {
+            await new Promise<void>((resolve) => {
+                try {
+                    this._transportServer.close(() => resolve());
+                } catch (error) {
+                    Logger.debugLog(error);
+                    resolve();
+                }
+            });
+            this._transportServer = null;
+        }
+
+        this._launch4D();
     }
 }
 

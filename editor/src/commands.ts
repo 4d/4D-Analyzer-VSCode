@@ -172,3 +172,7 @@ export function createNewProject(ctx: Ctx): Cmd {
         }
     };
 }
+
+export const restartLanguageServer = (ctx: Ctx) => async () => {
+    await ctx.restart();
+};

@@ -190,6 +190,10 @@
 			{
 				"command": "4d-analyzer.createNewProject",
 				"title": "4D Analyzer: Create a new project"
+			},
+			{
+				"command": "4d-analyzer.restartLanguageServer",
+				"title": "4D Analyzer: Restart language server"
 			}
 		]
 	},
