@@ -7,6 +7,7 @@ import {
     LanguageClient,
     LanguageClientOptions,
     StreamInfo,
+    TextDocumentIdentifier,
 } from 'vscode-languageclient/node';
 import * as ext from "./lsp_ext";
 
@@ -17,6 +18,7 @@ import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
 import { FetchOptions, FetchResult, PackageManager } from "@4dsas/package-manager";
+import * as fsSync from 'fs';
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -253,11 +255,11 @@ export class Ctx {
 
         const statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Left,
-            100
+            0
         );
         this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
             Logger.debugLog("Fetch...", params.uri);
-            statusBarItem.text = "$(sync~spin) Fetch...";
+            statusBarItem.text = "$(sync~spin) Fetch components ...";
             statusBarItem.show();
 
             const GITHUB_AUTH_PROVIDER_ID = 'github';
@@ -291,14 +293,62 @@ export class Ctx {
             statusBarItem.text = "$(sync~spin) Install components...";
             statusBarItem.show();
             this._client.sendNotification(ext.notif_installComponents, params);
+            this.dependencyWatcher(params.uri);
             return true;
         });
 
-        this._client.onNotification(ext.notif_installComponents_done, async (params) => {
+        this._client.onNotification(ext.notif_installComponents_done, async (_params) => {
             statusBarItem.hide();
             return true;
         });
         this._client.start();
+    }
+
+    dependencyWatcher(project_id: string) {
+        const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
+        const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
+
+        const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
+
+        const disposable = watcher.onDidChange(async uri => {
+            const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
+            if (fetchInfo.shouldFetch) {
+                this.resetClient();
+            }
+
+        });
+        this._extensionContext.subscriptions.push(watcher, disposable);
+
+
+        const possiblePaths = ["../environment4d.json", "../../environment4d.json"];
+        let envAbs: string | undefined = undefined;
+
+        for (const rel of possiblePaths) {
+            const candidate = path.resolve(projectFolder, rel); // absolute
+            if (fsSync.existsSync(candidate)) {
+                envAbs = candidate;
+                break;
+            }
+        }
+
+        if (envAbs) {
+            const envDir = path.dirname(envAbs);
+            const envName = path.basename(envAbs);
+
+            const environmentPattern = new vscode.RelativePattern(envDir, envName);
+            const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
+
+            const envDisposable = envWatcher.onDidChange(async uri => {
+                const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
+                if (fetchInfo.shouldFetch) {
+                    this.resetClient();
+                }
+            });
+
+            this._extensionContext.subscriptions.push(envWatcher, envDisposable);
+        }
+
+
     }
 
     public start() {
