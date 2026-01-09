@@ -31,7 +31,9 @@ export class Ctx {
     private _config: Config;
     private _transportServer: net.Server | null;
     private _languageServerProcess: child_process.ChildProcess | null;
-
+    private _listWatcher = [] as vscode.Disposable[]; //watcher to dispose
+    private _isRestarting = false; 
+    private _restartDebounceTimer: NodeJS.Timeout | null = null; 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
@@ -313,10 +315,11 @@ export class Ctx {
         const disposable = watcher.onDidChange(async uri => {
             const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
             if (fetchInfo.shouldFetch) {
-                this.resetClient();
+                this._debouncedRestart();
             }
 
         });
+        this._listWatcher.push(disposable);
         this._extensionContext.subscriptions.push(watcher, disposable);
 
 
@@ -339,13 +342,12 @@ export class Ctx {
             const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
 
             const envDisposable = envWatcher.onDidChange(async uri => {
-                const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
-                if (fetchInfo.shouldFetch) {
-                    this.resetClient();
-                }
+                //const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
+                this._debouncedRestart();
             });
 
             this._extensionContext.subscriptions.push(envWatcher, envDisposable);
+            this._listWatcher.push(envDisposable);
         }
 
 
@@ -405,42 +407,67 @@ export class Ctx {
         return this._client.stop();
     }
 
-    resetClient() {
-        this._client = null;
-    }
-
-    async restart() {
-        if (this._client) {
-            const stopPromise = this._client.stop();
-            if (stopPromise) {
-                await stopPromise;
-            }
-            this._client.dispose();
-            this._client = null;
+ async restart() {
+        // Prevent multiple concurrent restarts
+        if (this._isRestarting) {
+            return;
         }
+        this._isRestarting = true;
 
-        if (this._languageServerProcess) {
-            try {
-                this._languageServerProcess.kill();
-            } catch (error) {
-                Logger.debugLog(error);
-            }
-            this._languageServerProcess = null;
-        }
-
-        if (this._transportServer) {
-            await new Promise<void>((resolve) => {
+        try {
+            if (this._client) {
                 try {
-                    this._transportServer.close(() => resolve());
+                    const stopPromise = this._client.stop();
+                    if (stopPromise) {
+                        await stopPromise;
+                    }
+                    this._client.dispose();
+                    this._client = null;
+                    for (const dispose of this._listWatcher) {
+                        dispose.dispose();
+                    }
+                    this._listWatcher = [];
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            if (this._languageServerProcess) {
+                try {
+                    this._languageServerProcess.kill();
                 } catch (error) {
                     Logger.debugLog(error);
-                    resolve();
                 }
-            });
-            this._transportServer = null;
-        }
+                this._languageServerProcess = null;
+            }
 
-        this._launch4D();
+            if (this._transportServer) {
+                await new Promise<void>((resolve) => {
+                    try {
+                        this._transportServer.close(() => resolve());
+                    } catch (error) {
+                        Logger.debugLog(error);
+                        resolve();
+                    }
+                });
+                this._transportServer = null;
+            }
+
+            this._launch4D();
+        } finally {
+            this._isRestarting = false;
+        }
+    }
+
+    // Add a debounced restart method for file watchers
+    private _debouncedRestart() {
+        if (this._restartDebounceTimer) {
+            clearTimeout(this._restartDebounceTimer);
+        }
+        this._restartDebounceTimer = setTimeout(async () => {
+            this._restartDebounceTimer = null;
+            await this.restart();
+        }, 500); // 500ms debounce
     }
 }
 
