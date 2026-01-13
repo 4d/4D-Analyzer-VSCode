@@ -26,9 +26,16 @@ export class ConfigReader {
 
         try {
             const content = await fs.readFile(depFile, 'utf-8');
-            return JSON.parse(content);
-        } catch {
-            return null;
+            const parsed = JSON.parse(content);
+            
+            // Validate structure
+            if (!parsed.dependencies || typeof parsed.dependencies !== 'object') {
+                throw new Error('Invalid dependencies.json: missing or invalid dependencies field');
+            }
+            
+            return parsed;
+        } catch (error) {
+            throw new Error(`Failed to read dependencies.json: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -43,16 +50,25 @@ export class ConfigReader {
         while (currentDir !== root) {
             const envFile = path.join(currentDir, 'environment4d.json');
 
+            // Check if file exists first
+            try {
+                await fs.access(envFile);
+            } catch {
+                // File doesn't exist, continue searching upward
+                currentDir = path.dirname(currentDir);
+                continue;
+            }
+
+            // File exists, try to read and parse it
             try {
                 const content = await fs.readFile(envFile, 'utf-8');
                 return JSON.parse(content);
-            } catch {
-                // Continue searching upward
-                currentDir = path.dirname(currentDir);
+            } catch (error) {
+                throw new Error(`Failed to read or parse environment4d.json at ${envFile}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
 
-        return null; // Empty environment if not found
+        return null;
     }
 
     /**
@@ -63,9 +79,19 @@ export class ConfigReader {
 
         try {
             const content = await fs.readFile(lockFile, 'utf-8');
-            return JSON.parse(content);
-        } catch {
-            return null;
+            const parsed = JSON.parse(content);
+            
+            // Validate structure
+            if (!parsed.dependencies || typeof parsed.dependencies !== 'object') {
+                throw new Error('Invalid lock file: missing or invalid dependencies field');
+            }
+            
+            return parsed;
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                return null;
+            }
+            throw new Error(`Failed to read lock file: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -87,8 +113,11 @@ export class ConfigReader {
         try {
             const content = await fs.readFile(prefFile, 'utf-8');
             return JSON.parse(content);
-        } catch {
-            return {}; // Empty preferences if not found
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                return {};
+            }
+            throw new Error(`Failed to read user preferences: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 

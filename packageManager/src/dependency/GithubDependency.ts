@@ -47,7 +47,6 @@ export class GitHubDependency extends Dependency {
       return false;
     const owner = this.owner;
     const repo = this.repo;
-    console.log("OWNER AND REPO", owner, repo)
 
     try {
       // Resolve version
@@ -56,16 +55,13 @@ export class GitHubDependency extends Dependency {
         this.addError(lock, 'No matching version found');
         return false;
       }
-      console.log(tag)
 
       lock.tag = tag;
       const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(tag));
       const project = await this.getPackage(dependencyLocation);
-      console.log(dependencyLocation)
 
       // Check if already in cache
       const exists = project != null;
-      console.log("FETCH ", owner, repo, exists)
 
       if (exists && !update) {
         const dependencyPath = cacheManager.getDependencyFolder(this, tag);
@@ -73,9 +69,7 @@ export class GitHubDependency extends Dependency {
         lock.found = true;
 
         // Read sub-dependencies
-        console.log("Read subdependencies...");
         const subDeps = await project.getListDependencies();
-        console.log(subDeps)
         if (subDeps?.dependencies) {
           lock.dependencies = subDeps.dependencies;
         }
@@ -84,26 +78,22 @@ export class GitHubDependency extends Dependency {
       }
 
       // Download archive
-      console.log("Download..")
       const archiveBuffer = await fetcher.downloadReleaseAsset(
         owner,
         repo,
         tag,
       );
 
-      console.log("Prepare temp..")
       lock.archiveSize = archiveBuffer.byteLength;
       const temp_file = await fs.mkdtemp(path.join(os.tmpdir(), 'dep-')) + '.zip';
       await fs.writeFile(temp_file, Buffer.from(archiveBuffer));
 
       // Extract to cache
-      console.log("Extract..")
       const dependencyPath = await cacheManager.extractArchive(
         temp_file,
         this,
         tag
       );
-      console.log("Target folder ", dependencyPath)
       lock.path = dependencyPath;
       lock.found = true;
 

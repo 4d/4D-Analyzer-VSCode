@@ -1,9 +1,12 @@
+import * as path from 'path';
 import { ConfigReader } from './config/ConfigReader';
 import { CacheManager } from './cache/CacheManager';
 import { GitHubDependency } from './dependency/GithubDependency';
 import {
     DependenciesFile,
     LockFile,
+    LockEntry,
+    DependencySpec,
     Environment,
     FetchOptions,
     FetchResult
@@ -25,6 +28,17 @@ export class PackageManager {
     private ideVersion: string | null = null;
 
     constructor(projectPath: string, cacheFolder?: string, authToken?: string, ideVersion?: string) {
+        // Validate inputs
+        if (!projectPath || typeof projectPath !== 'string') {
+            throw new Error('Project path is required and must be a string');
+        }
+        if (!path.isAbsolute(projectPath)) {
+            throw new Error('Project path must be an absolute path');
+        }
+        if (ideVersion && !/^\d+\.\d+(\.\d+)?$/.test(ideVersion)) {
+            throw new Error('IDE version must be in format X.Y or X.Y.Z (e.g., "20.0" or "20.0.1")');
+        }
+
         this.configReader = new ConfigReader(projectPath);
         this.cacheManager = new CacheManager(cacheFolder);
         this.fetcher = new GithubFetcher(authToken);
@@ -37,10 +51,25 @@ export class PackageManager {
     async initialize(): Promise<void> {
         // Read configuration files
         this.dependencies = await this.configReader.readDependencies();
+        if (!this.dependencies) {
+            throw new Error('Failed to read dependencies.json - file may not exist or is invalid');
+        }
+
         this.environment = await this.configReader.buildEnvironment(
             this.cacheManager.getCacheRoot()
         );
+        if (!this.environment) {
+            throw new Error('Failed to build environment - environment4d.json may not exist or is invalid');
+        }
+
         this.lock = await this.configReader.readLock();
+        if (!this.lock) {
+            // Initialize empty lock file if it doesn't exist
+            this.lock = {
+                version: 2120,
+                dependencies: {}
+            };
+        }
 
         // Reconcile dependencies
         this.reconcile(false);
@@ -213,7 +242,7 @@ export class PackageManager {
      * Collect sub-dependencies from a lock entry and create dependency objects
      */
     private collectSubDependencies(
-        lockEntry: any,
+        lockEntry: LockEntry,
         processed: Set<string>
     ): string[] {
         if (!lockEntry.dependencies || !this.lock) {
@@ -223,21 +252,38 @@ export class PackageManager {
         const subDeps: string[] = [];
 
         for (const [subName, subSpec] of Object.entries(lockEntry.dependencies)) {
+            // Type guard: ensure subSpec is a DependencySpec
+            if (!subSpec || typeof subSpec !== 'object') {
+                continue;
+            }
+            
+            const typedSubSpec = subSpec as DependencySpec;
+            
+            // Validate dependency name
+            if (!subName || typeof subName !== 'string') {
+                continue;
+            }
+
             // Skip if already processed or is a local path
-            if (processed.has(subName) || (subSpec as any).path) {
+            if (processed.has(subName) || typedSubSpec.path) {
+                continue;
+            }
+
+            // Validate sub-spec has required fields
+            if (!typedSubSpec.github && !typedSubSpec.path) {
                 continue;
             }
 
             // Create sub-dependency if it doesn't exist
             if (!this.reconciled.has(subName)) {
-                const subDep = new GitHubDependency(subSpec as any, false);
+                const subDep = new GitHubDependency(typedSubSpec, false);
                 this.reconciled.set(subName, subDep);
 
                 // Initialize lock entry
                 if (!this.lock.dependencies[subName]) {
                     this.lock.dependencies[subName] = {
-                        github: (subSpec as any).github,
-                        version: (subSpec as any).version,
+                        github: typedSubSpec.github,
+                        version: typedSubSpec.version,
                         isPrimary: false
                     };
                 }

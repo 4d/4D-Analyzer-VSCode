@@ -169,25 +169,6 @@ export interface Environment {
   devDependencies: Record<string, DependencySpec>;
 }
 
-
-
-/**
- * GitHub configuration
- */
-export interface GitHubConfig {
-  token?: string;
-  htmlURL?: string; // Default: "https://github.com/"
-  apiURL?: string; // Default: "https://api.github.com/"
-}
-
-/**
- * Update configuration
- */
-export interface UpdateConfig {
-  maxCount?: number; // Default: 1
-  delays?: Record<string, any>;
-}
-
 /**
  * GitHub Release object
  */

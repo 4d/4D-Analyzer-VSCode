@@ -108,7 +108,6 @@ export class Dependency {
         if (!lock.update.errors) {
             lock.update.errors = [];
         }
-        console.log("Error ", message)
         lock.update.errors.push({ message });
     }
 
@@ -122,7 +121,6 @@ export class Dependency {
         if (!lock.update.warnings) {
             lock.update.warnings = [];
         }
-        console.log("Warning ", message)
         lock.update.warnings.push({ message });
     }
 
@@ -136,7 +134,6 @@ export class Dependency {
 
         const owner = this._owner;
         const repo = this.name;
-        console.log("Resolve version", this)
         // If specific tag is specified, use it
         if (this._tag) {
             return this._tag;

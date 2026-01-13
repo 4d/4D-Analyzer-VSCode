@@ -4,6 +4,10 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs'
 import AdmZip from 'adm-zip';
 import { Dependency } from '../dependency/Dependency';
+
+const TEMP_DIR_PREFIX = '4d-dep-';
+const MAC_RESOURCE_FILE_PREFIX = '._';
+
 /**
  * Cache manager for downloaded dependencies
  * Handles extraction, storage, and retrieval of cached dependencies
@@ -12,6 +16,9 @@ export class CacheManager {
   private cacheRoot: string;
 
   constructor(cacheRoot?: string) {
+    if (cacheRoot && !path.isAbsolute(cacheRoot)) {
+      throw new Error('Cache root must be an absolute path');
+    }
     this.cacheRoot = cacheRoot || this.getDefaultCacheRoot();
   }
 
@@ -51,8 +58,6 @@ export class CacheManager {
   }
 
   private async unzip(input: string, inDirectory: string): Promise<void> {
-    console.log("Extract ", input, "to", inDirectory);
-
     try {
       const zip = new AdmZip(input);
       zip.extractAllTo(inDirectory, true);
@@ -62,61 +67,108 @@ export class CacheManager {
   }
 
   /**
-   * Extract ZIP archive to cache
+   * Remove target folder if it exists
    */
+  private async removeTargetFolder(targetFolder: string): Promise<void> {
+    try {
+      await fs.rm(targetFolder, { recursive: true });
+    } catch (error) {
+      // Ignore if folder doesn't exist
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw new Error(`Failed to remove target folder: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  }
 
-  //If there is a .4dbase extract it
-  //If there is a Contents folder, go inside and then extract everyting excepts the "._" folders
-  //If there is a .4dz rename it by the name
-  //Copy everyting from
+  /**
+   * Find the .4dbase folder if it exists
+   */
+  private find4DBaseFolder(tempDir: string, dependencyName: string): string | null {
+    const fourdBaseFolder = path.join(tempDir, `${dependencyName}.4dbase`);
+    return fsSync.existsSync(fourdBaseFolder) ? fourdBaseFolder : null;
+  }
+
+  /**
+   * Clean up macOS resource fork files (._* files)
+   */
+  private async cleanupResourceForks(folderPath: string): Promise<void> {
+    try {
+      const files = await fs.readdir(folderPath);
+      const cleanupPromises = files
+        .filter(file => file.startsWith(MAC_RESOURCE_FILE_PREFIX))
+        .map(file => fs.rm(path.join(folderPath, file), { force: true }));
+      
+      await Promise.all(cleanupPromises);
+    } catch (error) {
+      // Log but don't fail if cleanup fails
+      throw new Error(`Failed to cleanup resource forks: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Determine the source folder to extract from temp directory
+   */
+  private async determineSourceFolder(tempDir: string, dependencyName: string): Promise<string> {
+    // Check for .4dbase folder first
+    const fourdBaseFolder = this.find4DBaseFolder(tempDir, dependencyName);
+    if (fourdBaseFolder) {
+      return fourdBaseFolder;
+    }
+
+    // Check for Contents folder (macOS bundle structure)
+    const contentsFolder = path.join(tempDir, 'Contents');
+    if (fsSync.existsSync(contentsFolder)) {
+      // Clean up resource forks in the contents folder
+      await this.cleanupResourceForks(contentsFolder);
+      return contentsFolder;
+    }
+
+    // Use temp directory itself
+    return tempDir;
+  }
+
+  /**
+   * Extract ZIP archive to cache
+   * Handles different 4D package structures:
+   * - .4dbase folders
+   * - Contents folders (macOS bundles)
+   * - Regular archives
+   */
   async extractArchive(
     temp_file: string,
     dependency: Dependency,
     tag: string
   ): Promise<string> {
     const targetFolder = this.getDependencyFolder(dependency, tag);
-    console.log("Remove ", targetFolder)
-    try {
-      await fs.rm(targetFolder, { recursive: true })
-    }catch(e) {}
+    
+    // Remove existing target folder if present
+    await this.removeTargetFolder(targetFolder);
+    
     // Create temp directory
-    const tempDir = path.join(os.tmpdir(), `4d-dep-${Date.now()}`);
-    console.log("extractArchive: tempDir", tempDir)
-    await fs.mkdir(tempDir);
+    const tempDir = path.join(os.tmpdir(), `${TEMP_DIR_PREFIX}${Date.now()}`);
+    await fs.mkdir(tempDir, { recursive: true });
 
     try {
       // Extract ZIP to temp directory
-      console.log("Extract ", temp_file, tempDir)
-
       await this.unzip(temp_file, tempDir);
-      let currentFolder = tempDir;
-      const fourdBaseFolder = path.join(tempDir, `${dependency.name}.4dbase`);
-      if (fsSync.existsSync(fourdBaseFolder)) {
-        currentFolder = fourdBaseFolder;
-      }
-      const contents = path.join(tempDir, "Contents")
-      if (fsSync.existsSync(contents)) {
-        const files = await fs.readdir(currentFolder);
-        for (const file of files) {
-          if (file.startsWith("._")) {
-            fsSync.rmSync(file);
-          }
-        }
-      }
+      
+      // Determine which folder to use as source
+      const sourceFolder = await this.determineSourceFolder(tempDir, dependency.name);
 
-      // Ensure target directory exists
+      // Ensure target directory parent exists
       await fs.mkdir(path.dirname(targetFolder), { recursive: true });
 
       // Move to cache
-      await fs.rename(currentFolder, targetFolder);
+      await fs.rename(sourceFolder, targetFolder);
 
       return targetFolder;
-    } catch (e) {
-      console.log("extractArchive: Error ", e)
-      throw e;
+    } catch (error) {
+      throw new Error(`Failed to extract archive for ${dependency.name}@${tag}: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       // Clean up temp directory
-      await fs.rm(tempDir, { recursive: true, force: true });
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {
+        // Ignore cleanup errors
+      });
     }
   }
 
