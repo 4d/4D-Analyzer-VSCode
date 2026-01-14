@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as path from 'path';
 import { PackageManager } from './PackageManager';
 import { ConfigReader } from './config/ConfigReader';
 import { CacheManager } from './cache/CacheManager';
 import { GithubFetcher } from './dependency/GithubFetcher';
 import { GitHubDependency } from './dependency/GithubDependency';
+
+// Cross-platform test paths
+const TEST_PROJECT_PATH = path.resolve('/tmp/test-project');
+const TEST_CACHE_PATH = path.resolve('/tmp/test-cache');
 
 // Mock dependencies
 vi.mock('./config/ConfigReader');
@@ -46,7 +51,7 @@ describe('PackageManager', () => {
 
         // Setup CacheManager mock
         vi.mocked(CacheManager).mockImplementation(() => ({
-            getCacheRoot: vi.fn().mockReturnValue('c:\\cache')
+            getCacheRoot: vi.fn().mockReturnValue(TEST_CACHE_PATH)
         }) as unknown as CacheManager);
 
         // Setup GithubFetcher mock
@@ -65,7 +70,7 @@ describe('PackageManager', () => {
             checkOutdated: vi.fn()
         }) as unknown as GitHubDependency);
 
-        packageManager = new PackageManager('c:\\project');
+        packageManager = new PackageManager(TEST_PROJECT_PATH);
     });
 
     describe('fetchRecursively', () => {
@@ -95,7 +100,7 @@ describe('PackageManager', () => {
                 compare: vi.fn()
             }) as unknown as GitHubDependency);
 
-            packageManager = new PackageManager('c:\\project');
+            packageManager = new PackageManager(TEST_PROJECT_PATH);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -131,7 +136,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager('c:\\project');
+            packageManager = new PackageManager(TEST_PROJECT_PATH);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -183,7 +188,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager('c:\\project');
+            packageManager = new PackageManager(TEST_PROJECT_PATH);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -212,7 +217,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager('c:\\project');
+            packageManager = new PackageManager(TEST_PROJECT_PATH);
             await packageManager.initialize();
             const result = await packageManager.fetch({ filter: ['dep1'] });
 
@@ -248,7 +253,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager('c:\\project');
+            packageManager = new PackageManager(TEST_PROJECT_PATH);
             await packageManager.initialize();
             await packageManager.fetch();
 
