@@ -2,12 +2,14 @@ import * as vscode from 'vscode';
 import * as Commands from "./commands";
 import { Config } from "./config";
 import { LabeledVersion } from './labeledVersion';
-import { ResultUpdate, ToolPreparator } from "./toolPreparator";
+import { ResultUpdate, ToolPreparator } from "./tool4D/toolPreparator";
 import {
     LanguageClient,
     LanguageClientOptions,
     StreamInfo,
+    TextDocumentIdentifier,
 } from 'vscode-languageclient/node';
+import * as ext from "./lsp_ext";
 
 import { workspace } from 'vscode';
 import * as child_process from 'child_process';
@@ -15,6 +17,8 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
+import { FetchOptions, FetchResult, PackageManager } from "@4dsas/package-manager";
+import * as fsSync from 'fs';
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -25,12 +29,18 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
-
+    private _transportServer: net.Server | null;
+    private _languageServerProcess: child_process.ChildProcess | null;
+    private _listWatcher = [] as vscode.Disposable[]; //watcher to dispose
+    private _isRestarting = false; 
+    private _restartDebounceTimer: NodeJS.Timeout | null = null; 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._transportServer = null;
+        this._languageServerProcess = null;
     }
 
     public get config(): Config {
@@ -45,9 +55,6 @@ export class Ctx {
         return this._client;
     }
 
-    public set client(inClient: LanguageClient) {
-        this._client = inClient;
-    }
 
     private _getServerPath(isDebug: boolean): string {
         let serverPath: string = this._config.serverPath;
@@ -167,6 +174,19 @@ export class Ctx {
                     resolve({ reader: socket, writer: socket, detached: false });
                 });
 
+                this._transportServer = server;
+
+                server.on('error', (error) => {
+                    Logger.debugLog(error);
+                    try {
+                        server.close();
+                    } catch (closeError) {
+                        Logger.debugLog(closeError);
+                    }
+                    this._transportServer = null;
+                    reject(error);
+                });
+
                 // Listen on random port
                 server.listen(port, '127.0.0.1', () => {
                     Logger.debugLog(`Listens on port: ${(server.address() as net.AddressInfo).port}`);
@@ -175,6 +195,8 @@ export class Ctx {
                         const childProcess = child_process.spawn(serverPath, [
                             '--lsp=' + (server.address() as net.AddressInfo).port,
                         ]);
+
+                        this._languageServerProcess = childProcess;
 
                         childProcess.stderr.on('data', (chunk: Buffer) => {
                             const str = chunk.toString();
@@ -189,12 +211,18 @@ export class Ctx {
                             if (code !== 0) {
                                 this._client.outputChannel.show();
                             }
+                            if (this._languageServerProcess === childProcess) {
+                                this._languageServerProcess = null;
+                            }
                         });
 
-
-                        server.on('close', function () {
+                        server.on('close', () => {
                             Logger.debugLog("KILL");
+                            if (this._languageServerProcess === childProcess) {
+                                this._languageServerProcess = null;
+                            }
                             childProcess.kill();
+                            this._transportServer = null;
                         });
 
                         return childProcess;
@@ -227,7 +255,102 @@ export class Ctx {
             clientOptions
         );
 
+        const statusBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Left,
+            0
+        );
+        this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
+            Logger.debugLog("Fetch...", params.uri);
+            statusBarItem.text = "$(sync~spin) Fetch components ...";
+            statusBarItem.show();
+
+            const GITHUB_AUTH_PROVIDER_ID = 'github';
+            // The GitHub Authentication Provider accepts the scopes described here:
+            // https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/
+            //repo: Full control of private repositories
+            //public_repo: Access public repositories
+            const SCOPES = ['repo', 'public_repo'];
+
+            const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: true });
+            if (!session) {
+                //Error message user interface
+                vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
+                return;
+            }
+
+            const parsed = vscode.Uri.parse(params.uri).fsPath;
+            const packageFolder = path.dirname(path.dirname(parsed));
+
+            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken);
+            await packageManager.initialize();
+            let options: FetchOptions = {};
+            packageManager.fetch(options).then(() => {
+                statusBarItem.text = "$(sync~spin) Install components...";
+                this._client.sendNotification(ext.notif_installComponents, params);
+            });
+            return true;
+        });
+
+        this._client.onNotification(ext.notif_installComponents_before, async (params) => {
+            statusBarItem.text = "$(sync~spin) Install components...";
+            statusBarItem.show();
+            this._client.sendNotification(ext.notif_installComponents, params);
+            this.dependencyWatcher(params.uri);
+            return true;
+        });
+
+        this._client.onNotification(ext.notif_installComponents_done, async (_params) => {
+            statusBarItem.hide();
+            return true;
+        });
         this._client.start();
+    }
+
+    dependencyWatcher(project_id: string) {
+        const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
+        const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
+
+        const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
+
+        const disposable = watcher.onDidChange(async uri => {
+            const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
+            if (fetchInfo.shouldFetch) {
+                this._debouncedRestart();
+            }
+
+        });
+        this._listWatcher.push(disposable);
+        this._extensionContext.subscriptions.push(watcher, disposable);
+
+
+        const possiblePaths = ["../environment4d.json", "../../environment4d.json"];
+        let envAbs: string | undefined = undefined;
+
+        for (const rel of possiblePaths) {
+            const candidate = path.resolve(projectFolder, rel); // absolute
+            if (fsSync.existsSync(candidate)) {
+                envAbs = candidate;
+                break;
+            }
+        }
+
+        if (envAbs) {
+            const envDir = path.dirname(envAbs);
+            const envName = path.basename(envAbs);
+
+            const environmentPattern = new vscode.RelativePattern(envDir, envName);
+            const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
+
+            const envDisposable = envWatcher.onDidChange(async uri => {
+                //const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
+                this._debouncedRestart();
+            });
+
+            this._extensionContext.subscriptions.push(envWatcher, envDisposable);
+            this._listWatcher.push(envDisposable);
+        }
+
+
     }
 
     public start() {
@@ -261,6 +384,7 @@ export class Ctx {
             cleanUnusedToolVersions: { call: Commands.cleanUnusedToolVersions },
             checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax },
             createNewProject: { call: Commands.createNewProject },
+            restartLanguageServer: { call: Commands.restartLanguageServer },
         };
 
         for (const [name, command] of Object.entries(this._commands)) {
@@ -281,6 +405,69 @@ export class Ctx {
         }
 
         return this._client.stop();
+    }
+
+ async restart() {
+        // Prevent multiple concurrent restarts
+        if (this._isRestarting) {
+            return;
+        }
+        this._isRestarting = true;
+
+        try {
+            if (this._client) {
+                try {
+                    const stopPromise = this._client.stop();
+                    if (stopPromise) {
+                        await stopPromise;
+                    }
+                    this._client.dispose();
+                    this._client = null;
+                    for (const dispose of this._listWatcher) {
+                        dispose.dispose();
+                    }
+                    this._listWatcher = [];
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            if (this._languageServerProcess) {
+                try {
+                    this._languageServerProcess.kill();
+                } catch (error) {
+                    Logger.debugLog(error);
+                }
+                this._languageServerProcess = null;
+            }
+
+            if (this._transportServer) {
+                await new Promise<void>((resolve) => {
+                    try {
+                        this._transportServer.close(() => resolve());
+                    } catch (error) {
+                        Logger.debugLog(error);
+                        resolve();
+                    }
+                });
+                this._transportServer = null;
+            }
+
+            this._launch4D();
+        } finally {
+            this._isRestarting = false;
+        }
+    }
+
+    // Add a debounced restart method for file watchers
+    private _debouncedRestart() {
+        if (this._restartDebounceTimer) {
+            clearTimeout(this._restartDebounceTimer);
+        }
+        this._restartDebounceTimer = setTimeout(async () => {
+            this._restartDebounceTimer = null;
+            await this.restart();
+        }, 500); // 500ms debounce
     }
 }
 

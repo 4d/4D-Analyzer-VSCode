@@ -1,7 +1,7 @@
-import { LabeledVersion } from "./labeledVersion";
+import { LabeledVersion } from "../labeledVersion";
 import * as fs from 'fs';
 import * as os from 'os';
-import { Logger } from './logger';
+import { Logger } from '../logger';
 import { existsSync, mkdirSync } from "fs";
 import * as path from 'path';
 import * as https from 'https';

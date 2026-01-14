@@ -3,10 +3,10 @@ import { existsSync, mkdirSync, readdirSync } from "fs";
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { LabeledVersion } from './labeledVersion';
-import { InfoPlistManager } from './infoplist';
+import { LabeledVersion } from '../labeledVersion';
+import { InfoPlistManager } from '../infoplist';
 import { window, ProgressLocation } from 'vscode';
-import { Logger } from './logger';
+import { Logger } from '../logger';
 import { APIManager } from './apiManager';
 
 export interface ResultUpdate {
