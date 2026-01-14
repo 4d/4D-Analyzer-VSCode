@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "workspaces": [
+    "packageManager",
+    "editor"
+  ],
+  "scripts": {
+    "build": "npm run build --ws",
+    "watch": "npm run watch --workspace=editor",
+    "prepack": "npm run build",
+    "pack": "npm run pack --workspace=editor",
+    "test": "npm run test --workspace=packageManager"
+  }
+}
