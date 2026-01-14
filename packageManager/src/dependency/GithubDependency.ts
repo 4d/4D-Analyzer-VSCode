@@ -4,7 +4,6 @@ import {
   DependencySpec,
   LockEntry,
   Environment,
-  //ErrorMessage,
 } from '../types';
 import { Fetcher } from './Fetcher';
 import * as os from 'os';
@@ -20,7 +19,7 @@ export class GitHubDependency extends Dependency {
   constructor(spec: DependencySpec, isPrimary: boolean) {
     let owner = "";
     let name = "";
-    let split = spec.github?.split("/");
+    const split = spec.github?.split("/");
     if (split && split.length == 2) {
       owner = split[0];
       name = split[1];
@@ -118,8 +117,7 @@ export class GitHubDependency extends Dependency {
       });
 
       return true; // Successfully fetched
-    } catch (error: any) {
-      //console.log(error)
+    } catch (error : any) {
       this.addError(lock, error.message);
       lock.found = false;
       return false;

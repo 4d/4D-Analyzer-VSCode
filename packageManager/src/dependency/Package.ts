@@ -17,11 +17,11 @@ export class Package {
     }
 
     static async Create(root: string): Promise<Package | null> {
-        let content = path.join(root, 'Contents');
+        const content = path.join(root, 'Contents');
         if (fsSync.existsSync(content)) {
             root = content;
         }
-        console.log("Package.Create Root ", root);
+
         if (fsSync.existsSync(root)) {
             if (fsSync.existsSync(path.join(root, 'Project'))) {
                 root = path.join(root, 'Project');
@@ -35,7 +35,6 @@ export class Package {
                     if (entry.name.endsWith(".4DZ")) {
                         //Find the .4DProject inside the zip
                         root = path.join(root, entry.name);
-                        console.log("Root found ", root)
                         found = true;
                         break;
                     }
