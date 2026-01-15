@@ -26,6 +26,7 @@
         "request": "launch",
         "runtimeExecutable": "${execPath}",
         "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
+        "sourceMaps": true,
         "env": {
             "ANALYZER_4D_DEBUG":"true"
         }

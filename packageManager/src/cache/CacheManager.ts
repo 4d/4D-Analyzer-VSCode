@@ -83,9 +83,15 @@ export class CacheManager {
   /**
    * Find the .4dbase folder if it exists
    */
-  private find4DBaseFolder(tempDir: string, dependencyName: string): string | null {
-    const fourdBaseFolder = path.join(tempDir, `${dependencyName}.4dbase`);
-    return fsSync.existsSync(fourdBaseFolder) ? fourdBaseFolder : null;
+  private async find4DBaseFolder(tempDir: string): Promise<string | null>  {
+
+    for(const folder of await fs.readdir(tempDir)) {
+      if(folder.toLowerCase().endsWith('.4dbase')) {
+        const fullPath = path.join(tempDir, folder);
+        return fullPath;
+      }
+    }
+    return null
   }
 
   /**
@@ -108,15 +114,16 @@ export class CacheManager {
   /**
    * Determine the source folder to extract from temp directory
    */
-  private async determineSourceFolder(tempDir: string, dependencyName: string): Promise<string> {
+  private async determineSourceFolder(tempDir: string): Promise<string> {
     // Check for .4dbase folder first
-    const fourdBaseFolder = this.find4DBaseFolder(tempDir, dependencyName);
+    let currentFolder = tempDir;
+    const fourdBaseFolder = await this.find4DBaseFolder(tempDir);
     if (fourdBaseFolder) {
-      return fourdBaseFolder;
+      currentFolder = fourdBaseFolder;
     }
 
     // Check for Contents folder (macOS bundle structure)
-    const contentsFolder = path.join(tempDir, 'Contents');
+    const contentsFolder = path.join(currentFolder, 'Contents');
     if (fsSync.existsSync(contentsFolder)) {
       // Clean up resource forks in the contents folder
       await this.cleanupResourceForks(contentsFolder);
@@ -124,7 +131,7 @@ export class CacheManager {
     }
 
     // Use temp directory itself
-    return tempDir;
+    return currentFolder;
   }
 
   /**
@@ -153,8 +160,7 @@ export class CacheManager {
       await this.unzip(temp_file, tempDir);
       
       // Determine which folder to use as source
-      const sourceFolder = await this.determineSourceFolder(tempDir, dependency.name);
-
+      const sourceFolder = await this.determineSourceFolder(tempDir);
       // Ensure target directory parent exists
       await fs.mkdir(path.dirname(targetFolder), { recursive: true });
 

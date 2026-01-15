@@ -42,7 +42,6 @@ export class Range {
   maxSatisfying(versions: string[]): string | null {
     const cleanVersions = versions.map(v => v.replace(/^v/, ''));
     const result = semver.maxSatisfying(cleanVersions, this.range);
-
     if (!result) {
       return null;
     }

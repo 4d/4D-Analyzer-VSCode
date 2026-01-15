@@ -46,7 +46,7 @@ export class GitHubDependency extends Dependency {
       return false;
     const owner = this.owner;
     const repo = this.repo;
-
+    console.log(`Fetching GitHub dependency: ${owner}/${repo}`);
     try {
       // Resolve version
       const tag = await this.resolveVersion(fetcher, ideVersion);

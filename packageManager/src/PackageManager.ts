@@ -206,7 +206,6 @@ export class PackageManager {
                     this.cacheManager,
                     update
                 );
-
                 return { name, fetched };
             });
 

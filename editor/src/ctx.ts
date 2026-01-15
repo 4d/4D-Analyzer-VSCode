@@ -281,7 +281,8 @@ export class Ctx {
             const parsed = vscode.Uri.parse(params.uri).fsPath;
             const packageFolder = path.dirname(path.dirname(parsed));
 
-            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken);
+            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken, 
+                this.get4DVersion().toString(false).replace("R", "."));
             await packageManager.initialize();
             let options: FetchOptions = {};
             packageManager.fetch(options).then(() => {
@@ -309,7 +310,6 @@ export class Ctx {
     dependencyWatcher(project_id: string) {
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
-
         const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
 
         const disposable = watcher.onDidChange(async uri => {
