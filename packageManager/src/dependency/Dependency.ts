@@ -138,7 +138,6 @@ export class Dependency {
         if (this._tag) {
             return this._tag;
         }
-
         // If no version specified or "latest"
         if (!this._version || this._version === 'latest') {
             const release = await fetcher.getLatestRelease(owner, repo);
@@ -149,6 +148,7 @@ export class Dependency {
         if (this._version.toLowerCase() === '4d') {
             const range = new Range(`^${ideVersion}`);
             return await this.resolveRange(fetcher, owner, repo, range);
+
         }
 
         // Parse as version range
@@ -173,10 +173,22 @@ export class Dependency {
         const validReleases = releases.filter(r => !r.draft && !r.prerelease);
 
         // Extract tags
-        const tags = validReleases.map(r => r.tag_name);
-
+        const tags = validReleases.map(r => r.tag_name.replace("R", "."));
         // Find max satisfying version
-        return range.maxSatisfying(tags);
+        const tagFound = range.maxSatisfying(tags);
+        if (!tagFound) {
+            return null;
+        }
+
+        //Find matching tag name
+        let index = 0;
+        for(const tag of tags) {
+            if(tag == tagFound) {
+                return validReleases[index].tag_name;
+            }
+            index++;
+        }
+        return null;
     }
 
     /**
