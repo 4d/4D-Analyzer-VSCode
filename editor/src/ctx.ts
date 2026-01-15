@@ -32,8 +32,8 @@ export class Ctx {
     private _transportServer: net.Server | null;
     private _languageServerProcess: child_process.ChildProcess | null;
     private _listWatcher = [] as vscode.Disposable[]; //watcher to dispose
-    private _isRestarting = false; 
-    private _restartDebounceTimer: NodeJS.Timeout | null = null; 
+    private _isRestarting = false;
+    private _restartDebounceTimer: NodeJS.Timeout | null = null;
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
@@ -244,7 +244,12 @@ export class Ctx {
                 // Configure textDocument sync options to include save notifications
                 configurationSection: '4D-Analyzer'
             },
-            initializationOptions: this._config.cfg,
+            initializationOptions: {
+                ...this._config.cfg,
+                dependencies: {
+                    enable: true
+                }
+            },
             diagnosticCollectionName: "4d",
         };
         // Create the language client and start the client.
@@ -281,7 +286,7 @@ export class Ctx {
             const parsed = vscode.Uri.parse(params.uri).fsPath;
             const packageFolder = path.dirname(path.dirname(parsed));
 
-            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken, 
+            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken,
                 this.get4DVersion().toString(false).replace("R", "."));
             await packageManager.initialize();
             let options: FetchOptions = {};
@@ -407,7 +412,7 @@ export class Ctx {
         return this._client.stop();
     }
 
- async restart() {
+    async restart() {
         // Prevent multiple concurrent restarts
         if (this._isRestarting) {
             return;
