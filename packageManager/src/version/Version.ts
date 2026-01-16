@@ -8,6 +8,7 @@ import { VersionInfo } from '../types';
 export class Version {
   private semver: semver.SemVer;
   public isR: boolean = false;
+  public isMain: boolean = false;
   public raw: string;
 
   constructor(versionString: string) {
@@ -36,6 +37,7 @@ export class Version {
       throw new Error(`Invalid version: ${versionString}`);
     }
     this.semver = parsed;
+    this.isMain = this.semver.major == 0;
   }
 
   /**
@@ -127,7 +129,7 @@ export class Version {
    * Convert to 4D IDE version string (e.g., "21.2")
    */
   toIDEString(): string {
-    return `${this.major}.${this.minor}`;
+    return `${this.major}.${this.minor}.${this.patch}`;
   }
 
   /**

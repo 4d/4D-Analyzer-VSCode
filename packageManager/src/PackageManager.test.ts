@@ -9,7 +9,7 @@ import { GitHubDependency } from './dependency/GithubDependency';
 // Cross-platform test paths
 const TEST_PROJECT_PATH = path.resolve('/tmp/test-project');
 const TEST_CACHE_PATH = path.resolve('/tmp/test-cache');
-
+const TEST_IDE_VERSION = "21.2.0";
 // Mock dependencies
 vi.mock('./config/ConfigReader');
 vi.mock('./cache/CacheManager');
@@ -70,7 +70,7 @@ describe('PackageManager', () => {
             checkOutdated: vi.fn()
         }) as unknown as GitHubDependency);
 
-        packageManager = new PackageManager(TEST_PROJECT_PATH);
+        packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
     });
 
     describe('fetchRecursively', () => {
@@ -100,7 +100,7 @@ describe('PackageManager', () => {
                 compare: vi.fn()
             }) as unknown as GitHubDependency);
 
-            packageManager = new PackageManager(TEST_PROJECT_PATH);
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -136,7 +136,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager(TEST_PROJECT_PATH);
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -188,7 +188,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager(TEST_PROJECT_PATH);
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
             await packageManager.initialize();
             const result = await packageManager.fetch();
 
@@ -217,7 +217,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager(TEST_PROJECT_PATH);
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
             await packageManager.initialize();
             const result = await packageManager.fetch({ filter: ['dep1'] });
 
@@ -253,7 +253,7 @@ describe('PackageManager', () => {
                 } as unknown as GitHubDependency;
             });
 
-            packageManager = new PackageManager(TEST_PROJECT_PATH);
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
             await packageManager.initialize();
             await packageManager.fetch();
 

@@ -3,6 +3,7 @@ import { Fetcher } from "./Fetcher";
 import { Range } from "../version/Range";
 import { assert } from "console";
 import { Package } from "./Package";
+import { Version } from "../version/Version";
 
 export class Dependency {
 
@@ -129,7 +130,7 @@ export class Dependency {
      */
     protected async resolveVersion(
         fetcher: Fetcher,
-        ideVersion: string
+        ideVersion: Version
     ): Promise<string | null> {
 
         const owner = this._owner;
@@ -146,7 +147,7 @@ export class Dependency {
 
         // If "4d" keyword, match IDE version
         if (this._version.toLowerCase() === '4d') {
-            const range = new Range(`^${ideVersion}`);
+            const range = new Range(this._version, ideVersion);
             return await this.resolveRange(fetcher, owner, repo, range);
 
         }

@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import { PackageManager } from '../../src/PackageManager';
 import { GithubFetcher } from '../../src/dependency/GithubFetcher';
+const TEST_IDE_VERSION = "21.2.0";
 
 // Only mock external dependencies (GitHub API)
 vi.mock('../../src/dependency/GithubFetcher');
@@ -105,16 +106,16 @@ describe('PackageManager Integration', () => {
 
     describe('Full workflow', () => {
         it('should initialize and read configuration files', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
-            
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
+
             // Should not throw
             await expect(pm.initialize()).resolves.not.toThrow();
         });
 
         it('should fetch dependencies and extract to cache', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             const result = await pm.fetch();
 
             expect(result.success).toBe(true);
@@ -130,50 +131,50 @@ describe('PackageManager Integration', () => {
         });
 
         it('should extract Contents folder from archive correctly', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             const result = await pm.fetch();
 
             // The TEST.zip contains Contents/TEST.4DZ
             // Verify extraction worked
             const extractedPath = result.lock.dependencies['TEST'].path;
             expect(extractedPath).toBeDefined();
-            
+
             // Check that the extracted content exists
             const cacheDir = await fs.readdir(extractedPath!);
             expect(cacheDir.length).toBeGreaterThan(0);
         });
 
         it('should skip fetch when dependency is already cached', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             // First fetch
             const result1 = await pm.fetch();
             expect(result1.fetchedCount).toBe(1);
 
             // Second fetch should skip (already cached)
-            const pm2 = new PackageManager(projectPath, cachePath);
+            const pm2 = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm2.initialize();
             const result2 = await pm2.fetch();
-            
+
             expect(result2.skippedCount).toBe(1);
             expect(result2.fetchedCount).toBe(0);
         });
 
         it('should force re-fetch with update option', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             // First fetch
             await pm.fetch();
 
             // Second fetch with update should re-fetch
-            const pm2 = new PackageManager(projectPath, cachePath);
+            const pm2 = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm2.initialize();
             const result2 = await pm2.fetch({ update: true });
-            
+
             expect(result2.fetchedCount).toBe(1);
             expect(result2.skippedCount).toBe(0);
         });
@@ -192,9 +193,9 @@ describe('PackageManager Integration', () => {
                 JSON.stringify(multiDeps, null, 2)
             );
 
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             const result = await pm.fetch({ filter: ['TEST'] });
 
             expect(result.fetchedCount).toBe(1);
@@ -207,17 +208,17 @@ describe('PackageManager Integration', () => {
 
     describe('Error handling', () => {
         it('should throw when project path does not exist', async () => {
-            const pm = new PackageManager(path.join(cachePath, 'nonexistent'), cachePath);
-            
+            const pm = new PackageManager(path.join(cachePath, 'nonexistent'), TEST_IDE_VERSION, undefined, cachePath);
+
             await expect(pm.initialize()).rejects.toThrow();
         });
 
         it('should throw when dependencies.json is missing', async () => {
             // Remove dependencies.json
             await fs.rm(path.join(projectPath, 'Project', 'Sources', 'dependencies.json'));
-            
-            const pm = new PackageManager(projectPath, cachePath);
-            
+
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
+
             await expect(pm.initialize()).rejects.toThrow();
         });
 
@@ -234,9 +235,9 @@ describe('PackageManager Integration', () => {
                 downloadReleaseAsset: vi.fn().mockRejectedValue(new Error('Network error')),
             }) as unknown as GithubFetcher);
 
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             const result = await pm.fetch();
 
             expect(result.errors.length).toBeGreaterThan(0);
@@ -246,9 +247,9 @@ describe('PackageManager Integration', () => {
 
     describe('Cache structure', () => {
         it('should create cache in OUTPUT folder with correct structure', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             await pm.fetch();
 
             // Verify cache folder was created
@@ -262,9 +263,9 @@ describe('PackageManager Integration', () => {
         });
 
         it('should save metadata for cached dependency', async () => {
-            const pm = new PackageManager(projectPath, cachePath);
+            const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
             await pm.initialize();
-            
+
             await pm.fetch();
 
             // Check for metadata file
