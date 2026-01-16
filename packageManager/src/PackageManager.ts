@@ -12,6 +12,7 @@ import {
     FetchResult
 } from './types';
 import { GithubFetcher } from './dependency/GithubFetcher';
+import { Version } from './version/Version';
 
 /**
  * Main package manager orchestrator
@@ -25,9 +26,9 @@ export class PackageManager {
     private dependencies: DependenciesFile | null = null;
     private lock: LockFile | null = null;
     private reconciled: Map<string, GitHubDependency> = new Map();
-    private ideVersion: string | null = null;
+    private ideVersion: Version;
 
-    constructor(projectPath: string, cacheFolder?: string, authToken?: string, ideVersion?: string) {
+    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string) {
         // Validate inputs
         if (!projectPath || typeof projectPath !== 'string') {
             throw new Error('Project path is required and must be a string');
@@ -42,7 +43,7 @@ export class PackageManager {
         this.configReader = new ConfigReader(projectPath);
         this.cacheManager = new CacheManager(cacheFolder);
         this.fetcher = new GithubFetcher(authToken);
-        this.ideVersion = ideVersion || null;
+        this.ideVersion = new Version(ideVersion);
     }
 
     /**
@@ -199,7 +200,7 @@ export class PackageManager {
 
                 const lockEntry = this.lock!.dependencies[name];
                 const fetched = await dep.fetch(
-                    this.ideVersion || '',
+                    this.ideVersion,
                     this.environment!,
                     lockEntry,
                     this.fetcher!,
@@ -333,7 +334,7 @@ export class PackageManager {
             if (lockEntry) {
                 await dep.checkOutdated(
                     this.fetcher,
-                    this.ideVersion || '',
+                    this.ideVersion,
                     lockEntry,
                     this.cacheManager
                 );

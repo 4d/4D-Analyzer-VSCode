@@ -9,7 +9,7 @@ export class Range {
   private range: semver.Range;
   private rangeSpec: string;
 
-  constructor(rangeSpec: string, ideVersion?: string) {
+  constructor(rangeSpec: string, ideVersion?: Version) {
     this.rangeSpec = rangeSpec;
 
     // Handle special keywords
@@ -17,7 +17,7 @@ export class Range {
       this.range = new semver.Range('*');
     } else if (rangeSpec.toLowerCase() === '4d') {
       // Match IDE version
-      const version = ideVersion || this.getIDEVersion();
+      const version = ideVersion?.toIDEString();
       this.range = new semver.Range(`^${version}`);
     } else {
       // Parse as semver range
@@ -119,23 +119,12 @@ export class Range {
     return this.rangeSpec;
   }
 
-  /**
-   * Get IDE version from environment or use default
-   */
-  private getIDEVersion(): string {
-    // Check environment variable
-    if (process.env.IDE_VERSION) {
-      return process.env.IDE_VERSION;
-    }
 
-    // Default to 21.2.0 (2-digit year format)
-    return '21.2.0';
-  }
 
   /**
    * Static factory method
    */
-  static parse(rangeSpec: string, ideVersion?: string): Range | null {
+  static parse(rangeSpec: string, ideVersion?: Version): Range | null {
     try {
       return new Range(rangeSpec, ideVersion);
     } catch {
@@ -153,7 +142,7 @@ export class Range {
   /**
    * Check if a version satisfies a range (static helper)
    */
-  static satisfies(version: string, rangeSpec: string, ideVersion?: string): boolean {
+  static satisfies(version: string, rangeSpec: string, ideVersion?: Version): boolean {
     const range = new Range(rangeSpec, ideVersion);
     return range.satisfiedBy(version);
   }
@@ -161,7 +150,7 @@ export class Range {
   /**
    * Find max satisfying version (static helper)
    */
-  static maxSatisfying(versions: string[], rangeSpec: string, ideVersion?: string): string | null {
+  static maxSatisfying(versions: string[], rangeSpec: string, ideVersion?: Version): string | null {
     const range = new Range(rangeSpec, ideVersion);
     return range.maxSatisfying(versions);
   }
@@ -169,7 +158,7 @@ export class Range {
   /**
    * Find min satisfying version (static helper)
    */
-  static minSatisfying(versions: string[], rangeSpec: string, ideVersion?: string): string | null {
+  static minSatisfying(versions: string[], rangeSpec: string, ideVersion?: Version): string | null {
     const range = new Range(rangeSpec, ideVersion);
     return range.minSatisfying(versions);
   }

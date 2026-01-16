@@ -4,6 +4,7 @@ import type { DependencySpec, LockEntry, Environment } from '../src/types';
 import type { Fetcher } from '../src/dependency/Fetcher';
 import type { CacheManager } from '../src/cache/CacheManager';
 import * as fs from 'fs/promises';
+import { Version } from '../src/version/Version';
 
 describe('GitHubDependency', () => {
 
@@ -157,7 +158,7 @@ describe('GitHubDependency', () => {
       const spec: DependencySpec = { github: 'invalid', version: '^1.0.0' };
       const dep = new GitHubDependency(spec, true);
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(false);
       expect(mockFetcher.downloadReleaseAsset).not.toHaveBeenCalled();
@@ -172,7 +173,7 @@ describe('GitHubDependency', () => {
         { id: 1, tag_name: 'v1.0.0', name: 'v1.0.0', draft: false, prerelease: false },
       ]);
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(false);
       expect(lock.update?.errors).toBeDefined();
@@ -188,7 +189,7 @@ describe('GitHubDependency', () => {
         getListDependencies: vi.fn().mockResolvedValue({ dependencies: {} }),
       });
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager, false);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager, false);
 
       expect(result).toBe(false); // Skipped, already cached
       expect(lock.found).toBe(true);
@@ -203,7 +204,7 @@ describe('GitHubDependency', () => {
       // Mock getPackage to return null (not cached)
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(true);
       expect(mockFetcher.downloadReleaseAsset).toHaveBeenCalledWith('owner', 'repo', 'v1.1.0');
@@ -223,7 +224,7 @@ describe('GitHubDependency', () => {
         getListDependencies: vi.fn().mockResolvedValue({ dependencies: {} }),
       });
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager, true);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager, true);
 
       expect(result).toBe(true);
       expect(mockFetcher.downloadReleaseAsset).toHaveBeenCalled();
@@ -236,7 +237,7 @@ describe('GitHubDependency', () => {
 
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
 
-      await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(lock.htmlURL).toBe('https://github.com/owner/repo/releases/tag/v1.1.0');
       expect(lock.archiveURL).toBe('https://github.com/owner/repo/releases/download/v1.1.0/repo.zip');
@@ -250,7 +251,7 @@ describe('GitHubDependency', () => {
 
       mockEnv.github.htmlURL = 'https://github.mycompany.com';
 
-      await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(lock.htmlURL).toBe('https://github.mycompany.com/owner/repo/releases/tag/v1.1.0');
     });
@@ -262,7 +263,7 @@ describe('GitHubDependency', () => {
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
       mockFetcher.downloadReleaseAsset = vi.fn().mockRejectedValue(new Error('Network error'));
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(false);
       expect(lock.found).toBe(false);
@@ -276,7 +277,7 @@ describe('GitHubDependency', () => {
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
       mockCacheManager.extractArchive = vi.fn().mockRejectedValue(new Error('Extraction failed'));
 
-      const result = await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(false);
       expect(lock.found).toBe(false);
@@ -295,7 +296,7 @@ describe('GitHubDependency', () => {
         }),
       });
 
-      await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager, false);
+      await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager, false);
 
       expect(lock.dependencies).toEqual({
         'subDep': { github: 'other/subdep', version: '^1.0.0' }
@@ -308,7 +309,7 @@ describe('GitHubDependency', () => {
 
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
 
-      await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(lock.tag).toBe('v2.0.0-beta');
       expect(mockFetcher.getReleases).not.toHaveBeenCalled();
@@ -322,7 +323,7 @@ describe('GitHubDependency', () => {
       vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
       mockFetcher.getLatestRelease = vi.fn().mockResolvedValue({ tag_name: 'v3.0.0' });
 
-      await dep.fetch('20.0.0', mockEnv, lock, mockFetcher, mockCacheManager);
+      await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(lock.tag).toBe('v3.0.0');
       expect(mockFetcher.getLatestRelease).toHaveBeenCalledWith('owner', 'repo');

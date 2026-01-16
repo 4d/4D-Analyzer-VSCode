@@ -286,8 +286,8 @@ export class Ctx {
             const parsed = vscode.Uri.parse(params.uri).fsPath;
             const packageFolder = path.dirname(path.dirname(parsed));
 
-            const packageManager = new PackageManager(packageFolder, undefined, session.accessToken,
-                this.get4DVersion().toString(false).replace("R", "."));
+            const packageManager = new PackageManager(packageFolder, session.accessToken,
+                this.get4DVersion().toString(false), undefined);
             await packageManager.initialize();
             let options: FetchOptions = {};
             packageManager.fetch(options).then(() => {

@@ -10,6 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { Dependency } from './Dependency';
+import { Version } from '../version/Version';
 
 /**
  * GitHub-based dependency implementation
@@ -34,7 +35,7 @@ export class GitHubDependency extends Dependency {
    * Fetch this dependency
    */
   async fetch(
-    ideVersion: string,
+    ideVersion: Version,
     env: Environment,
     lock: LockEntry,
     fetcher: Fetcher,
@@ -132,7 +133,7 @@ export class GitHubDependency extends Dependency {
    */
   async checkOutdated(
     fetcher: Fetcher,
-    ideVersion: string,
+    ideVersion: Version,
     lock: LockEntry,
     cacheManager: CacheManager
   ): Promise<void> {
@@ -146,9 +147,7 @@ export class GitHubDependency extends Dependency {
 
       // Get current range
       const rangeSpec = this.version || 'latest';
-      const range = rangeSpec.toLowerCase() === '4d'
-        ? new Range(`^${ideVersion}`)
-        : new Range(rangeSpec);
+      const range = new Range(rangeSpec, ideVersion)
 
       // Get available versions
       const releases = await fetcher.getReleases(owner, repo);
