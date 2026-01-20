@@ -147,9 +147,16 @@ export class Dependency {
 
         // If "4d" keyword, match IDE version
         if (this._version.toLowerCase() === '4d') {
-            const range = new Range(this._version, ideVersion);
-            return await this.resolveRange(fetcher, owner, repo, range);
 
+            //main means latest
+            if (ideVersion.isMain) {
+                const release = await fetcher.getLatestRelease(owner, repo);
+                return release.tag_name;
+            }
+            else {
+                const range = new Range(this._version, ideVersion);
+                return await this.resolveRange(fetcher, owner, repo, range);
+            }
         }
 
         // Parse as version range
@@ -183,8 +190,8 @@ export class Dependency {
 
         //Find matching tag name
         let index = 0;
-        for(const tag of tags) {
-            if(tag == tagFound) {
+        for (const tag of tags) {
+            if (tag == tagFound) {
                 return validReleases[index].tag_name;
             }
             index++;
@@ -319,7 +326,7 @@ export class Dependency {
         return "";
     }
 
-    async getPackage(root : string) : Promise<Package|null> {
+    async getPackage(root: string): Promise<Package | null> {
         return Package.Create(root)
     }
 

@@ -27,8 +27,9 @@ export class PackageManager {
     private lock: LockFile | null = null;
     private reconciled: Map<string, GitHubDependency> = new Map();
     private ideVersion: Version;
+    private callback?: (message: string) => void;
 
-    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string) {
+    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string, callback?: (message: string) => void) {
         // Validate inputs
         if (!projectPath || typeof projectPath !== 'string') {
             throw new Error('Project path is required and must be a string');
@@ -36,16 +37,13 @@ export class PackageManager {
         if (!path.isAbsolute(projectPath)) {
             throw new Error('Project path must be an absolute path');
         }
-        if (ideVersion && !/^\d+\.\d+(\.\d+)?$/.test(ideVersion)) {
-            throw new Error('IDE version must be in format X.Y or X.Y.Z (e.g., "20.0" or "20.0.1")');
-        }
 
         this.configReader = new ConfigReader(projectPath);
         this.cacheManager = new CacheManager(cacheFolder);
         this.fetcher = new GithubFetcher(authToken);
         this.ideVersion = new Version(ideVersion);
+        this.callback = callback;
     }
-
     /**
      * Read all configuration files and prepare for fetching
      */
@@ -199,6 +197,7 @@ export class PackageManager {
                 }
 
                 const lockEntry = this.lock!.dependencies[name];
+                this.callback?.(name);
                 const fetched = await dep.fetch(
                     this.ideVersion,
                     this.environment!,
