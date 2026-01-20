@@ -12,6 +12,12 @@ export class Version {
   public raw: string;
 
   constructor(versionString: string) {
+
+    //No version means main
+    if (versionString === "0") {
+      versionString = "0.0.0";
+      this.isMain = true;
+    }
     this.raw = versionString;
 
     // Clean version string (remove 'v' prefix)

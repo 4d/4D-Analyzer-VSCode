@@ -17,7 +17,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
-import { FetchOptions, FetchResult, PackageManager } from "@4dsas/package-manager";
+import { FetchOptions, PackageManager } from "@4dsas/package-manager";
 import * as fsSync from 'fs';
 
 export type CommandCallback = {
@@ -286,14 +286,25 @@ export class Ctx {
             const parsed = vscode.Uri.parse(params.uri).fsPath;
             const packageFolder = path.dirname(path.dirname(parsed));
 
-            const packageManager = new PackageManager(packageFolder, session.accessToken,
-                this.get4DVersion().toString(false), undefined);
-            await packageManager.initialize();
-            let options: FetchOptions = {};
-            packageManager.fetch(options).then(() => {
-                statusBarItem.text = "$(sync~spin) Install components...";
-                this._client.sendNotification(ext.notif_installComponents, params);
-            });
+            try {
+                Logger.debugLog("4D Version", this.get4DVersion().toString(false));
+
+                const packageManager = new PackageManager(packageFolder,
+                    this.get4DVersion().toString(false), session.accessToken, undefined, (dependencyName) => {
+                        statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
+                    });
+                await packageManager.initialize();
+                let options: FetchOptions = {};
+                packageManager.fetch(options).then(() => {
+                    statusBarItem.text = "$(sync~spin) Install components...";
+                    this._client.sendNotification(ext.notif_installComponents, params);
+                });
+            } catch (error) {
+                statusBarItem.hide();
+                Logger.debugLog(error);
+                vscode.window.showErrorMessage(error);
+            }
+
             return true;
         });
 
