@@ -485,6 +485,31 @@ export class Ctx {
             await this.restart();
         }, 500); // 500ms debounce
     }
+
+    /**
+     * Send a command to the LSP server and receive a response
+     * This method is used by other extensions to communicate with the LSP server
+     * @param command The command name/method to send to the LSP server
+     * @param params The parameters to send with the command
+     * @returns A promise that resolves with the response from the LSP server
+     */
+    public async sendCommandToLSP<T = any>(command: string, params?: any): Promise<T> {
+        if (!this._client) {
+            throw new Error('Language client is not initialized');
+        }
+
+        if (!this._client.isRunning()) {
+            throw new Error('Language client is not running');
+        }
+
+        try {
+            const response = await this._client.sendRequest<T>(command, params);
+            return response;
+        } catch (error) {
+            Logger.debugLog(`Error sending command '${command}' to LSP: ${error}`);
+            throw error;
+        }
+    }
 }
 
 export interface Disposable {
