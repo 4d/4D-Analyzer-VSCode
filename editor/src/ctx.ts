@@ -324,16 +324,14 @@ export class Ctx {
     }
 
     dependencyWatcher(project_id: string) {
+        Logger.debugLog("Watch dependencies for ", project_id);
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
         const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
 
         const disposable = watcher.onDidChange(async uri => {
-            const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
-            if (fetchInfo.shouldFetch) {
-                this._debouncedRestart();
-            }
-
+            Logger.debugLog("Watch dependencies for ", project_id, " changed ", uri);
+            this._debouncedRestart();
         });
         this._listWatcher.push(disposable);
         this._extensionContext.subscriptions.push(watcher, disposable);
