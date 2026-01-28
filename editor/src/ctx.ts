@@ -264,8 +264,9 @@ export class Ctx {
             vscode.StatusBarAlignment.Left,
             0
         );
+
         this._client.onNotification(ext.notif_needFetchNotification, async (params) => {
-            Logger.debugLog("Fetch...", params.uri);
+            Logger.log("Fetch...", params.uri);
             statusBarItem.text = "$(sync~spin) Fetch components ...";
             statusBarItem.show();
 
@@ -287,7 +288,6 @@ export class Ctx {
             const packageFolder = path.dirname(path.dirname(parsed));
 
             try {
-                Logger.debugLog("4D Version", this.get4DVersion().toString(false));
 
                 const packageManager = new PackageManager(packageFolder,
                     this.get4DVersion().toString(false), session.accessToken, undefined, (dependencyName) => {
@@ -301,7 +301,7 @@ export class Ctx {
                 });
             } catch (error) {
                 statusBarItem.hide();
-                Logger.debugLog(error);
+                Logger.log(error);
                 vscode.window.showErrorMessage(error);
             }
 
@@ -310,13 +310,16 @@ export class Ctx {
 
         this._client.onNotification(ext.notif_installComponents_before, async (params) => {
             statusBarItem.text = "$(sync~spin) Install components...";
+            Logger.log("Install components...");
             statusBarItem.show();
             this._client.sendNotification(ext.notif_installComponents, params);
-            this.dependencyWatcher(params.uri);
             return true;
         });
 
-        this._client.onNotification(ext.notif_installComponents_done, async (_params) => {
+        this._client.onNotification(ext.notif_installComponents_done, async (params) => {
+            Logger.log("Install components done", params.uri);
+            this.dependencyWatcher(params.uri);
+
             statusBarItem.hide();
             return true;
         });
@@ -324,13 +327,14 @@ export class Ctx {
     }
 
     dependencyWatcher(project_id: string) {
-        Logger.debugLog("Watch dependencies for ", project_id);
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
         const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
+        Logger.log("Watch dependencies for ", dependencyFile.baseUri);
 
         const disposable = watcher.onDidChange(async uri => {
-            Logger.debugLog("Watch dependencies for ", project_id, " changed ", uri);
+            Logger.log("File has changed ", uri);
+
             this._debouncedRestart();
         });
         this._listWatcher.push(disposable);
@@ -356,7 +360,6 @@ export class Ctx {
             const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
 
             const envDisposable = envWatcher.onDidChange(async uri => {
-                //const fetchInfo = await this._client.sendRequest(ext.checkNeedFetch, TextDocumentIdentifier.create(project_id));
                 this._debouncedRestart();
             });
 

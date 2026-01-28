@@ -157,23 +157,31 @@ export class Config {
     }
 
     private async onDidChangeActiveTextEditor(event: vscode.TextEditor) {
-        if(event)
-        {
-            await this._ctx?.client.sendNotification("experimental/didChangeActiveTextEditor", 
-            this._ctx?.client.code2ProtocolConverter.asTextDocumentIdentifier(
-                event.document));
+        if (!event) {
+            return;
         }
+
+        const client = this._ctx?.client;
+        if (!client) {
+            return;
+        }
+
+        await client.sendNotification("experimental/didChangeActiveTextEditor",
+            client.code2ProtocolConverter.asTextDocumentIdentifier(event.document));
     }
 
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
+        const client = this._ctx?.client;
 
         const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
         );
-        await this._ctx?.client.sendNotification(lc.DidChangeConfigurationNotification.type, {
-            settings: this.cfg,
-        });
+        if (client) {
+            await client.sendNotification(lc.DidChangeConfigurationNotification.type, {
+                settings: this.cfg,
+            });
+        }
 
 
         if (!requiresReloadOpt) return;

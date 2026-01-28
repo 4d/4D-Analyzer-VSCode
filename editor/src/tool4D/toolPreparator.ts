@@ -65,8 +65,8 @@ export class ToolPreparator {
             const versions = getDirectories(inRootFolder)
                 .map(version => LabeledVersion.fromString(version))
                 .filter(version => labeledVersion.channel === "beta" ? true : version.channel === "stable")
-                .sort((a, b) => { if(a.version == b.version){ return a.releaseVersion - b.releaseVersion } 
-                else { return a.version - b.version } });
+                .sort((a, b) => { if(a.version == b.version){ return a.releaseVersion - b.releaseVersion; } 
+                else { return a.version - b.version; } });
 
             if (versions.length > 0) {
                 localLabelVersion = versions[versions.length - 1];
@@ -161,7 +161,7 @@ export class ToolPreparator {
         const labeledVersionWanted: LabeledVersion = this._versionWanted.clone();
         const labelVersionAvailableLocally = this._getTool4DAvailableLocally(tool4DMainFolder, labeledVersionWanted);
 
-        Logger.get().log("Version wanted", this._versionWanted);
+        Logger.log("Version wanted", this._versionWanted);
 
 
         let lastMajorVersion = labeledVersionWanted.version;
@@ -178,7 +178,7 @@ export class ToolPreparator {
                 const hasRRelease = await this._APIManager.HasRReleaseVersionAvailable(lastMajorVersion, labeledVersionWanted.channel);
                 labeledVersionWanted.version = lastMajorVersion;
                 labeledVersionWanted.isRRelease = hasRRelease;
-                Logger.get().log("lastVersion major version available is", labeledVersionWanted.version);
+                Logger.log("lastVersion major version available is", labeledVersionWanted.version);
             }
 
 
@@ -202,8 +202,8 @@ export class ToolPreparator {
                 }
             }
 
-            Logger.get().log("Version available cloud", labeledVersionCloud);
-            Logger.get().log("Version available locally", labelVersionAvailableLocally);
+            Logger.log("Version available cloud", labeledVersionCloud);
+            Logger.log("Version available locally", labelVersionAvailableLocally);
             if (labelVersionAvailableLocally.changelist > 0
                 && labeledVersionCloud.compare(labelVersionAvailableLocally) > 0) {
                 result.updateAvailable = true;
@@ -223,7 +223,7 @@ export class ToolPreparator {
         progress += 10;
         inProgress?.report({ message: `Prepare version ${labelVersionToGet.toString(true)}`, increment: 10 });
 
-        Logger.get().log("Version to get", labelVersionToGet);
+        Logger.log("Version to get", labelVersionToGet);
 
         if (os.type() === "Linux") {
             if (labelVersionToGet.compare(InfoPlistManager.fromExePath(this._getTool4DExe("")).getVersion()) === 0) {
@@ -259,7 +259,7 @@ export class ToolPreparator {
 
 
         tool4DExecutable = this._getTool4DExe(tool4D);
-        Logger.get().log("Exe path", tool4DExecutable);
+        Logger.log("Exe path", tool4DExecutable);
 
         if (!existsSync(tool4DExecutable)) {
             if (!(existsSync(tarPath) || existsSync(debPath))) {

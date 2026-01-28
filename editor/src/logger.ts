@@ -27,11 +27,11 @@ export class Logger {
 
     }
 
-    public log(...o: any) {
-        
+    public static log(...o: any) {
+        let logger = Logger.get();
         const prefix = `[${new Date().toLocaleString()}]`;
-        this._log.append(prefix + ' ');
-        this._logInOutputChannel(...o);
+        logger._log.append(prefix + ' ');
+        logger._logInOutputChannel(...o);
     }
 
     public static debugLog(...inArgs) {
