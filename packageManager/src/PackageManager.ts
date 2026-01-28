@@ -71,7 +71,7 @@ export class PackageManager {
         }
 
         // Reconcile dependencies
-        this.reconcile(false);
+        this.reconcile(true);
     }
 
     /**
