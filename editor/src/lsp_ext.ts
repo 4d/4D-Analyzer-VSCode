@@ -33,3 +33,7 @@ export const notif_installComponents_done = new lc.NotificationType<lc.TextDocum
 export const notif_installComponents_before = new lc.NotificationType<lc.TextDocumentIdentifier>(
     "dependency/installComponents/before"
 );
+
+export const prepare_database = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "experimental/databaseInitialize"
+);

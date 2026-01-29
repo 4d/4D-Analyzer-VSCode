@@ -18,7 +18,6 @@
           "--extensionDevelopmentPath=${workspaceFolder}/editor",
           "--extensionTestsPath=${workspaceFolder}/editor/out/test/index"
         ],
-        "outFiles": ["${workspaceFolder}/out/test/**/*.js"]
       },
         {
         "name": "Launch Extension Debug",
