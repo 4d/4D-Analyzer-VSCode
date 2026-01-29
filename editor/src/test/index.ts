@@ -35,7 +35,8 @@ export async function run(): Promise<void> {
 	loadArgs(testsRoot);
 	const currentVersion: string = process.env["VERSION_4D"];
 	const tests = {
-		"format.test.js": "20R3"
+		"format.test.js": "20R3",
+		"init.test.js": "21R3"
 	};
 	
 	const g = new glob.Glob('**.test.js', { cwd: testsRoot });

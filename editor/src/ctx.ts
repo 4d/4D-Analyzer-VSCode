@@ -34,6 +34,7 @@ export class Ctx {
     private _listWatcher = [] as vscode.Disposable[]; //watcher to dispose
     private _isRestarting = false;
     private _restartDebounceTimer: NodeJS.Timeout | null = null;
+
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
@@ -326,6 +327,25 @@ export class Ctx {
         this._client.start();
     }
 
+    prepare_database(DBID : string, callback: () => void) {
+        // Normalize the DBID URI for comparison
+        const normalizedDBID = vscode.Uri.parse(DBID).toString();
+        
+        // Set up the notification handler before sending the request
+        const disposable = this._client.onNotification(ext.notif_installComponents_done, async (params) => {
+            // Check if this notification is for the database we're preparing
+            // Normalize both URIs before comparing
+            const normalizedParamsUri = vscode.Uri.parse(params.uri).toString();
+            if (normalizedParamsUri === normalizedDBID) {
+                disposable.dispose(); // Clean up handler after it's called once
+                callback();
+            }
+        });
+
+        // Send the prepare_database notification to the LSP server
+        this._client.sendNotification(ext.prepare_database, { uri: DBID });
+    }
+
     dependencyWatcher(project_id: string) {
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
@@ -485,6 +505,31 @@ export class Ctx {
             this._restartDebounceTimer = null;
             await this.restart();
         }, 500); // 500ms debounce
+    }
+
+    /**
+ * Send a command to the LSP server and receive a response
+ * This method is used by other extensions to communicate with the LSP server
+ * @param command The command name/method to send to the LSP server
+ * @param params The parameters to send with the command
+ * @returns A promise that resolves with the response from the LSP server
+ */
+    public async sendCommandToLSP<T = any>(command: string, params?: any): Promise<T> {
+        if (!this._client) {
+            throw new Error('Language client is not initialized');
+        }
+
+        if (!this._client.isRunning()) {
+            throw new Error('Language client is not running');
+        }
+
+        try {
+            const response = await this._client.sendRequest<T>(command, params);
+            return response;
+        } catch (error) {
+            Logger.debugLog(`Error sending command '${command}' to LSP: ${error}`);
+            throw error;
+        }
     }
 }
 
