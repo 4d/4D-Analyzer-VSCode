@@ -522,7 +522,7 @@ export class Ctx {
  * @param params The parameters to send with the command
  * @returns A promise that resolves with the response from the LSP server
  */
-    public async sendCommandToLSP<T = any>(command: string, params?: any): Promise<T> {
+    public async sendCommandToLSP<T = any>(command: string, uri : string, params? : any): Promise<T> {
         if (!this._client) {
             throw new Error('Language client is not initialized');
         }
@@ -532,7 +532,7 @@ export class Ctx {
         }
 
         try {
-            const response = await this._client.sendRequest<T>(command, params);
+            const response = await this._client.sendRequest<T>(command, {uri : uri, params: params});
             return response;
         } catch (error) {
             Logger.debugLog(`Error sending command '${command}' to LSP: ${error}`);
