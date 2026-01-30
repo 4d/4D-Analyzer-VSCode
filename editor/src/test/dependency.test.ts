@@ -18,6 +18,6 @@ async function testListDepencies(docUri: vscode.Uri) {
     const ext = vscode.extensions.getExtension('4D.4d-analyzer')!;
     const api = await ext.activate();
     await api.init(path);
-    const list = await api.sendCommand("dependency/componentsLoaded", {uri : path});
+    const list = await api.sendCommand("dependency/componentsLoaded", path);
     assert(list.components.length > 0);
 } 

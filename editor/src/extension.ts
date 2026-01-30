@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { ExtensionContext } from 'vscode';
+import { ExtensionContext, Uri } from 'vscode';
 import { Ctx } from './ctx';
 import { Logger } from './logger';
 
@@ -34,9 +34,8 @@ export function activate(context: ExtensionContext): ExtensionAPI {
 
 	// Return API for other extensions
 	return {
-		sendCommand: async <T = any>(command: string, params?: any): Promise<T> => {
-			Logger.debugLog("Send message");
-			return ctx.sendCommandToLSP<T>(command, params);
+		sendCommand: async <T = any>(command: string, uri: string, params? : any): Promise<T> => {
+			return ctx.sendCommandToLSP<T>(command, uri, params);
 		},
 		init: async (projectID): Promise<boolean> => {
 			return new Promise<boolean>((resolve) => {
