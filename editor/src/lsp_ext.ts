@@ -34,6 +34,16 @@ export const notif_installComponents_before = new lc.NotificationType<lc.TextDoc
     "dependency/installComponents/before"
 );
 
-export const prepare_database = new lc.NotificationType<lc.TextDocumentIdentifier>(
+export interface PrepareDBInfo {
+    valid: boolean;
+    id: lc.TextDocumentIdentifier;
+}
+
+
+export const prepare_database = new lc.RequestType<lc.TextDocumentIdentifier, PrepareDBInfo, void>(
     "experimental/databaseInitialize"
+);
+
+export const prepare_components = new lc.NotificationType<lc.TextDocumentIdentifier>(
+    "experimental/prepareComponents"
 );

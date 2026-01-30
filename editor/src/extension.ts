@@ -40,8 +40,8 @@ export function activate(context: ExtensionContext): ExtensionAPI {
 		},
 		init: async (projectID): Promise<boolean> => {
 			return new Promise<boolean>((resolve) => {
-				ctx.prepare_database(projectID, () => {
-					resolve(true);
+				ctx.prepare_database(projectID, (success: boolean) => {
+					resolve(success);
 				});
 			});
 		}
