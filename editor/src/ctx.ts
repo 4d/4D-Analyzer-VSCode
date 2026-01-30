@@ -7,7 +7,6 @@ import {
     LanguageClient,
     LanguageClientOptions,
     StreamInfo,
-    TextDocumentIdentifier,
 } from 'vscode-languageclient/node';
 import * as ext from "./lsp_ext";
 
@@ -327,23 +326,32 @@ export class Ctx {
         this._client.start();
     }
 
-    prepare_database(DBID : string, callback: () => void) {
-        // Normalize the DBID URI for comparison
-        const normalizedDBID = vscode.Uri.parse(DBID).toString();
-        
-        // Set up the notification handler before sending the request
-        const disposable = this._client.onNotification(ext.notif_installComponents_done, async (params) => {
-            // Check if this notification is for the database we're preparing
-            // Normalize both URIs before comparing
-            const normalizedParamsUri = vscode.Uri.parse(params.uri).toString();
-            if (normalizedParamsUri === normalizedDBID) {
-                disposable.dispose(); // Clean up handler after it's called once
-                callback();
-            }
-        });
+    async prepare_database(DBID : string, callback: (success: boolean) => void) {
 
-        // Send the prepare_database notification to the LSP server
-        this._client.sendNotification(ext.prepare_database, { uri: DBID });
+        
+        try {
+            const result = await this._client.sendRequest(ext.prepare_database, { uri: DBID });
+            
+            if (!result || !result.valid) {
+                callback(false);
+                return;
+            }
+
+            // Set up the notification handler to wait for the installation to complete
+            const disposable = this._client.onNotification(ext.notif_installComponents_done, async (params) => {
+
+                if (params.uri === result.id.uri) {
+                    disposable.dispose(); // Clean up handler after it's called once
+                    callback(true);
+                }
+            });
+
+            this._client.sendNotification(ext.prepare_components, { uri: result.id.uri });
+
+        } catch (error) {
+            Logger.debugLog(`Error sending prepare_database request: ${error}`);
+            callback(false);
+        }
     }
 
     dependencyWatcher(project_id: string) {

@@ -1,52 +1,72 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Extension Tests",
-        "type": "extensionHost",
-        "request": "launch",
-        "runtimeExecutable": "${execPath}",
-        "env": {
-          "ANALYZER_4D_PATH":"TO_REPLACE",
-          "VERSION_4D":"TO_REPLACE",
-          "TOOL4D_DOWNLOAD":"false"
-        },
-        "args": [
-          "--extensionDevelopmentPath=${workspaceFolder}/editor",
-          "--extensionTestsPath=${workspaceFolder}/editor/out/test/index"
-        ],
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "env": {
+        "ANALYZER_4D_PATH": "TO_REPLACE",
+        "VERSION_4D": "TO_REPLACE",
+        "TOOL4D_DOWNLOAD": "false"
       },
-        {
-        "name": "Launch Extension Debug",
-        "type": "extensionHost",
-        "request": "launch",
-        "runtimeExecutable": "${execPath}",
-        "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
-        "sourceMaps": true,
-        "env": {
-            "ANALYZER_4D_DEBUG":"true"
-        }
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editor",
+        "--extensionTestsPath=${workspaceFolder}/editor/out/test/index"
+      ],
+    },
+    {
+      "name": "Extension Specified test",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "env": {
+        "ANALYZER_4D_PATH": "TO_REPLACE",
+        "VERSION_4D": "TO_REPLACE",
+        "TOOL4D_DOWNLOAD": "false",
+        "SINGLE_TEST": "dependency.test.js"
       },
-      {
-        "name": "Launch Extension Debug Tool4D",
-        "type": "extensionHost",
-        "request": "launch",
-        "runtimeExecutable": "${execPath}",
-        "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
-        "env": {
-        }
-      },
-      {
-        "name": "Launch Extension",
-        "type": "extensionHost",
-        "request": "launch",
-        "runtimeExecutable": "${execPath}",
-        "args": ["--extensionDevelopmentPath=${workspaceFolder}/editor"],
-        "env": {
-        }
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editor",
+        "--extensionTestsPath=${workspaceFolder}/editor/out/test/index"
+      ],
+    },
+    {
+      "name": "Launch Extension Debug",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editor"
+      ],
+      "sourceMaps": true,
+      "env": {
+        "ANALYZER_4D_DEBUG": "true"
       }
-    ]
+    },
+    {
+      "name": "Launch Extension Debug Tool4D",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editor"
+      ],
+      "env": {}
+    },
+    {
+      "name": "Launch Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editor"
+      ],
+      "env": {}
+    }
+  ]
 }

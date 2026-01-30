@@ -18,12 +18,12 @@ function loadArgs(inRoot) {
 		}
 	} catch (parseError) {
 		console.error('Error parsing args.json:', parseError);
+		throw parseError;
 	}
-
 }
 export async function run(): Promise<void> {
 
-	
+
 	// Create the mocha test
 	const mocha = new Mocha({
 		ui: 'tdd',
@@ -32,22 +32,35 @@ export async function run(): Promise<void> {
 	mocha.timeout(100000);
 
 	const testsRoot = __dirname;
-	loadArgs(testsRoot);
 	const currentVersion: string = process.env["VERSION_4D"];
-	const tests = {
-		"format.test.js": "20R3",
-		"init.test.js": "21R3"
-	};
-	
-	const g = new glob.Glob('**.test.js', { cwd: testsRoot });
-	for await (const f of g) {
-		if (!currentVersion)
-			continue;
-		const versionFile = tests[f] ? tests[f] : currentVersion;
-		if (compareVersion(currentVersion, versionFile) >= 0) {
-			mocha.addFile(path.resolve(testsRoot, f));
+	const specified_test: string = process.env["SINGLE_TEST"];
+	if (!specified_test) {
+		const tests = {
+			"format.test.js": "20R3",
+			"dependency.test.js": "21R3"
+		};
+
+		try {
+			loadArgs(testsRoot);
+		} catch (e) {
+
+		}
+
+		const g = new glob.Glob('**.test.js', { cwd: testsRoot });
+		for await (const f of g) {
+			if (!currentVersion)
+				continue;
+			const versionFile = tests[f] ? tests[f] : currentVersion;
+			if (compareVersion(currentVersion, versionFile) >= 0) {
+				mocha.addFile(path.resolve(testsRoot, f));
+			}
 		}
 	}
+	else {
+		mocha.addFile(path.resolve(testsRoot, specified_test));
+
+	}
+
 
 	return new Promise((resolve, reject) => {
 		try {
