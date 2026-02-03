@@ -34,6 +34,9 @@
 				"extensions": [
 					".4dm"
 				],
+				"mimetypes": [
+					"text/x-4dm"
+				],
 				"configuration": "./language-configuration.json"
 			},
 			{
@@ -44,6 +47,9 @@
 				],
 				"extensions": [
 					".4qs"
+				],
+				"mimetypes": [
+					"text/x-4qs"
 				],
 				"configuration": "./language-configuration.json"
 			},
