@@ -281,6 +281,7 @@ export class Ctx {
             if (!session) {
                 //Error message user interface
                 vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
+                this._client.sendNotification(ext.notif_installComponents, params);
                 return;
             }
 
@@ -326,12 +327,12 @@ export class Ctx {
         this._client.start();
     }
 
-    async prepare_database(DBID : string, callback: (success: boolean) => void) {
+    async prepare_database(DBID: string, callback: (success: boolean) => void) {
 
-        
+
         try {
             const result = await this._client.sendRequest(ext.prepare_database, { uri: DBID });
-            
+
             if (!result || !result.valid) {
                 callback(false);
                 return;
@@ -354,6 +355,36 @@ export class Ctx {
         }
     }
 
+    async validateJsonDocument(uri: vscode.Uri): Promise<boolean> {
+        try {
+            const content = await vscode.workspace.fs.readFile(uri);
+            JSON.parse(Buffer.from(content).toString('utf-8'));
+            return true;
+        } catch (error) {
+            vscode.window.showErrorMessage(`Invalid JSON in ${uri.fsPath}: ${error.message}`);
+            return false;
+        }
+    }
+
+    async dependencyChange(uri: vscode.Uri) {
+        if (await this.validateJsonDocument(uri)) {
+            const userResponse = await vscode.window.showInformationMessage(
+                `The dependency have been changed, do you want to reload?`,
+                "Reload now"
+            );
+
+            if (userResponse === "Reload now") {
+                this._debouncedRestart();
+            }
+        }
+        else {
+            await vscode.window.showErrorMessage(
+                `The JSON file is not valid`
+
+            );
+        }
+    }
+
     dependencyWatcher(project_id: string) {
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
@@ -363,7 +394,7 @@ export class Ctx {
         const disposable = watcher.onDidChange(async uri => {
             Logger.log("File has changed ", uri);
 
-            this._debouncedRestart();
+            this.dependencyChange(uri);
         });
         this._listWatcher.push(disposable);
         this._extensionContext.subscriptions.push(watcher, disposable);
@@ -388,14 +419,13 @@ export class Ctx {
             const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
 
             const envDisposable = envWatcher.onDidChange(async uri => {
-                this._debouncedRestart();
+                this.dependencyChange(uri);
+
             });
 
             this._extensionContext.subscriptions.push(envWatcher, envDisposable);
             this._listWatcher.push(envDisposable);
         }
-
-
     }
 
     public start() {
@@ -522,7 +552,7 @@ export class Ctx {
  * @param params The parameters to send with the command
  * @returns A promise that resolves with the response from the LSP server
  */
-    public async sendCommandToLSP<T = any>(command: string, uri : string, params? : any): Promise<T> {
+    public async sendCommandToLSP<T = any>(command: string, uri: string, params?: any): Promise<T> {
         if (!this._client) {
             throw new Error('Language client is not initialized');
         }
@@ -532,7 +562,7 @@ export class Ctx {
         }
 
         try {
-            const response = await this._client.sendRequest<T>(command, {uri : uri, params: params});
+            const response = await this._client.sendRequest<T>(command, { uri: uri, params: params });
             return response;
         } catch (error) {
             Logger.debugLog(`Error sending command '${command}' to LSP: ${error}`);
