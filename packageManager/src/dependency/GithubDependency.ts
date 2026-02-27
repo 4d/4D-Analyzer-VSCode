@@ -21,7 +21,7 @@ export class GitHubDependency extends Dependency {
     let owner = "";
     let name = "";
     const split = spec.github?.split("/");
-    if (split && split.length == 2) {
+    if (split && split.length === 2) {
       owner = split[0];
       name = split[1];
     }
@@ -94,6 +94,10 @@ export class GitHubDependency extends Dependency {
         this,
         tag
       );
+
+      // Clean up temp file
+      await fs.rm(temp_file, { force: true }).catch(() => {});
+
       lock.path = dependencyPath;
       lock.found = true;
 
@@ -102,8 +106,9 @@ export class GitHubDependency extends Dependency {
       lock.htmlURL = `${htmlURL}/${owner}/${repo}/releases/tag/${tag}`;
       lock.archiveURL = `${htmlURL}/${owner}/${repo}/releases/download/${tag}/${repo}.zip`;
 
-      // Read sub-dependencies
-      const subDeps = await project?.getListDependencies();
+      // Read sub-dependencies from freshly extracted package
+      const extractedProject = await this.getPackage(dependencyPath);
+      const subDeps = await extractedProject?.getListDependencies();
       if (subDeps?.dependencies) {
         lock.dependencies = subDeps.dependencies;
       }
@@ -152,22 +157,30 @@ export class GitHubDependency extends Dependency {
       // Get available versions
       const releases = await fetcher.getReleases(owner, repo);
       const validReleases = releases.filter(r => !r.draft && !r.prerelease);
-      const tags = validReleases.map(r => r.tag_name);
+
+      // Normalize tags for semver comparison (replace R-release format)
+      const normalizedTags = validReleases.map(r => r.tag_name.replace("R", "."));
 
       // Find newest version in range
-      const wanted = range.maxSatisfying(tags);
+      const wantedNormalized = range.maxSatisfying(normalizedTags);
 
-      if (wanted && wanted !== lock.tag) {
-        lock.wanted = wanted;
-        lock.outdated = true;
-        lock.current = lock.tag;
-        const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(wanted));
+      if (wantedNormalized) {
+        // Map back to original tag name
+        const idx = normalizedTags.indexOf(wantedNormalized);
+        const wanted = idx >= 0 ? validReleases[idx].tag_name : wantedNormalized;
 
-        // Check if wanted version is in cache
-        const p = this.getPackage(dependencyLocation);
-        const wantedInCache = p != null;
+        if (wanted !== lock.tag) {
+          lock.wanted = wanted;
+          lock.outdated = true;
+          lock.current = lock.tag;
+          const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(wanted));
 
-        lock.wantedInCache = wantedInCache;
+          // Check if wanted version is in cache
+          const p = await this.getPackage(dependencyLocation);
+          const wantedInCache = p != null;
+
+          lock.wantedInCache = wantedInCache;
+        }
       }
     } catch (error: any) {
       if (!lock.update) {

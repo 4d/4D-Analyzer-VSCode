@@ -34,8 +34,9 @@ export class GithubFetcher implements Fetcher {
         const releases: GitHubRelease[] = [];
         let page = 1;
         const perPage = 100;
+        const maxPages = 50;
 
-        while (true) {
+        while (page <= maxPages) {
             const response = await this.octokit.repos.listReleases({
                 owner,
                 repo,

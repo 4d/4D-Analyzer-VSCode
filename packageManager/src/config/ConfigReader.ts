@@ -1,7 +1,8 @@
 import * as path from 'path';
-import * as fs from 'fs/promises'
+import * as fs from 'fs/promises';
 import * as os from 'os';
 import { DependenciesFile, EnvironmentFile, LockFile, UserPreferences, Environment, GitHubConfig, FetchConfig, UpdateConfig } from '../types';
+import { getDefaultCacheFolder } from '../utils';
 /**
  * Configuration file reader
  * Handles reading and parsing all configuration files
@@ -35,6 +36,9 @@ export class ConfigReader {
             
             return parsed;
         } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                return null;
+            }
             throw new Error(`Failed to read dependencies.json: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
@@ -75,7 +79,7 @@ export class ConfigReader {
      * Read dependencies-lock.json from userPreferences
      */
     async readLock(): Promise<LockFile | null> {
-        const lockFile = await this.getLockFilePath();
+        const lockFile = this.getLockFilePath();
 
         try {
             const content = await fs.readFile(lockFile, 'utf-8');
@@ -99,7 +103,7 @@ export class ConfigReader {
      * Write lock file
      */
     async writeLock(lock: LockFile): Promise<void> {
-        const lockFile = await this.getLockFilePath();
+        const lockFile = this.getLockFilePath();
         await fs.mkdir(path.dirname(lockFile), { recursive: true });
         await fs.writeFile(lockFile, JSON.stringify(lock, null, 2));
     }
@@ -108,7 +112,7 @@ export class ConfigReader {
      * Read dependencies-pref.json from userPreferences
      */
     async readUserPreferences(): Promise<UserPreferences> {
-        const prefFile = await this.getUserPreferencesPath('dependencies-pref.json');
+        const prefFile = this.getUserPreferencesPath('dependencies-pref.json');
 
         try {
             const content = await fs.readFile(prefFile, 'utf-8');
@@ -125,7 +129,7 @@ export class ConfigReader {
      * Write user preferences
      */
     async writeUserPreferences(prefs: UserPreferences): Promise<void> {
-        const prefFile = await this.getUserPreferencesPath('dependencies-pref.json');
+        const prefFile = this.getUserPreferencesPath('dependencies-pref.json');
         await fs.mkdir(path.dirname(prefFile), { recursive: true });
         await fs.writeFile(prefFile, JSON.stringify(prefs, null, 2));
     }
@@ -189,15 +193,14 @@ export class ConfigReader {
     /**
      * Get lock file path in userPreferences
      */
-    private async getLockFilePath(): Promise<string> {
+    private getLockFilePath(): string {
         return this.getUserPreferencesPath('dependencies-lock.json');
     }
 
     /**
      * Get user preferences directory path
      */
-    private async getUserPreferencesPath(filename: string): Promise<string> {
-        // Get username
+    private getUserPreferencesPath(filename: string): string {
         const username = os.userInfo().username;
 
         return path.join(
@@ -211,19 +214,7 @@ export class ConfigReader {
      * Get default cache folder based on platform
      */
     private getDefaultCacheFolder(): string {
-        const platform = os.platform();
-        const homeDir = os.homedir();
-
-        switch (platform) {
-            case 'darwin': // macOS
-                return path.join(homeDir, 'Library', 'Caches', '4D', 'Dependencies');
-            case 'win32': // Windows
-                return path.join(homeDir, 'AppData', 'Local', '4D', 'Dependencies');
-            case 'linux':
-                return path.join(homeDir, '.cache', '4d', 'dependencies');
-            default:
-                return path.join(homeDir, '.4d', 'dependencies');
-        }
+        return getDefaultCacheFolder();
     }
 
     /**
