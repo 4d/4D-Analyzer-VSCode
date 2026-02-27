@@ -8,6 +8,7 @@ import {
     LockEntry,
     DependencySpec,
     Environment,
+    ErrorMessage,
     FetchOptions,
     FetchResult
 } from './types';
@@ -347,12 +348,12 @@ export class PackageManager {
     /**
      * Collect all errors from lock file
      */
-    private collectErrors(): any[] {
+    private collectErrors(): ErrorMessage[] {
         if (!this.lock) {
             return [];
         }
 
-        const errors: any[] = [];
+        const errors: ErrorMessage[] = [];
         for (const [name, entry] of Object.entries(this.lock.dependencies)) {
             if (entry.update?.errors) {
                 errors.push(...entry.update.errors.map(e => ({ dependency: name, ...e })));
@@ -364,12 +365,12 @@ export class PackageManager {
     /**
      * Collect all warnings from lock file
      */
-    private collectWarnings(): any[] {
+    private collectWarnings(): ErrorMessage[] {
         if (!this.lock) {
             return [];
         }
 
-        const warnings: any[] = [];
+        const warnings: ErrorMessage[] = [];
         for (const [name, entry] of Object.entries(this.lock.dependencies)) {
             if (entry.update?.warnings) {
                 warnings.push(...entry.update.warnings.map(w => ({ dependency: name, ...w })));

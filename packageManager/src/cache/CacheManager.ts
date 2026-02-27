@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
-import * as fsSync from 'fs'
+import * as fsSync from 'fs';
 import AdmZip from 'adm-zip';
 import { Dependency } from '../dependency/Dependency';
+import { getDefaultCacheFolder } from '../utils';
 
 const TEMP_DIR_PREFIX = '4d-dep-';
 const MAC_RESOURCE_FILE_PREFIX = '._';
@@ -26,19 +27,7 @@ export class CacheManager {
    * Get default cache root based on platform
    */
   private getDefaultCacheRoot(): string {
-    const platform = os.platform();
-    const homeDir = os.homedir();
-
-    switch (platform) {
-      case 'darwin': // macOS
-        return path.join(homeDir, 'Library', 'Caches', '4D', 'Dependencies');
-      case 'win32': // Windows
-        return path.join(homeDir, 'AppData', 'Local', '4D', 'Dependencies');
-      case 'linux':
-        return path.join(homeDir, '.cache', '4d', 'dependencies');
-      default:
-        return path.join(homeDir, '.4d', 'dependencies');
-    }
+    return getDefaultCacheFolder();
   }
 
   /**
@@ -91,7 +80,7 @@ export class CacheManager {
         return fullPath;
       }
     }
-    return null
+    return null;
   }
 
   /**
@@ -105,9 +94,8 @@ export class CacheManager {
         .map(file => fs.rm(path.join(folderPath, file), { force: true }));
       
       await Promise.all(cleanupPromises);
-    } catch (error) {
-      // Log but don't fail if cleanup fails
-      throw new Error(`Failed to cleanup resource forks: ${error instanceof Error ? error.message : String(error)}`);
+    } catch {
+      // Ignore cleanup failures - resource fork files are non-essential
     }
   }
 

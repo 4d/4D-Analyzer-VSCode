@@ -1,11 +1,10 @@
 import { DependencySpec, LockEntry } from "../types";
 import { Fetcher } from "./Fetcher";
 import { Range } from "../version/Range";
-import { assert } from "console";
 import { Package } from "./Package";
 import { Version } from "../version/Version";
 
-export class Dependency {
+export abstract class Dependency {
 
     private _name: string = "";
     private _owner: string = "";
@@ -191,7 +190,7 @@ export class Dependency {
         //Find matching tag name
         let index = 0;
         for (const tag of tags) {
-            if (tag == tagFound) {
+            if (tag === tagFound) {
                 return validReleases[index].tag_name;
             }
             index++;
@@ -309,22 +308,14 @@ export class Dependency {
     }
 
     /**
- * Get the relative cache folder path
- * Returns: .github/owner/repo/encodedTag
- */
-    getCacheFolderPath(_tag: string): string {
-        assert(false);
-        return "";
-    }
+     * Get the relative cache folder path
+     */
+    abstract getCacheFolderPath(tag: string): string;
 
     /**
      * Get the relative metadata file path
-     * Returns: .github/owner/repo/encodedTag.json
      */
-    getMetadataFilePath(_tag: string): string {
-        assert(false);
-        return "";
-    }
+    abstract getMetadataFilePath(tag: string): string;
 
     async getPackage(root: string): Promise<Package | null> {
         return Package.Create(root)

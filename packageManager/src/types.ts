@@ -114,6 +114,7 @@ export interface LockFile {
  */
 export interface ErrorMessage {
   message: string;
+  dependency?: string;
 }
 
 /**

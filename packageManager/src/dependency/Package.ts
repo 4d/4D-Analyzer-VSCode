@@ -1,6 +1,6 @@
 
 import * as path from 'path';
-import * as fsSync from 'fs'
+import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import AdmZip from 'adm-zip';
 import { DependenciesFile } from '../types';
@@ -55,7 +55,7 @@ export class Package {
             if (entry != null) {
                 const buffer = entry.getData();
                 const content = buffer.toString("utf-8");
-                return JSON.parse(content) as DependenciesFile
+                return JSON.parse(content) as DependenciesFile;
             }
         }
         else {
