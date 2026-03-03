@@ -174,4 +174,30 @@ describe('Range', () => {
       expect(range.satisfiedBy('99.99.99')).toBe(true);
     });
   });
+
+  describe('4D keyword range', () => {
+    it('should build caret range from IDE version', () => {
+      const ide = new Version('21.2.0');
+      const range = new Range('4d', ide);
+      expect(range.satisfiedBy('21.2.0')).toBe(true);
+      expect(range.satisfiedBy('21.3.0')).toBe(true);
+      expect(range.satisfiedBy('21.9.9')).toBe(true);
+      expect(range.satisfiedBy('22.0.0')).toBe(false);
+      expect(range.satisfiedBy('20.0.0')).toBe(false);
+    });
+
+    it('should be case-insensitive', () => {
+      const ide = new Version('21.2.0');
+      const range = new Range('4D', ide);
+      expect(range.satisfiedBy('21.2.0')).toBe(true);
+      expect(range.satisfiedBy('22.0.0')).toBe(false);
+    });
+
+    it('should use maxSatisfying with 4d range', () => {
+      const ide = new Version('21.2.0');
+      const range = new Range('4d', ide);
+      const versions = ['20.0.0', '21.2.0', '21.3.0', '22.0.0'];
+      expect(range.maxSatisfying(versions)).toBe('21.3.0');
+    });
+  });
 });

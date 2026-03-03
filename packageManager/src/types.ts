@@ -33,6 +33,24 @@ export interface RepositoryInfo {
   ref?: string;
 }
 
+/**
+ * Options for PackageManager construction
+ */
+export interface PackageManagerOptions {
+  /** IDE version string (e.g. "21.2.0") */
+  ideVersion: string;
+  /** GitHub personal access token for authentication */
+  authToken?: string;
+  /** Custom cache folder path (absolute). Defaults to platform-specific location */
+  cacheFolder?: string;
+  /** Callback invoked with the dependency name when a fetch starts */
+  callback?: (message: string) => void;
+  /** Custom fetcher implementation. Defaults to GithubFetcher */
+  fetcher?: Fetcher;
+}
+
+import type { Fetcher } from './dependency/Fetcher';
+
 export interface VersionInfo {
   major: number;
   minor: number;
@@ -98,6 +116,17 @@ export interface FetchConfig {
 export interface UpdateConfig {
   maxCount?: number; // Default: 1
   delays?: Record<string, any>;
+}
+
+/**
+ * Metadata stored alongside cached dependencies
+ */
+export interface DependencyMetadata {
+  name: string;
+  github: string;
+  tag: string;
+  fetchedAt: string;
+  archiveSize: number;
 }
 
 /**
