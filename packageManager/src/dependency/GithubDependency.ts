@@ -85,7 +85,8 @@ export class GitHubDependency extends Dependency {
       );
 
       lock.archiveSize = archiveBuffer.byteLength;
-      const temp_file = await fs.mkdtemp(path.join(os.tmpdir(), 'dep-')) + '.zip';
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dep-'));
+      const temp_file = path.join(tempDir, 'archive.zip');
       await fs.writeFile(temp_file, Buffer.from(archiveBuffer));
 
       // Extract to cache
@@ -95,8 +96,8 @@ export class GitHubDependency extends Dependency {
         tag
       );
 
-      // Clean up temp file
-      await fs.rm(temp_file, { force: true }).catch(() => {});
+      // Clean up temp directory
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
 
       lock.path = dependencyPath;
       lock.found = true;
