@@ -3,15 +3,18 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import { DependenciesFile, EnvironmentFile, LockFile, UserPreferences, Environment, GitHubConfig, FetchConfig, UpdateConfig } from '../types';
 import { getDefaultCacheFolder } from '../utils';
+
 /**
  * Configuration file reader
  * Handles reading and parsing all configuration files
  */
 export class ConfigReader {
     private projectPath: string;
+    private preferencesFolder?: string;
 
-    constructor(projectPath: string) {
+    constructor(projectPath: string, preferencesFolder?: string) {
         this.projectPath = projectPath;
+        this.preferencesFolder = preferencesFolder;
     }
 
     /**
@@ -199,6 +202,10 @@ export class ConfigReader {
      * Get user preferences directory path
      */
     private getUserPreferencesPath(filename: string): string {
+        if (this.preferencesFolder) {
+            return path.join(this.preferencesFolder, filename);
+        }
+
         const username = os.userInfo().username;
 
         return path.join(

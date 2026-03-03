@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from "path";
 import * as fsSync from 'fs';
-import { LanguageClient } from 'vscode-languageclient/node';
+import { LanguageClient, TextDocumentIdentifier } from 'vscode-languageclient/node';
 import * as ext from "../lsp_ext";
 import { Logger } from "../logger";
 import { LabeledVersion } from '../labeledVersion';
@@ -21,7 +21,7 @@ export class DependencyManager {
 
     public registerNotificationHandlers(client: LanguageClient, onRestartNeeded: () => void): void {
         client.onNotification(ext.notif_needFetchNotification, async (params) => {
-            Logger.log("Fetch...", params.uri);
+            Logger.log("Fetch...", params.project_uri);
             this._statusBarItem.text = "$(sync~spin) Fetch components ...";
             this._statusBarItem.show();
 
@@ -36,18 +36,23 @@ export class DependencyManager {
             if (!session) {
                 //Error message user interface
                 vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
-                client.sendNotification(ext.notif_installComponents, params);
+                const id: TextDocumentIdentifier = { uri: params.project_uri };
+                client.sendNotification(ext.notif_installComponents, id);
                 return;
             }
 
-            const parsed = vscode.Uri.parse(params.uri).fsPath;
+            const parsed = vscode.Uri.parse(params.project_uri).fsPath;
             const packageFolder = path.dirname(path.dirname(parsed));
+            const preferencesFolder = params.preferences_uri
+                ? vscode.Uri.parse(params.preferences_uri).fsPath
+                : undefined;
 
             try {
 
                 const packageManager = await PackageManager.create(packageFolder, {
                     ideVersion: this._4DVersion.toString(false),
                     authToken: session.accessToken,
+                    preferencesFolder,
                     callback: (dependencyName) => {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
                     }
@@ -55,7 +60,8 @@ export class DependencyManager {
                 let options: FetchOptions = {};
                 packageManager.fetch(options).then(() => {
                     this._statusBarItem.text = "$(sync~spin) Install components...";
-                    client.sendNotification(ext.notif_installComponents, params);
+                    const id: TextDocumentIdentifier = { uri: params.project_uri };
+                    client.sendNotification(ext.notif_installComponents, id);
                 });
             } catch (error) {
                 this._statusBarItem.hide();

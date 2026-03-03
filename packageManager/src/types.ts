@@ -43,6 +43,11 @@ export interface PackageManagerOptions {
   authToken?: string;
   /** Custom cache folder path (absolute). Defaults to platform-specific location */
   cacheFolder?: string;
+  /**
+   * Full absolute path to the user preferences folder.
+   * Falls back to `<projectPath>/userPreferences.<os-username>/` when omitted.
+   */
+  preferencesFolder?: string;
   /** Callback invoked with the dependency name when a fetch starts */
   callback?: (message: string) => void;
   /** Custom fetcher implementation. Defaults to GithubFetcher */
