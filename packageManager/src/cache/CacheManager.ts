@@ -56,6 +56,26 @@ export class CacheManager {
   }
 
   /**
+   * Move a folder from source to target, with fallback for cross-device moves.
+   * On Windows (especially ARM), fs.rename can fail with EXDEV (cross-device)
+   * or EPERM (antivirus/Controlled Folder Access). Falls back to copy + delete.
+   */
+  private async moveFolder(source: string, target: string): Promise<void> {
+    try {
+      await fs.rename(source, target);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'EXDEV' || code === 'EPERM' || code === 'EACCES') {
+        // Fallback: copy recursively then remove source
+        await fs.cp(source, target, { recursive: true });
+        await fs.rm(source, { recursive: true, force: true });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Remove target folder if it exists
    */
   private async removeTargetFolder(targetFolder: string): Promise<void> {
@@ -71,15 +91,36 @@ export class CacheManager {
 
   /**
    * Find the .4dbase folder if it exists
+   * Searches direct children first, then one level deeper
+   * (zip archives from GitHub often contain a top-level wrapper directory)
    */
   private async find4DBaseFolder(tempDir: string): Promise<string | null>  {
+    const entries = await fs.readdir(tempDir, { withFileTypes: true });
 
-    for(const folder of await fs.readdir(tempDir)) {
-      if(folder.toLowerCase().endsWith('.4dbase')) {
-        const fullPath = path.join(tempDir, folder);
-        return fullPath;
+    // First, check direct children for .4dbase
+    for (const entry of entries) {
+      if (entry.name.toLowerCase().endsWith('.4dbase')) {
+        return path.join(tempDir, entry.name);
       }
     }
+
+    // If not found, check one level deeper (inside wrapper directories)
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subPath = path.join(tempDir, entry.name);
+        try {
+          const subEntries = await fs.readdir(subPath);
+          for (const subEntry of subEntries) {
+            if (subEntry.toLowerCase().endsWith('.4dbase')) {
+              return path.join(subPath, subEntry);
+            }
+          }
+        } catch {
+          // Ignore read errors on subdirectories
+        }
+      }
+    }
+
     return null;
   }
 
@@ -152,8 +193,8 @@ export class CacheManager {
       // Ensure target directory parent exists
       await fs.mkdir(path.dirname(targetFolder), { recursive: true });
 
-      // Move to cache
-      await fs.rename(sourceFolder, targetFolder);
+      // Move to cache (with fallback for cross-device moves on Windows)
+      await this.moveFolder(sourceFolder, targetFolder);
 
       return targetFolder;
     } catch (error) {
