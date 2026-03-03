@@ -117,7 +117,7 @@ export class GitHubDependency extends Dependency {
       // Save metadata
       await cacheManager.saveMetadata(this, tag, {
         name: this.name,
-        github: this.github_url,
+        github: this.github_url ?? '',
         tag,
         fetchedAt: new Date().toISOString(),
         archiveSize: archiveBuffer.byteLength

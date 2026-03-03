@@ -115,6 +115,31 @@ describe('Version', () => {
     });
   });
 
+  describe('isMain flag', () => {
+    it('should set isMain for version "0"', () => {
+      const v = new Version('0');
+      expect(v.isMain).toBe(true);
+      expect(v.major).toBe(0);
+      expect(v.minor).toBe(0);
+      expect(v.patch).toBe(0);
+    });
+
+    it('should set isMain for any version with major=0', () => {
+      const v = new Version('0.1.0');
+      expect(v.isMain).toBe(true);
+    });
+
+    it('should not set isMain for non-zero major versions', () => {
+      const v = new Version('1.0.0');
+      expect(v.isMain).toBe(false);
+    });
+
+    it('should not set isMain for 4D R-Release versions', () => {
+      const v = new Version('20R2');
+      expect(v.isMain).toBe(false);
+    });
+  });
+
   describe('Error handling', () => {
     it('should throw error for invalid version', () => {
       expect(() => new Version('invalid')).toThrow('Invalid version');

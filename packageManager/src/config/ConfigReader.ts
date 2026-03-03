@@ -136,22 +136,20 @@ export class ConfigReader {
 
     /**
      * Build Environment object from all configuration sources
+     * Returns sensible defaults when environment4d.json is absent
      */
-    async buildEnvironment(cacheFolder?: string): Promise<Environment | null> {
+    async buildEnvironment(cacheFolder?: string): Promise<Environment> {
         const envFile = await this.readEnvironment();
-        if (!envFile) {
-            return null;
-        }
 
         return {
             cacheFolder: cacheFolder || this.getDefaultCacheFolder(),
-            github: this.buildGitHubConfig(envFile.github),
-            fetch: this.buildFetchConfig(envFile.fetch),
-            update: this.buildUpdateConfig(envFile.update),
-            trace: envFile.trace || false,
-            debug: envFile.debug || false,
-            dependencies: envFile.dependencies || {},
-            devDependencies: envFile.devDependencies || {}
+            github: this.buildGitHubConfig(envFile?.github),
+            fetch: this.buildFetchConfig(envFile?.fetch),
+            update: this.buildUpdateConfig(envFile?.update),
+            trace: envFile?.trace || false,
+            debug: envFile?.debug || false,
+            dependencies: envFile?.dependencies || {},
+            devDependencies: envFile?.devDependencies || {}
         };
     }
 

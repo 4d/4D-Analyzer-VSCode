@@ -1,6 +1,5 @@
 
 import * as path from 'path';
-import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import AdmZip from 'adm-zip';
 import { DependenciesFile } from '../types';
@@ -16,14 +15,26 @@ export class Package {
         this._isZip = isZip;
     }
 
+    /**
+     * Check whether a path exists (async replacement for fsSync.existsSync)
+     */
+    private static async exists(p: string): Promise<boolean> {
+        try {
+            await fs.access(p);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     static async Create(root: string): Promise<Package | null> {
         const content = path.join(root, 'Contents');
-        if (fsSync.existsSync(content)) {
+        if (await Package.exists(content)) {
             root = content;
         }
 
-        if (fsSync.existsSync(root)) {
-            if (fsSync.existsSync(path.join(root, 'Project'))) {
+        if (await Package.exists(root)) {
+            if (await Package.exists(path.join(root, 'Project'))) {
                 root = path.join(root, 'Project');
                 return new Package(root, false);
             }
@@ -60,7 +71,7 @@ export class Package {
         }
         else {
             const depPath = path.join(this._root, "Sources", "dependencies.json");
-            if (fsSync.existsSync(depPath)) {
+            if (await Package.exists(depPath)) {
                 const content = await fs.readFile(depPath, 'utf-8');
                 return JSON.parse(content);
             }

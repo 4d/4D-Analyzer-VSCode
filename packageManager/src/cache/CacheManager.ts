@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import AdmZip from 'adm-zip';
 import { Dependency } from '../dependency/Dependency';
+import { DependencyMetadata } from '../types';
 import { getDefaultCacheFolder } from '../utils';
 
 const TEMP_DIR_PREFIX = '4d-dep-';
@@ -213,7 +214,7 @@ export class CacheManager {
   async saveMetadata(
     dependency: Dependency,
     tag: string,
-    metadata: any
+    metadata: DependencyMetadata
   ): Promise<void> {
     const metadataPath = this.getMetadataPath(dependency, tag);
     await fs.mkdir(path.dirname(metadataPath), { recursive: true });
@@ -223,12 +224,12 @@ export class CacheManager {
   /**
    * Read metadata for a cached dependency
    */
-  async readMetadata(dependency: Dependency, tag: string): Promise<any | null> {
+  async readMetadata(dependency: Dependency, tag: string): Promise<DependencyMetadata | null> {
     const metadataPath = this.getMetadataPath(dependency, tag);
 
     try {
       const content = await fs.readFile(metadataPath, 'utf-8');
-      return JSON.parse(content);
+      return JSON.parse(content) as DependencyMetadata;
     } catch {
       return null;
     }

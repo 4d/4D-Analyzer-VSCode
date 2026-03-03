@@ -5,7 +5,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import * as ext from "../lsp_ext";
 import { Logger } from "../logger";
 import { LabeledVersion } from '../labeledVersion';
-import { FetchOptions, PackageManager } from "@4dsas/package-manager";
+import { FetchOptions, PackageManager, PackageManagerOptions } from "@4dsas/package-manager";
 
 export class DependencyManager {
 
@@ -45,11 +45,13 @@ export class DependencyManager {
 
             try {
 
-                const packageManager = new PackageManager(packageFolder,
-                    this._4DVersion.toString(false), session.accessToken, undefined, (dependencyName) => {
+                const packageManager = await PackageManager.create(packageFolder, {
+                    ideVersion: this._4DVersion.toString(false),
+                    authToken: session.accessToken,
+                    callback: (dependencyName) => {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
-                    });
-                await packageManager.initialize();
+                    }
+                });
                 let options: FetchOptions = {};
                 packageManager.fetch(options).then(() => {
                     this._statusBarItem.text = "$(sync~spin) Install components...";

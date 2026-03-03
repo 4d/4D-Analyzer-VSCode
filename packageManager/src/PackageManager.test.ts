@@ -73,6 +73,120 @@ describe('PackageManager', () => {
         packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
     });
 
+    describe('constructor validation', () => {
+        it('should throw when project path is empty', () => {
+            expect(() => new PackageManager('', TEST_IDE_VERSION)).toThrow('Project path is required');
+        });
+
+        it('should throw when project path is not a string', () => {
+            expect(() => new PackageManager(123 as any, TEST_IDE_VERSION)).toThrow('Project path is required');
+        });
+
+        it('should throw when project path is relative', () => {
+            expect(() => new PackageManager('relative/path', TEST_IDE_VERSION)).toThrow('absolute path');
+        });
+
+        it('should accept options object', () => {
+            const pm = new PackageManager(TEST_PROJECT_PATH, { ideVersion: TEST_IDE_VERSION });
+            expect(pm).toBeDefined();
+        });
+
+        it('should accept deprecated positional arguments', () => {
+            const pm = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION, 'token', '/tmp/cache');
+            expect(pm).toBeDefined();
+        });
+    });
+
+    describe('static create()', () => {
+        it('should create and initialize in one step', async () => {
+            const pm = await PackageManager.create(TEST_PROJECT_PATH, { ideVersion: TEST_IDE_VERSION });
+            expect(pm).toBeInstanceOf(PackageManager);
+            // Should be initialized — fetch should not throw "Not initialized"
+            const result = await pm.fetch();
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe('lock restoration', () => {
+        it('should call reconcileWithLock when fetch() uses default options (update=false)', async () => {
+            // Provide a lock file with an existing tag for dep1
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue(mockDependenciesFile),
+                buildEnvironment: vi.fn().mockResolvedValue(mockEnvironment),
+                readLock: vi.fn().mockResolvedValue({
+                    version: 2120,
+                    dependencies: {
+                        'dep1': { tag: 'v1.5.0', github: 'owner/dep1', found: true },
+                        'dep2': { tag: 'v2.3.0', github: 'owner/dep2', found: true }
+                    }
+                }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            const reconcileWithLockCalls: Array<{ update: boolean }> = [];
+            vi.mocked(GitHubDependency).mockImplementation((spec, isPrimary) => ({
+                ID: spec.github,
+                name: spec.github?.split('/')[1] || 'unknown',
+                version: spec.version,
+                isPrimary,
+                reconcileWithEnv: vi.fn(),
+                reconcileWithLock: vi.fn().mockImplementation((_lockEntry, update) => {
+                    reconcileWithLockCalls.push({ update });
+                }),
+                fetch: vi.fn().mockResolvedValue(true),
+                compare: vi.fn(),
+                checkOutdated: vi.fn()
+            }) as unknown as GitHubDependency);
+
+            const pm = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
+            await pm.initialize();
+
+            // fetch() with default options → update=false → reconcile(false) should call reconcileWithLock
+            await pm.fetch();
+
+            // reconcileWithLock should have been called with update=false
+            const lockCalls = reconcileWithLockCalls.filter(c => c.update === false);
+            expect(lockCalls.length).toBeGreaterThan(0);
+        });
+
+        it('should NOT call reconcileWithLock when fetch({update: true})', async () => {
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue(mockDependenciesFile),
+                buildEnvironment: vi.fn().mockResolvedValue(mockEnvironment),
+                readLock: vi.fn().mockResolvedValue({
+                    version: 2120,
+                    dependencies: {
+                        'dep1': { tag: 'v1.5.0', github: 'owner/dep1', found: true }
+                    }
+                }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            const reconcileWithLockCalls: boolean[] = [];
+            vi.mocked(GitHubDependency).mockImplementation((spec, isPrimary) => ({
+                ID: spec.github,
+                name: spec.github?.split('/')[1] || 'unknown',
+                version: spec.version,
+                isPrimary,
+                reconcileWithEnv: vi.fn(),
+                reconcileWithLock: vi.fn().mockImplementation(() => {
+                    reconcileWithLockCalls.push(true);
+                }),
+                fetch: vi.fn().mockResolvedValue(true),
+                compare: vi.fn(),
+                checkOutdated: vi.fn()
+            }) as unknown as GitHubDependency);
+
+            const pm = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
+            await pm.initialize();
+
+            // fetch with update=true → reconcile(true) → reconcileWithLock should NOT be called
+            await pm.fetch({ update: true });
+
+            expect(reconcileWithLockCalls.length).toBe(0);
+        });
+    });
+
     describe('fetchRecursively', () => {
         it('should fetch all primary dependencies concurrently', async () => {
             await packageManager.initialize();

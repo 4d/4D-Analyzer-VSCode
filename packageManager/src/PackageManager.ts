@@ -10,8 +10,10 @@ import {
     Environment,
     ErrorMessage,
     FetchOptions,
-    FetchResult
+    FetchResult,
+    PackageManagerOptions
 } from './types';
+import { Fetcher } from './dependency/Fetcher';
 import { GithubFetcher } from './dependency/GithubFetcher';
 import { Version } from './version/Version';
 
@@ -22,15 +24,18 @@ import { Version } from './version/Version';
 export class PackageManager {
     private configReader: ConfigReader;
     private cacheManager: CacheManager;
-    private fetcher: GithubFetcher | null = null;
-    private environment: Environment | null = null;
+    private fetcher: Fetcher;
+    private environment: Environment | null = null; // set in initialize()
     private dependencies: DependenciesFile | null = null;
     private lock: LockFile | null = null;
     private reconciled: Map<string, GitHubDependency> = new Map();
     private ideVersion: Version;
     private callback?: (message: string) => void;
 
-    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string, callback?: (message: string) => void) {
+    constructor(projectPath: string, options: PackageManagerOptions);
+    /** @deprecated Use the options-object overload instead */
+    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string, callback?: (message: string) => void);
+    constructor(projectPath: string, ideVersionOrOptions: string | PackageManagerOptions, authToken?: string, cacheFolder?: string, callback?: (message: string) => void) {
         // Validate inputs
         if (!projectPath || typeof projectPath !== 'string') {
             throw new Error('Project path is required and must be a string');
@@ -39,11 +44,26 @@ export class PackageManager {
             throw new Error('Project path must be an absolute path');
         }
 
+        // Normalize both calling conventions into a single options shape
+        const opts: PackageManagerOptions = typeof ideVersionOrOptions === 'string'
+            ? { ideVersion: ideVersionOrOptions, authToken, cacheFolder, callback }
+            : ideVersionOrOptions;
+
         this.configReader = new ConfigReader(projectPath);
-        this.cacheManager = new CacheManager(cacheFolder);
-        this.fetcher = new GithubFetcher(authToken);
-        this.ideVersion = new Version(ideVersion);
-        this.callback = callback;
+        this.cacheManager = new CacheManager(opts.cacheFolder);
+        this.fetcher = opts.fetcher ?? new GithubFetcher(opts.authToken);
+        this.ideVersion = new Version(opts.ideVersion);
+        this.callback = opts.callback;
+    }
+
+    /**
+     * Create and initialize a PackageManager in one step.
+     * Prefer this over calling `new PackageManager(...)` + `initialize()` separately.
+     */
+    static async create(projectPath: string, options: PackageManagerOptions): Promise<PackageManager> {
+        const pm = new PackageManager(projectPath, options);
+        await pm.initialize();
+        return pm;
     }
     /**
      * Read all configuration files and prepare for fetching
@@ -58,9 +78,6 @@ export class PackageManager {
         this.environment = await this.configReader.buildEnvironment(
             this.cacheManager.getCacheRoot()
         );
-        if (!this.environment) {
-            throw new Error('Failed to build environment - environment4d.json may not exist or is invalid');
-        }
 
         this.lock = await this.configReader.readLock();
         if (!this.lock) {
@@ -71,15 +88,16 @@ export class PackageManager {
             };
         }
 
-        // Reconcile dependencies
-        this.reconcile(true);
+        // Initial reconcile — lock restoration deferred to fetch()
+        this.reconcile();
     }
 
     /**
      * Reconcile dependencies from multiple sources
      * Priority: dependencies.json → environment4d.json → lock file
+     * @param update When false, restores tags from the lock file to avoid re-resolution
      */
-    private reconcile(update: boolean): void {
+    private reconcile(update: boolean = true): void {
         if (!this.dependencies || !this.environment || !this.lock) {
             throw new Error('Not initialized');
         }
@@ -100,27 +118,29 @@ export class PackageManager {
                 dep.reconcileWithEnv(envSpec);
             }
 
-            // Restore from lock file
+            // Restore from lock file when not updating
             const lockEntry = this.lock.dependencies[name];
             if (lockEntry && !update) {
                 dep.reconcileWithLock(lockEntry, update);
-            }                
+            }
 
             this.reconciled.set(name, dep);
         }
-
     }
 
     /**
      * Fetch dependencies
      */
     async fetch(options: FetchOptions = {}): Promise<FetchResult> {
-        if (!this.fetcher || !this.environment || !this.lock) {
+        if (!this.environment || !this.lock) {
             throw new Error('Not initialized. Call initialize() first.');
         }
 
         const update = options.update || false;
         const filter = options.filter;
+
+        // Re-reconcile with lock awareness based on update flag
+        this.reconcile(update);
 
         // Determine which dependencies to fetch
         let toFetch = Array.from(this.reconciled.keys());
@@ -172,7 +192,7 @@ export class PackageManager {
         names: string[],
         update: boolean
     ): Promise<{ fetchedCount: number; skippedCount: number }> {
-        if (!this.fetcher || !this.environment || !this.lock) {
+        if (!this.environment || !this.lock) {
             throw new Error('Not initialized');
         }
 
@@ -203,7 +223,7 @@ export class PackageManager {
                     this.ideVersion,
                     this.environment!,
                     lockEntry,
-                    this.fetcher!,
+                    this.fetcher,
                     this.cacheManager,
                     update
                 );
@@ -325,7 +345,7 @@ export class PackageManager {
      * Check for outdated dependencies
      */
     async checkOutdated(): Promise<LockFile> {
-        if (!this.fetcher || !this.environment || !this.lock) {
+        if (!this.environment || !this.lock) {
             throw new Error('Not initialized. Call initialize() first.');
         }
 
@@ -333,7 +353,7 @@ export class PackageManager {
             const lockEntry = this.lock.dependencies[name];
             if (lockEntry) {
                 await dep.checkOutdated(
-                    this.fetcher,
+                    this.fetcher!,
                     this.ideVersion,
                     lockEntry,
                     this.cacheManager
@@ -392,6 +412,7 @@ export class PackageManager {
     getEnvironment(): Environment | null {
         return this.environment;
     }
+
 
     /**
      * Get cache manager
