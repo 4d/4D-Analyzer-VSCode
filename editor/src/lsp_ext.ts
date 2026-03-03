@@ -1,6 +1,11 @@
 import * as lc from "vscode-languageclient";
 import { WorkspaceDiagnosticReport } from "vscode-languageclient";
 
+interface DependencyParams {
+    project_uri : string,
+    preferences_uri : string,
+}
+
 export const filesStatus = new lc.RequestType0<object, void>(
     "experimental/filesStatus"
 );
@@ -9,7 +14,7 @@ export const checkWorkspaceSyntax = new lc.RequestType<lc.TextDocumentIdentifier
     "experimental/checkSyntax"
 );
 
-export const notif_needFetchNotification = new lc.NotificationType<lc.TextDocumentIdentifier>(
+export const notif_needFetchNotification = new lc.NotificationType<DependencyParams>(
     "dependency/fetch"
 );
 

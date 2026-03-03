@@ -49,7 +49,7 @@ export class PackageManager {
             ? { ideVersion: ideVersionOrOptions, authToken, cacheFolder, callback }
             : ideVersionOrOptions;
 
-        this.configReader = new ConfigReader(projectPath);
+        this.configReader = new ConfigReader(projectPath, opts.preferencesFolder);
         this.cacheManager = new CacheManager(opts.cacheFolder);
         this.fetcher = opts.fetcher ?? new GithubFetcher(opts.authToken);
         this.ideVersion = new Version(opts.ideVersion);
