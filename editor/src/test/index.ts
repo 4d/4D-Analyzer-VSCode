@@ -37,7 +37,11 @@ export async function run(): Promise<void> {
 	if (!specified_test) {
 		const tests = {
 			"format.test.js": "20R3",
-			"dependency.test.js": "21R3"
+			"dependency.test.js": "21R3",
+			"dependencyReload.test.js": "21R3",
+			"environment4dLoading.test.js": "21R3",
+			"environment4dReload.test.js": "21R3",
+			"githubSession.test.js": "21R3"
 		};
 
 		try {
