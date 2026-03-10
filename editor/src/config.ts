@@ -179,7 +179,7 @@ export class Config {
         );
         if (client) {
             await client.sendNotification(lc.DidChangeConfigurationNotification.type, {
-                settings: this.cfg,
+                settings: { [this.rootSection]: this.cfg },
             });
         }
 
