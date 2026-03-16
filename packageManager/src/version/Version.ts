@@ -28,6 +28,10 @@ export class Version {
       // 20R2 → 20.2.0
       clean = clean.replace(/R/, '.') + '.0';
       this.isR = true;
+    } else if (/^\d{2}R\d+\.\d+$/.test(clean)) {
+      // 20R2.1 → 20.2.1
+      clean = clean.replace(/R/, '.');
+      this.isR = true;
     } else if (/^\d{2}\.R\d+(\.\d+)?$/.test(clean)) {
       // 20.R2.3 → 20.2.3 or 20.R2 → 20.2.0
       clean = clean.replace(/\.R/, '.');
@@ -85,43 +89,68 @@ export class Version {
    * Check if this version is greater than another
    */
   gt(other: Version): boolean {
-    return semver.gt(this.semver, other.semver);
+    return this.compare(other) > 0;
   }
 
   /**
    * Check if this version is greater than or equal to another
    */
   gte(other: Version): boolean {
-    return semver.gte(this.semver, other.semver);
+    return this.compare(other) >= 0;
   }
 
   /**
    * Check if this version is less than another
    */
   lt(other: Version): boolean {
-    return semver.lt(this.semver, other.semver);
+    return this.compare(other) < 0;
   }
 
   /**
    * Check if this version is less than or equal to another
    */
   lte(other: Version): boolean {
-    return semver.lte(this.semver, other.semver);
+    return this.compare(other) <= 0;
   }
 
   /**
    * Check if this version equals another
    */
   eq(other: Version): boolean {
-    return semver.eq(this.semver, other.semver);
+    return this.compare(other) === 0;
   }
 
   /**
-   * Compare with another version
+   * Compare with another version, mirroring 4D's Version.compareTo() logic:
+   * - compare major first
+   * - within same major: R-release > LTS (regardless of minor number)
+   * - then compare minor, patch, prerelease
    * @returns 0 if equal, 1 if greater, -1 if less
    */
   compare(other: Version): number {
-    return semver.compare(this.semver, other.semver);
+    if (this.major > other.major) return 1;
+    if (this.major < other.major) return -1;
+
+    // Same major: R-release beats LTS unconditionally
+    if (this.isR && !other.isR) return 1;
+    if (!this.isR && other.isR) return -1;
+
+    if (this.minor > other.minor) return 1;
+    if (this.minor < other.minor) return -1;
+
+    if (this.patch > other.patch) return 1;
+    if (this.patch < other.patch) return -1;
+
+    // Prerelease is lower precedence than release
+    const thisPre = this.prerelease.length > 0;
+    const otherPre = other.prerelease.length > 0;
+    if (thisPre && !otherPre) return -1;
+    if (!thisPre && otherPre) return 1;
+    if (thisPre && otherPre) {
+      return semver.compare(this.semver, other.semver);
+    }
+
+    return 0;
   }
 
   /**

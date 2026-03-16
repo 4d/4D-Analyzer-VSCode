@@ -8,6 +8,21 @@ import { Version } from './Version';
 export class Range {
   private range: semver.Range;
   private rangeSpec: string;
+  // null = neutral (wildcard/latest — matches both R and LTS)
+  private isRRange: boolean | null = null;
+
+  /**
+   * Normalize R-release notation in a range spec to plain semver.
+   * e.g. '^20R2.3' → '^20.2.3',  '20R2.*' → '20.2.x',  '20R2' → '20.2.0'
+   */
+  private static normalizeRSpec(spec: string): string {
+    return spec
+      .replace(/(\d+)\.R(\d+)\.(\d+)/g, '$1.$2.$3')  // 20.R2.3 → 20.2.3
+      .replace(/(\d+)\.R(\d+)/g,          '$1.$2.0')   // 20.R2   → 20.2.0
+      .replace(/(\d+)R(\d+)\.(\d+)/g,     '$1.$2.$3')  // 20R2.3  → 20.2.3
+      .replace(/(\d+)R(\d+)\.\*/g,        '$1.$2.x')   // 20R2.*  → 20.2.x
+      .replace(/(\d+)R(\d+)/g,            '$1.$2.0');  // 20R2    → 20.2.0
+  }
 
   constructor(rangeSpec: string, ideVersion?: Version) {
     this.rangeSpec = rangeSpec;
@@ -15,60 +30,76 @@ export class Range {
     // Handle special keywords
     if (rangeSpec === 'latest' || rangeSpec === '*' || !rangeSpec) {
       this.range = new semver.Range('*');
+      this.isRRange = null; // neutral
     } else if (rangeSpec.toLowerCase() === '4d') {
-      // Match IDE version
+      // Match IDE version — type follows the IDE's type
       const version = ideVersion?.toIDEString();
       this.range = new semver.Range(`^${version}`);
+      this.isRRange = ideVersion?.isR ?? null;
     } else {
-      // Parse as semver range
-      this.range = new semver.Range(rangeSpec);
+      // Detect R-release notation before normalizing
+      this.isRRange = /\d+\.?R\d+/.test(rangeSpec);
+      // Parse as semver range (normalize R notation first if needed)
+      const normalizedSpec = this.isRRange ? Range.normalizeRSpec(rangeSpec) : rangeSpec;
+      this.range = new semver.Range(normalizedSpec);
     }
   }
 
   /**
-   * Check if a version satisfies this range
+   * Check if a version satisfies this range.
+   * Mirrors 4D semantics: R-release and LTS are separate tracks within the same
+   * major; a typed range (R or LTS) rejects versions from the other track.
+   * Neutral ranges (*, latest, empty) match both.
    */
   satisfiedBy(version: string | Version): boolean {
-    const versionString = version instanceof Version
-      ? version.toString()
-      : version.replace(/^v/, '');
+    const v = version instanceof Version ? version : Version.parse(version);
+    if (!v) return false;
 
-    return semver.satisfies(versionString, this.range);
+    // Type-compatibility guard
+    if (this.isRRange !== null && v.isR !== this.isRRange) {
+      return false;
+    }
+
+    return semver.satisfies(v.toString(), this.range);
   }
 
   /**
    * Find the maximum version that satisfies this range
    */
   maxSatisfying(versions: string[]): string | null {
-    const cleanVersions = versions.map(v => v.replace(/^v/, ''));
-    const result = semver.maxSatisfying(cleanVersions, this.range);
+    const filtered = this.isRRange !== null
+      ? versions.filter(v => {
+          const parsed = Version.parse(v);
+          return parsed ? parsed.isR === this.isRRange : true;
+        })
+      : versions;
+    // Normalize each version string to semver, keeping a map back to original
+    const normalized = filtered.map(v => (Version.parse(v)?.toString() ?? v.replace(/^v/, '')));
+    const result = semver.maxSatisfying(normalized, this.range);
     if (!result) {
       return null;
     }
-
-    // Return with original 'v' prefix if it existed
-    const originalVersion = versions.find(v =>
-      v.replace(/^v/, '') === result
-    );
-    return originalVersion || result;
+    const idx = normalized.indexOf(result);
+    return idx >= 0 ? filtered[idx] : result;
   }
 
   /**
    * Find the minimum version that satisfies this range
    */
   minSatisfying(versions: string[]): string | null {
-    const cleanVersions = versions.map(v => v.replace(/^v/, ''));
-    const result = semver.minSatisfying(cleanVersions, this.range);
-
+    const filtered = this.isRRange !== null
+      ? versions.filter(v => {
+          const parsed = Version.parse(v);
+          return parsed ? parsed.isR === this.isRRange : true;
+        })
+      : versions;
+    const normalized = filtered.map(v => (Version.parse(v)?.toString() ?? v.replace(/^v/, '')));
+    const result = semver.minSatisfying(normalized, this.range);
     if (!result) {
       return null;
     }
-
-    // Return with original 'v' prefix if it existed
-    const originalVersion = versions.find(v =>
-      v.replace(/^v/, '') === result
-    );
-    return originalVersion || result;
+    const idx = normalized.indexOf(result);
+    return idx >= 0 ? filtered[idx] : result;
   }
 
   /**
