@@ -1,4 +1,5 @@
-import { DependencySpec, LockEntry } from "../types";
+import { DependencySpec, Environment, LockEntry } from "../types";
+import { CacheManager } from "../cache/CacheManager";
 import { Fetcher } from "./Fetcher";
 import { Range } from "../version/Range";
 import { Package } from "./Package";
@@ -316,6 +317,26 @@ export abstract class Dependency {
      * Get the relative metadata file path
      */
     abstract getMetadataFilePath(tag: string): string;
+
+    abstract fetch(
+        ideVersion: Version,
+        env: Environment,
+        lock: LockEntry,
+        fetcher: Fetcher,
+        cacheManager: CacheManager,
+        update?: boolean
+    ): Promise<boolean>;
+
+    abstract reconcileWithEnv(envSpec: string | DependencySpec): void;
+
+    abstract reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean): void;
+
+    abstract checkOutdated(
+        fetcher: Fetcher,
+        ideVersion: Version,
+        lock: LockEntry,
+        cacheManager: CacheManager
+    ): Promise<void>;
 
     async getPackage(root: string): Promise<Package | null> {
         return Package.Create(root)

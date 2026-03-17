@@ -2,6 +2,8 @@ import * as path from 'path';
 import { ConfigReader } from './config/ConfigReader';
 import { CacheManager } from './cache/CacheManager';
 import { GitHubDependency } from './dependency/GithubDependency';
+import { GitLabDependency } from './dependency/GitlabDependency';
+import { Dependency } from './dependency/Dependency';
 import {
     DependenciesFile,
     LockFile,
@@ -15,6 +17,7 @@ import {
 } from './types';
 import { Fetcher } from './dependency/Fetcher';
 import { GithubFetcher } from './dependency/GithubFetcher';
+import { GitlabFetcher } from './dependency/GitlabFetcher';
 import { Version } from './version/Version';
 
 /**
@@ -25,17 +28,19 @@ export class PackageManager {
     private configReader: ConfigReader;
     private cacheManager: CacheManager;
     private fetcher: Fetcher;
+    private gitlabFetcher: Fetcher | null = null;
+    private gitlabAuthToken?: string;
     private environment: Environment | null = null; // set in initialize()
     private dependencies: DependenciesFile | null = null;
     private lock: LockFile | null = null;
-    private reconciled: Map<string, GitHubDependency> = new Map();
+    private reconciled: Map<string, Dependency> = new Map();
     private ideVersion: Version;
     private callback?: (message: string) => void;
 
     constructor(projectPath: string, options: PackageManagerOptions);
     /** @deprecated Use the options-object overload instead */
-    constructor(projectPath: string, ideVersion: string, authToken?: string, cacheFolder?: string, callback?: (message: string) => void);
-    constructor(projectPath: string, ideVersionOrOptions: string | PackageManagerOptions, authToken?: string, cacheFolder?: string, callback?: (message: string) => void) {
+    constructor(projectPath: string, ideVersion: string, githubAuthToken?: string, cacheFolder?: string, callback?: (message: string) => void);
+    constructor(projectPath: string, ideVersionOrOptions: string | PackageManagerOptions, githubAuthToken?: string, cacheFolder?: string, callback?: (message: string) => void) {
         // Validate inputs
         if (!projectPath || typeof projectPath !== 'string') {
             throw new Error('Project path is required and must be a string');
@@ -46,12 +51,13 @@ export class PackageManager {
 
         // Normalize both calling conventions into a single options shape
         const opts: PackageManagerOptions = typeof ideVersionOrOptions === 'string'
-            ? { ideVersion: ideVersionOrOptions, authToken, cacheFolder, callback }
+            ? { ideVersion: ideVersionOrOptions, githubAuthToken, cacheFolder, callback }
             : ideVersionOrOptions;
 
         this.configReader = new ConfigReader(projectPath, opts.preferencesFolder);
         this.cacheManager = new CacheManager(opts.cacheFolder);
-        this.fetcher = opts.fetcher ?? new GithubFetcher(opts.authToken);
+        this.fetcher = opts.fetcher ?? new GithubFetcher(opts.githubAuthToken);
+        this.gitlabAuthToken = opts.gitlabAuthToken;
         this.ideVersion = new Version(opts.ideVersion);
         this.callback = opts.callback;
     }
@@ -109,8 +115,12 @@ export class PackageManager {
             if (spec.path) {
                 continue;
             }
-            // Create dependency
-            const dep = new GitHubDependency(spec, true);
+
+            // Create dependency based on source type
+            const dep = this.createDependency(spec, true);
+            if (!dep) {
+                continue;
+            }
 
             // Override with environment if present
             const envSpec = this.environment.dependencies[name];
@@ -157,7 +167,8 @@ export class PackageManager {
             const lockEntry = this.lock.dependencies[name];
 
             // Copy spec to lock
-            lockEntry.github = dep.ID;
+            lockEntry.github = dep instanceof GitHubDependency ? dep.ID : undefined;
+            lockEntry.gitlab = dep instanceof GitLabDependency ? dep.ID : undefined;
             lockEntry.version = dep.version;
             lockEntry.isPrimary = dep.isPrimary;
         }
@@ -223,7 +234,7 @@ export class PackageManager {
                     this.ideVersion,
                     this.environment!,
                     lockEntry,
-                    this.fetcher,
+                    this.getFetcherForDep(dep),
                     this.cacheManager,
                     update
                 );
@@ -290,19 +301,23 @@ export class PackageManager {
             }
 
             // Validate sub-spec has required fields
-            if (!typedSubSpec.github && !typedSubSpec.path) {
+            if (!typedSubSpec.github && !typedSubSpec.gitlab && !typedSubSpec.path) {
                 continue;
             }
 
             // Create sub-dependency if it doesn't exist
             if (!this.reconciled.has(subName)) {
-                const subDep = new GitHubDependency(typedSubSpec, false);
+                const subDep = this.createDependency(typedSubSpec, false);
+                if (!subDep) {
+                    continue;
+                }
                 this.reconciled.set(subName, subDep);
 
                 // Initialize lock entry
                 if (!this.lock.dependencies[subName]) {
                     this.lock.dependencies[subName] = {
                         github: typedSubSpec.github,
+                        gitlab: typedSubSpec.gitlab,
                         version: typedSubSpec.version,
                         isPrimary: false
                     };
@@ -353,7 +368,7 @@ export class PackageManager {
             const lockEntry = this.lock.dependencies[name];
             if (lockEntry) {
                 await dep.checkOutdated(
-                    this.fetcher!,
+                    this.getFetcherForDep(dep),
                     this.ideVersion,
                     lockEntry,
                     this.cacheManager
@@ -419,5 +434,60 @@ export class PackageManager {
      */
     getCacheManager(): CacheManager {
         return this.cacheManager;
+    }
+
+    /**
+     * Create a dependency from a spec, choosing the right subclass.
+     */
+    private createDependency(spec: DependencySpec, isPrimary: boolean): Dependency | null {
+        if (spec.gitlab) {
+            return new GitLabDependency(spec, isPrimary);
+        }
+        if (spec.github) {
+            return new GitHubDependency(spec, isPrimary);
+        }
+        return null;
+    }
+
+    /**
+     * Get the appropriate fetcher for a dependency.
+     * GitLab deps get a GitlabFetcher (lazily created); GitHub deps get the default fetcher.
+     */
+    private getFetcherForDep(dep: Dependency): Fetcher {
+        if (dep instanceof GitLabDependency) {
+            return this.getGitlabFetcher(dep.host);
+        }
+        return this.fetcher;
+    }
+
+    /**
+     * Lazily create a GitlabFetcher, resolving the token from:
+     *  1. Per-host override from environment4d.json gitlab.hosts[host].token
+     *  2. gitlabAuthToken option (e.g. from VS Code GitLab extension)
+     *  3. environment4d.json gitlab.token / GITLAB_TOKEN env var (already merged by ConfigReader)
+     */
+    private getGitlabFetcher(depHost?: string): Fetcher {
+        // Determine host: dependency-specific host overrides environment default
+        const host = depHost || this.environment?.gitlab.host;
+
+        // Resolve token: per-host override → VS Code extension token → global token
+        const hostKey = host?.replace(/\/+$/, '');
+        const perHostToken = hostKey ? this.environment?.gitlab.hosts?.[hostKey]?.token : undefined;
+        const token = perHostToken || this.gitlabAuthToken || this.environment?.gitlab.token;
+
+        // For now, create a per-call fetcher when host differs.
+        // Common case: single host, reuse cached fetcher.
+        if (!this.gitlabFetcher) {
+            this.gitlabFetcher = new GitlabFetcher(token, host);
+            return this.gitlabFetcher;
+        }
+
+        // If the host differs from the cached one, create a new fetcher.
+        const cached = this.gitlabFetcher as GitlabFetcher;
+        if (host && cached.getHost() !== host.replace(/\/+$/, '')) {
+            return new GitlabFetcher(token, host);
+        }
+
+        return this.gitlabFetcher;
     }
 }

@@ -47,11 +47,28 @@ export class DependencyManager {
                 ? vscode.Uri.parse(params.preferences_uri).fsPath
                 : undefined;
 
+            // Attempt to get a GitLab token (best-effort, silent).
+            // 1. Try the official GitLab VS Code extension's auth provider.
+            //    Uses { silent: true } because 3rd-party extensions cannot create sessions.
+            // 2. Falls back to GITLAB_TOKEN env var (handled by ConfigReader internally).
+            let gitlabAuthToken: string | undefined;
+            try {
+                const gitlabSession = await vscode.authentication.getSession(
+                    'gitlab', ['api'], { silent: true }
+                );
+                if (gitlabSession) {
+                    gitlabAuthToken = gitlabSession.accessToken;
+                }
+            } catch {
+                // GitLab extension not installed or no session — continue without
+            }
+
             try {
 
                 const packageManager = await PackageManager.create(packageFolder, {
                     ideVersion: this._4DVersion.toString(false),
-                    authToken: session.accessToken,
+                    githubAuthToken: session.accessToken,
+                    gitlabAuthToken,
                     preferencesFolder,
                     callback: (dependencyName) => {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;

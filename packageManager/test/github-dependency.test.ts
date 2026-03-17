@@ -143,6 +143,7 @@ describe('GitHubDependency', () => {
       mockEnv = {
         cacheFolder: '/cache',
         github: { htmlURL: 'https://github.com' },
+        gitlab: { host: 'https://gitlab.com' },
         fetch: { maxRecursivePass: 5 },
         update: {},
         trace: false,

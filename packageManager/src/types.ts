@@ -40,7 +40,7 @@ export interface PackageManagerOptions {
   /** IDE version string (e.g. "21.2.0") */
   ideVersion: string;
   /** GitHub personal access token for authentication */
-  authToken?: string;
+  githubAuthToken?: string;
   /** Custom cache folder path (absolute). Defaults to platform-specific location */
   cacheFolder?: string;
   /**
@@ -52,6 +52,8 @@ export interface PackageManagerOptions {
   callback?: (message: string) => void;
   /** Custom fetcher implementation. Defaults to GithubFetcher */
   fetcher?: Fetcher;
+  /** GitLab personal access token for authentication */
+  gitlabAuthToken?: string;
 }
 
 import type { Fetcher } from './dependency/Fetcher';
@@ -76,9 +78,11 @@ export interface DependenciesFile {
  */
 export interface DependencySpec {
   github?: string; // "owner/repository"
-  version?: string; // Version range or "latest" | "4d"
+  gitlab?: string; // "group/project" or "group/subgroup/project"
+  version?: string; // Version range or "latest" | "4d" | "highest" (gitlab)
   tag?: string; // Specific tag (overrides version)
-  path?: string; // Local path (alternative to github)
+  path?: string; // Local path (alternative to github/gitlab)
+  host?: string; // GitLab instance URL (e.g. "https://private.gitlab.com")
 }
 
 /**
@@ -88,6 +92,7 @@ export interface EnvironmentFile {
   dependencies?: Record<string, string | DependencySpec>;
   devDependencies?: Record<string, DependencySpec>;
   github?: GitHubConfig;
+  gitlab?: GitLabConfig;
   fetch?: FetchConfig;
   update?: UpdateConfig;
   trace?: boolean;
@@ -124,11 +129,29 @@ export interface UpdateConfig {
 }
 
 /**
+ * GitLab configuration
+ */
+export interface GitLabConfig {
+  token?: string;
+  host?: string; // Default: "https://gitlab.com"
+  /** Per-host overrides keyed by host URL (e.g. "https://private.gitlab.com") */
+  hosts?: Record<string, GitLabHostConfig>;
+}
+
+/**
+ * Per-host GitLab configuration override
+ */
+export interface GitLabHostConfig {
+  token?: string;
+}
+
+/**
  * Metadata stored alongside cached dependencies
  */
 export interface DependencyMetadata {
   name: string;
-  github: string;
+  github?: string;
+  gitlab?: string;
   tag: string;
   fetchedAt: string;
   archiveSize: number;
@@ -156,6 +179,7 @@ export interface ErrorMessage {
  */
 export interface LockEntry {
   github?: string;
+  gitlab?: string;
   tag?: string;
   version?: string;
   path?: string;
@@ -196,6 +220,7 @@ export interface UserPreferences {
 export interface Environment {
   cacheFolder: string;
   github: GitHubConfig;
+  gitlab: GitLabConfig;
   fetch: FetchConfig;
   update: UpdateConfig;
   trace: boolean;
@@ -250,4 +275,29 @@ export interface FetchResult {
   warnings: ErrorMessage[];
   fetchedCount: number;
   skippedCount: number;
+}
+
+/**
+ * GitLab Release object (API v4)
+ */
+export interface GitLabRelease {
+  tag_name: string;
+  name: string;
+  description: string;
+  created_at: string;
+  released_at: string;
+  upcoming_release: boolean;
+  assets: {
+    links: GitLabAssetLink[];
+  };
+}
+
+/**
+ * GitLab Release Asset Link
+ */
+export interface GitLabAssetLink {
+  name: string;
+  url: string;
+  direct_asset_url: string;
+  link_type: string;
 }
