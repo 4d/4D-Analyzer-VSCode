@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from "path";
 import * as fsSync from 'fs';
-import { LanguageClient, TextDocumentIdentifier } from 'vscode-languageclient/node';
+import { LanguageClient } from 'vscode-languageclient/node';
 import * as ext from "../lsp_ext";
 import { Logger } from "../logger";
 import { LabeledVersion } from '../labeledVersion';
-import { FetchOptions, PackageManager, PackageManagerOptions } from "@4dsas/package-manager";
+import { PackageManager } from "@4dsas/package-manager";
 
 export class DependencyManager {
 
@@ -19,25 +19,30 @@ export class DependencyManager {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
     }
 
+    private async getGitHubSession(): Promise<vscode.AuthenticationSession | undefined> {
+        // The GitHub Authentication Provider accepts the scopes described here:
+        // https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/
+        //repo: Full control of private repositories
+        //public_repo: Access public repositories
+        const SCOPES = ['repo', 'public_repo'];
+        try {
+            const session = await vscode.authentication.getSession('github', SCOPES, { createIfNone: true });
+            return session ?? undefined;
+        } catch {
+            return undefined;
+        }
+    }
+
     public registerNotificationHandlers(client: LanguageClient, onRestartNeeded: () => void): void {
         client.onNotification(ext.notif_needFetchNotification, async (params) => {
             Logger.log("Fetch...", params.project_uri);
             this._statusBarItem.text = "$(sync~spin) Fetch components ...";
             this._statusBarItem.show();
 
-            const GITHUB_AUTH_PROVIDER_ID = 'github';
-            // The GitHub Authentication Provider accepts the scopes described here:
-            // https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/
-            //repo: Full control of private repositories
-            //public_repo: Access public repositories
-            const SCOPES = ['repo', 'public_repo'];
-
-            const session = await vscode.authentication.getSession(GITHUB_AUTH_PROVIDER_ID, SCOPES, { createIfNone: true });
+            const session = await this.getGitHubSession();
             if (!session) {
-                //Error message user interface
                 vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
-                const id: TextDocumentIdentifier = { uri: params.project_uri };
-                client.sendNotification(ext.notif_installComponents, id);
+                client.sendNotification(ext.notif_installComponents, { uri: params.project_uri });
                 return;
             }
 
@@ -48,7 +53,6 @@ export class DependencyManager {
                 : undefined;
 
             try {
-
                 const packageManager = await PackageManager.create(packageFolder, {
                     ideVersion: this._4DVersion.toString(false),
                     authToken: session.accessToken,
@@ -57,19 +61,15 @@ export class DependencyManager {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
                     }
                 });
-                let options: FetchOptions = {};
-                packageManager.fetch(options).then(() => {
-                    this._statusBarItem.text = "$(sync~spin) Install components...";
-                    const id: TextDocumentIdentifier = { uri: params.project_uri };
-                    client.sendNotification(ext.notif_installComponents, id);
-                });
+                await packageManager.fetch({});
+                this._statusBarItem.text = "$(sync~spin) Install components...";
+                client.sendNotification(ext.notif_installComponents, { uri: params.project_uri });
             } catch (error) {
                 this._statusBarItem.hide();
                 Logger.log(error);
-                vscode.window.showErrorMessage(error);
+                const message = error instanceof Error ? error.message : String(error);
+                vscode.window.showErrorMessage(message);
             }
-
-            return true;
         });
 
         client.onNotification(ext.notif_installComponents_before, async (params) => {
