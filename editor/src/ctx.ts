@@ -128,6 +128,7 @@ export class Ctx {
             checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax },
             createNewProject: { call: Commands.createNewProject },
             restartLanguageServer: { call: Commands.restartLanguageServer },
+            databaseCatalog: { call: Commands.sendDatabaseCatalog },
         };
 
         for (const [name, command] of Object.entries(this._commands)) {
@@ -136,6 +137,11 @@ export class Ctx {
 
             this._extensionContext.subscriptions.push(vscode.commands.registerCommand(fullName, callback));
         }
+
+        const codeLensProvider = new Commands.DatabaseCatalogCodeLensProvider("4d-analyzer.databaseCatalog");
+        this._extensionContext.subscriptions.push(
+            vscode.languages.registerCodeLensProvider({ pattern: "**/catalog.4DCatalog" }, codeLensProvider)
+        );
     }
 
     pushExtCleanup(d: Disposable) {

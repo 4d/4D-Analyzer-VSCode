@@ -176,3 +176,40 @@ export function createNewProject(ctx: Ctx): Cmd {
 export const restartLanguageServer = (ctx: Ctx) => async () => {
     await ctx.restart();
 };
+
+export function sendDatabaseCatalog(ctx: Ctx): Cmd {
+    return async (uri?: vscode.Uri) => {
+        const client = ctx.client;
+        let document: vscode.TextDocument;
+        if (uri) {
+            document = await vscode.workspace.openTextDocument(uri);
+        } else {
+            document = vscode.window.activeTextEditor?.document;
+        }
+        if (!document || !client) return;
+        const params = client.code2ProtocolConverter.asTextDocumentIdentifier(document);
+        const response = await client.sendRequest(ext.databaseCatalog, params);
+        if (response) {
+            const outputPath = path.join(path.dirname(document.uri.fsPath), "catalog.lsp.json");
+            fs.writeFileSync(outputPath, JSON.stringify(response, null, 4));
+        }
+    };
+}
+
+export class DatabaseCatalogCodeLensProvider implements vscode.CodeLensProvider {
+    constructor(private readonly commandId: string) {}
+
+    provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+        if (!document.fileName.endsWith("catalog.4DCatalog")) {
+            return [];
+        }
+        const range = new vscode.Range(0, 0, 0, 0);
+        return [
+            new vscode.CodeLens(range, {
+                title: "$(database) Send Database Catalog",
+                command: this.commandId,
+                arguments: [document.uri],
+            }),
+        ];
+    }
+}

@@ -52,3 +52,7 @@ export const prepare_database = new lc.RequestType<lc.TextDocumentIdentifier, Pr
 export const prepare_components = new lc.NotificationType<lc.TextDocumentIdentifier>(
     "experimental/prepareComponents"
 );
+
+export const databaseCatalog = new lc.RequestType<lc.TextDocumentIdentifier, object, void>(
+    "database/catalog"
+);

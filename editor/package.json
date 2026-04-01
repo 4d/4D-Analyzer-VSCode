@@ -200,11 +200,16 @@
 			{
 				"command": "4d-analyzer.restartLanguageServer",
 				"title": "4D Analyzer: Restart language server"
+			},
+			{
+				"command": "4d-analyzer.databaseCatalog",
+				"title": "4D Analyzer: Send Database Catalog"
 			}
 		]
 	},
 	"scripts": {
-		"pack": "vsce package --out ../dist",
+		"pack": "mkdir -p ../dist && vsce package --out ../dist/",
+		"pack-install": "npm run pack && code --install-extension ../dist/4d-analyzer-$(node -p \"require('./package.json').version\").vsix",
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
 		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
 		"esbuild": "npm run esbuild-base -- --sourcemap",
