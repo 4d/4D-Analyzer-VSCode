@@ -24,8 +24,9 @@ function mockTool4DInstallation(basePath: string, version: LabeledVersion): stri
         tool4dPath = path.join(tool4dFolder, "tool4d.exe");
     } else if (osType === "Darwin") {
         tool4dPath = path.join(tool4dFolder, "tool4d.app");
-        const infoPlistPath = path.join(tool4dPath, "Contents");
-        fs.mkdirSync(infoPlistPath, { recursive: true });
+        const macOSFolder = path.join(tool4dPath, "Contents", "MacOS");
+        fs.mkdirSync(macOSFolder, { recursive: true });
+        tool4dPath = path.join(macOSFolder, "tool4d");
     } else {
         tool4dPath = path.join(tool4dFolder, "tool4d");
     }
