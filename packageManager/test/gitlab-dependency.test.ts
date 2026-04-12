@@ -96,10 +96,72 @@ describe('GitLabDependency', () => {
       const spec: DependencySpec = { gitlab: 'group/project', version: '^1.0.0' };
       const dep = new GitLabDependency(spec, true);
 
-      const lockEntry: LockEntry = { tag: 'v1.2.3', found: true };
+      const lockEntry: LockEntry = { tag: 'v1.2.3', version: '^1.0.0', found: true };
       dep.reconcileWithLock(lockEntry, false);
 
       expect(dep.tag).toBe('v1.2.3');
+    });
+
+    it('should not restore lock tag when version and tag are removed from spec (old lock format)', () => {
+      const spec: DependencySpec = { gitlab: 'group/project' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v1.2.3', found: true };
+      dep.reconcileWithLock(lockEntry, false);
+
+      // Lock version ("") doesn't match effective version ("highest")
+      expect(dep.tag).toBe('');
+    });
+
+    it('should restore tag when no version spec and lock has "highest"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v2.0.0', version: 'highest', found: true };
+      dep.reconcileWithLock(lockEntry, false, new Version('21.0.0'));
+
+      // Effective "highest" matches lock "highest"
+      expect(dep.tag).toBe('v2.0.0');
+    });
+
+    it('should restore tag when version="highest" and lock has "highest"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: 'highest' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v2.0.0', version: 'highest', found: true };
+      dep.reconcileWithLock(lockEntry, false, new Version('21.0.0'));
+
+      expect(dep.tag).toBe('v2.0.0');
+    });
+
+    it('should restore tag when version="4d" and lock has matching "4D:<version>"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '4d' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v20.0.0', version: '4D:20', found: true };
+      dep.reconcileWithLock(lockEntry, false, new Version('20.0.0'));
+
+      expect(dep.tag).toBe('v20.0.0');
+    });
+
+    it('should NOT restore tag when version="4d" and IDE version changed', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '4d' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v20.0.0', version: '4D:20', found: true };
+      dep.reconcileWithLock(lockEntry, false, new Version('21.0.0'));
+
+      expect(dep.tag).toBe('');
+    });
+
+    it('should not restore lock tag when version constraint changed', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '^2.0.0' };
+      const dep = new GitLabDependency(spec, true);
+
+      const lockEntry: LockEntry = { tag: 'v1.2.3', version: '^1.0.0', found: true };
+      dep.reconcileWithLock(lockEntry, false);
+
+      expect(dep.tag).toBe('');
     });
 
     it('should ignore lock when update is true', () => {
@@ -118,6 +180,50 @@ describe('GitLabDependency', () => {
 
       dep.reconcileWithLock(undefined, false);
       expect(dep.tag).toBe('');
+    });
+  });
+
+  describe('getEffectiveLockVersion', () => {
+    it('should return "highest" when no version specified', () => {
+      const spec: DependencySpec = { gitlab: 'group/project' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('highest');
+    });
+
+    it('should return "highest" when version is "highest"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: 'highest' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('highest');
+    });
+
+    it('should return "4D:<major>" for LTS version', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '4d' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('20.0.0'))).toBe('4D:20');
+    });
+
+    it('should return "4D:<major>R<minor>" for R-release version', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '4d' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('20R10'))).toBe('4D:20R10');
+    });
+
+    it('should return version as-is for semver ranges', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: '^1.0.0' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('^1.0.0');
+    });
+
+    it('should return version as-is for "latest"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: 'latest' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('latest');
+    });
+
+    it('should return version as-is for "newest"', () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: 'newest' };
+      const dep = new GitLabDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('newest');
     });
   });
 

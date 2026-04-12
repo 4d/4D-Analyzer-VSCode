@@ -39,6 +39,7 @@ describe('GitHubDependency', () => {
 
       const lockEntry: LockEntry = {
         tag: 'v1.2.3',
+        version: '^1.0.0',
         path: '/cache/owner-repo/v1.2.3',
         found: true,
       };
@@ -47,6 +48,142 @@ describe('GitHubDependency', () => {
       
       // Tag should be restored from lock
       expect(dep.tag).toBe('v1.2.3');
+    });
+
+    it('should not restore lock tag when version and tag are removed from spec (old lock format)', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v1.2.3',
+        path: '/cache/owner-repo/v1.2.3',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false);
+      
+      // Tag should NOT be restored — lock version ("") doesn't match effective version ("latest")
+      expect(dep.tag).toBe('');
+    });
+
+    it('should restore tag when no version spec and lock has "latest"', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v1.2.3',
+        version: 'latest',
+        path: '/cache/owner-repo/v1.2.3',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false, new Version('21.0.0'));
+      
+      // Tag should be restored — effective "latest" matches lock "latest"
+      expect(dep.tag).toBe('v1.2.3');
+    });
+
+    it('should restore tag when version="latest" and lock has "latest"', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+        version: 'latest',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v3.0.0',
+        version: 'latest',
+        path: '/cache/owner-repo/v3.0.0',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false, new Version('21.0.0'));
+      
+      expect(dep.tag).toBe('v3.0.0');
+    });
+
+    it('should restore tag when version="4d" and lock has matching "4D:<version>"', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+        version: '4d',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v21.2.0',
+        version: '4D:21R2',
+        path: '/cache/owner-repo/v21.2.0',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false, new Version('21R2'));
+      
+      // Tag should be restored — same IDE version
+      expect(dep.tag).toBe('v21.2.0');
+    });
+
+    it('should NOT restore tag when version="4d" and IDE version changed', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+        version: '4d',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v21.2.0',
+        version: '4D:21R2',
+        path: '/cache/owner-repo/v21.2.0',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false, new Version('21R3'));
+      
+      // Tag should NOT be restored — IDE version changed
+      expect(dep.tag).toBe('');
+    });
+
+    it('should NOT restore tag when version="4d" and lock has LTS but IDE is now R-release', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+        version: '4d',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v21.0.0',
+        version: '4D:21',
+        path: '/cache/owner-repo/v21.0.0',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false, new Version('21R2'));
+      
+      // Tag should NOT be restored — LTS vs R-release
+      expect(dep.tag).toBe('');
+    });
+
+    it('should not restore lock tag when version constraint changed', () => {
+      const spec: DependencySpec = {
+        github: 'owner/repo',
+        version: '^2.0.0',
+      };
+      const dep = new GitHubDependency(spec, true);
+
+      const lockEntry: LockEntry = {
+        tag: 'v1.2.3',
+        version: '^1.0.0',
+        path: '/cache/owner-repo/v1.2.3',
+        found: true,
+      };
+
+      dep.reconcileWithLock(lockEntry, false);
+      
+      // Tag should NOT be restored — version constraint changed
+      expect(dep.tag).toBe('');
     });
 
     it('should not override existing tag from spec when reconciling with lock', () => {
@@ -99,6 +236,38 @@ describe('GitHubDependency', () => {
       
       // Should not crash
       expect(dep.tag).toBe('');
+    });
+  });
+
+  describe('getEffectiveLockVersion', () => {
+    it('should return "latest" when no version specified', () => {
+      const spec: DependencySpec = { github: 'owner/repo' };
+      const dep = new GitHubDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('latest');
+    });
+
+    it('should return "latest" when version is "latest"', () => {
+      const spec: DependencySpec = { github: 'owner/repo', version: 'latest' };
+      const dep = new GitHubDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('latest');
+    });
+
+    it('should return "4D:<major>" for LTS version', () => {
+      const spec: DependencySpec = { github: 'owner/repo', version: '4d' };
+      const dep = new GitHubDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('4D:21');
+    });
+
+    it('should return "4D:<major>R<minor>" for R-release version', () => {
+      const spec: DependencySpec = { github: 'owner/repo', version: '4d' };
+      const dep = new GitHubDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21R2'))).toBe('4D:21R2');
+    });
+
+    it('should return version as-is for semver ranges', () => {
+      const spec: DependencySpec = { github: 'owner/repo', version: '^1.0.0' };
+      const dep = new GitHubDependency(spec, true);
+      expect(dep.getEffectiveLockVersion(new Version('21.0.0'))).toBe('^1.0.0');
     });
   });
 
