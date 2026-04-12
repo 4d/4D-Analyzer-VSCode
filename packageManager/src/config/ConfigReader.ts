@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
-import { DependenciesFile, EnvironmentFile, LockFile, UserPreferences, Environment, GitHubConfig, FetchConfig, UpdateConfig } from '../types';
+import { DependenciesFile, EnvironmentFile, LockFile, UserPreferences, Environment, GitHubConfig, GitLabConfig, GitLabHostConfig, FetchConfig, UpdateConfig } from '../types';
 import { getDefaultCacheFolder } from '../utils';
 
 /**
@@ -147,6 +147,7 @@ export class ConfigReader {
         return {
             cacheFolder: cacheFolder || this.getDefaultCacheFolder(),
             github: this.buildGitHubConfig(envFile?.github),
+            gitlab: this.buildGitLabConfig(envFile?.gitlab),
             fetch: this.buildFetchConfig(envFile?.fetch),
             update: this.buildUpdateConfig(envFile?.update),
             trace: envFile?.trace || false,
@@ -164,6 +165,33 @@ export class ConfigReader {
             token: config?.token || process.env.GITHUB_TOKEN,
             htmlURL: config?.htmlURL || 'https://github.com',
             apiURL: config?.apiURL || 'https://api.github.com'
+        };
+    }
+
+    /**
+     * Build GitLab configuration with defaults.
+     * Extracts per-host overrides from URL-keyed entries in the raw config
+     * (e.g. "https://private.gitlab.com": { "token": "..." }).
+     */
+    private buildGitLabConfig(config?: GitLabConfig): GitLabConfig {
+        // Collect URL-keyed per-host overrides from the raw JSON object
+        const hosts: Record<string, GitLabHostConfig> = {};
+        if (config) {
+            const raw = config as unknown as Record<string, unknown>;
+            for (const key of Object.keys(raw)) {
+                if (key.startsWith('https://') || key.startsWith('http://')) {
+                    const value = raw[key];
+                    if (value && typeof value === 'object') {
+                        hosts[key.replace(/\/+$/, '')] = { token: (value as GitLabHostConfig).token };
+                    }
+                }
+            }
+        }
+
+        return {
+            token: config?.token || process.env.GITLAB_TOKEN,
+            host: config?.host || 'https://gitlab.com',
+            ...(Object.keys(hosts).length > 0 ? { hosts } : {}),
         };
     }
 

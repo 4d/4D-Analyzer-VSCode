@@ -19,10 +19,10 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             // Primary dependency → warning
-            expect(lock.update?.warnings).toBeDefined();
-            expect(lock.update?.warnings?.length).toBeGreaterThan(0);
-            expect(lock.update?.warnings?.[0].message).toContain('v1.0.0');
-            expect(lock.update?.warnings?.[0].message).toContain('v2.0.0');
+            expect(lock.warnings).toBeDefined();
+            expect(lock.warnings?.length).toBeGreaterThan(0);
+            expect(lock.warnings?.[0].message).toContain('v1.0.0');
+            expect(lock.warnings?.[0].message).toContain('v2.0.0');
         });
 
         it('should mark secondary dependency as conflict with error', () => {
@@ -33,8 +33,8 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBe(true);
-            expect(lock.update?.errors).toBeDefined();
-            expect(lock.update?.errors?.length).toBeGreaterThan(0);
+            expect(lock.errors).toBeDefined();
+            expect(lock.errors?.length).toBeGreaterThan(0);
             expect(lock.path).toBeUndefined();
         });
 
@@ -46,7 +46,8 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBeUndefined();
-            expect(lock.update).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
         });
     });
 
@@ -59,7 +60,8 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBeUndefined();
-            expect(lock.update).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
         });
 
         it('should flag conflict when tag does not satisfy the range', () => {
@@ -69,8 +71,8 @@ describe('Conflict Detection', () => {
 
             dep1.compare(dep2, lock);
 
-            expect(lock.update?.warnings).toBeDefined();
-            expect(lock.update?.warnings?.[0].message).toContain('v2.0.0');
+            expect(lock.warnings).toBeDefined();
+            expect(lock.warnings?.[0].message).toContain('v2.0.0');
         });
     });
 
@@ -83,7 +85,8 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBeUndefined();
-            expect(lock.update).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
         });
 
         it('should flag conflict when ranges do not intersect', () => {
@@ -94,9 +97,9 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             // Primary → warning
-            expect(lock.update?.warnings).toBeDefined();
-            expect(lock.update?.warnings?.[0].message).toContain('^1.0.0');
-            expect(lock.update?.warnings?.[0].message).toContain('^2.0.0');
+            expect(lock.warnings).toBeDefined();
+            expect(lock.warnings?.[0].message).toContain('^1.0.0');
+            expect(lock.warnings?.[0].message).toContain('^2.0.0');
         });
     });
 
@@ -109,7 +112,8 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBeUndefined();
-            expect(lock.update).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
         });
     });
 

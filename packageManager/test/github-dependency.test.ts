@@ -143,6 +143,7 @@ describe('GitHubDependency', () => {
       mockEnv = {
         cacheFolder: '/cache',
         github: { htmlURL: 'https://github.com' },
+        gitlab: { host: 'https://gitlab.com' },
         fetch: { maxRecursivePass: 5 },
         update: {},
         trace: false,
@@ -176,8 +177,8 @@ describe('GitHubDependency', () => {
       const result = await dep.fetch(new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager);
 
       expect(result).toBe(false);
-      expect(lock.update?.errors).toBeDefined();
-      expect(lock.update?.errors?.[0].message).toBe('No matching version found');
+      expect(lock.errors).toBeDefined();
+      expect(lock.errors?.[0].message).toBe('Unable to find a release for owner/repo on GitHub satisfying version ^99.0.0');
     });
 
     it('should return false (skip) when dependency is already cached and update is false', async () => {
@@ -267,7 +268,7 @@ describe('GitHubDependency', () => {
 
       expect(result).toBe(false);
       expect(lock.found).toBe(false);
-      expect(lock.update?.errors?.[0].message).toBe('Network error');
+      expect(lock.errors?.[0].message).toBe('Unable to download release asset for owner/repo tag v1.1.0 on GitHub');
     });
 
     it('should handle extractArchive errors gracefully', async () => {
@@ -281,7 +282,7 @@ describe('GitHubDependency', () => {
 
       expect(result).toBe(false);
       expect(lock.found).toBe(false);
-      expect(lock.update?.errors?.[0].message).toBe('Extraction failed');
+      expect(lock.errors?.[0].message).toBe('Cannot unzip downloaded file for owner/repo tag v1.1.0');
     });
 
     it('should read sub-dependencies from cached package', async () => {
