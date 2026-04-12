@@ -20,7 +20,12 @@ Produces `dist/4d-analyzer.vsix` at the workspace root.
 code --install-extension dist/4d-analyzer.vsix --force
 ```
 
-### All-in-one¨
+### All-in-one
 ```bash
 mkdir -p dist && npm run build && (cd editor && npm run pack) && code --install-extension dist/4d-analyzer.vsix --force
 ```
+
+## Tests
+
+See `editor/AGENTS.md` and `packageManager/AGENTS.md` for test instructions.
+
