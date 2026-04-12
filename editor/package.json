@@ -21,7 +21,10 @@
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"activationEvents": [],
+	"activationEvents": [
+		"workspaceContains:**/dependencies.json",
+		"workspaceContains:**/environment4d.json"
+	],
 	"main": "./out/extension",
 	"contributes": {
 		"languages": [
@@ -204,9 +207,9 @@
 		]
 	},
 	"scripts": {
-		"pack": "vsce package --out ../dist",
+		"pack": "vsce package --out ../dist/4d-analyzer.vsix",
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
-		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --main-fields=module,main",
 		"esbuild": "npm run esbuild-base -- --sourcemap",
 		"esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
 		"test-compile": "tsc -p ./",
@@ -219,7 +222,8 @@
 	},
 	"dependencies": {
 		"vscode-languageclient": "^9.0.1",
-		"@4dsas/package-manager": "*"
+		"@4dsas/package-manager": "*",
+		"jsonc-parser": "^3.3.1"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.10",
