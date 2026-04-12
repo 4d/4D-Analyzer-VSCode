@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from "path";
-import * as fsSync from 'fs';
+import * as fs from 'fs';
 import { LanguageClient } from 'vscode-languageclient/node';
 import * as ext from "../lsp_ext";
 import { Logger } from "../logger";
 import { LabeledVersion } from '../labeledVersion';
 import { PackageManager } from "@4dsas/package-manager";
+import { DependencyOverlay } from './DependencyOverlay';
 
 export class DependencyManager {
 
@@ -17,6 +18,9 @@ export class DependencyManager {
         private _4DVersion: LabeledVersion
     ) {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+
+        this._extensionContext.subscriptions.push(this._statusBarItem);
+        new DependencyOverlay(this._extensionContext);
     }
 
     private async getGitHubSession(): Promise<vscode.AuthenticationSession | undefined> {
@@ -162,16 +166,7 @@ export class DependencyManager {
         this._extensionContext.subscriptions.push(watcher, disposable);
 
 
-        const possiblePaths = ["../environment4d.json", "../../environment4d.json"];
-        let envAbs: string | undefined = undefined;
-
-        for (const rel of possiblePaths) {
-            const candidate = path.resolve(projectFolder, rel); // absolute
-            if (fsSync.existsSync(candidate)) {
-                envAbs = candidate;
-                break;
-            }
-        }
+        const envAbs = this.findNearestEnvironmentFileSync(projectFolder);
 
         if (envAbs) {
             const envDir = path.dirname(envAbs);
@@ -189,4 +184,23 @@ export class DependencyManager {
             this._listWatcher.push(envDisposable);
         }
     }
+
+    private findNearestEnvironmentFileSync(startDir: string): string | undefined {
+        let currentDir = startDir;
+        const root = path.parse(currentDir).root;
+
+        while (true) {
+            const envFile = path.join(currentDir, 'environment4d.json');
+            if (fs.existsSync(envFile)) {
+                return envFile;
+            }
+
+            if (currentDir === root) {
+                return undefined;
+            }
+
+            currentDir = path.dirname(currentDir);
+        }
+    }
+
 }
