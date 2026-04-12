@@ -65,6 +65,7 @@ describe('PackageManager', () => {
             isPrimary,
             reconcileWithEnv: vi.fn(),
             reconcileWithLock: vi.fn(),
+            getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
             fetch: vi.fn().mockResolvedValue(true),
             compare: vi.fn(),
             checkOutdated: vi.fn()
@@ -133,6 +134,7 @@ describe('PackageManager', () => {
                 reconcileWithLock: vi.fn().mockImplementation((_lockEntry, update) => {
                     reconcileWithLockCalls.push({ update });
                 }),
+                getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                 fetch: vi.fn().mockResolvedValue(true),
                 compare: vi.fn(),
                 checkOutdated: vi.fn()
@@ -172,6 +174,7 @@ describe('PackageManager', () => {
                 reconcileWithLock: vi.fn().mockImplementation(() => {
                     reconcileWithLockCalls.push(true);
                 }),
+                getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                 fetch: vi.fn().mockResolvedValue(true),
                 compare: vi.fn(),
                 checkOutdated: vi.fn()
@@ -207,6 +210,7 @@ describe('PackageManager', () => {
                 isPrimary,
                 reconcileWithEnv: vi.fn(),
                 reconcileWithLock: vi.fn(),
+                getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                 fetch: vi.fn().mockImplementation(() => {
                     callCount++;
                     return Promise.resolve(callCount !== 1); // First one skipped
@@ -236,6 +240,7 @@ describe('PackageManager', () => {
                     isPrimary,
                     reconcileWithEnv: vi.fn(),
                     reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                     fetch: vi.fn().mockImplementation(async (_ideVersion, _env, lockEntry) => {
                         fetchCalls.push(name);
                         // Add sub-dependency on first dependency
@@ -290,6 +295,7 @@ describe('PackageManager', () => {
                     isPrimary,
                     reconcileWithEnv: vi.fn(),
                     reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                     fetch: vi.fn().mockImplementation(async (_ideVersion, _env, lockEntry) => {
                         passCount++;
                         // Always add a new sub-dependency
@@ -323,6 +329,7 @@ describe('PackageManager', () => {
                     isPrimary,
                     reconcileWithEnv: vi.fn(),
                     reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                     fetch: vi.fn().mockImplementation(async () => {
                         fetchedDeps.push(name);
                         return true;
@@ -353,6 +360,7 @@ describe('PackageManager', () => {
                     isPrimary,
                     reconcileWithEnv: vi.fn(),
                     reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
                     fetch: vi.fn().mockImplementation(async (_ideVersion, _env, lockEntry) => {
                         fetchCounts[name] = (fetchCounts[name] || 0) + 1;
                         // dep1 references dep2 as sub-dependency (already primary)
