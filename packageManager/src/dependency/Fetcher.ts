@@ -1,6 +1,21 @@
 import { GitHubRelease } from '../types';
 
 /**
+ * Error class for fetch operations that carries HTTP status and URL context
+ */
+export class FetchError extends Error {
+  status?: number;
+  url?: string;
+
+  constructor(message: string, options?: { status?: number; url?: string }) {
+    super(message);
+    this.name = 'FetchError';
+    this.status = options?.status;
+    this.url = options?.url;
+  }
+}
+
+/**
  * Interface for fetching dependency information from various sources
  */
 export interface Fetcher {

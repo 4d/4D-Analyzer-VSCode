@@ -124,7 +124,7 @@ describe('GitHubDependency.checkOutdated', () => {
 
         await dep.checkOutdated(mockFetcher, new Version('20.0.0'), lock, mockCacheManager);
 
-        expect(lock.update?.errors).toBeDefined();
-        expect(lock.update?.errors?.[0].message).toBe('API rate limit');
+        expect(lock.errors).toBeDefined();
+        expect(lock.errors?.[0].message).toBe('API rate limit');
     });
 });

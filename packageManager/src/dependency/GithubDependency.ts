@@ -5,7 +5,7 @@ import {
   LockEntry,
   Environment,
 } from '../types';
-import { Fetcher } from './Fetcher';
+import { Fetcher, FetchError } from './Fetcher';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
@@ -47,87 +47,133 @@ export class GitHubDependency extends Dependency {
       return false;
     const owner = this.owner;
     const repo = this.repo;
-    console.log(`Fetching GitHub dependency: ${owner}/${repo}`);
+    const repoPath = `${owner}/${repo}`;
+    this.logger?.info(`Fetching GitHub dependency: ${repoPath}`);
+
+    // Phase 1: Resolve version
+    let tag: string | null;
     try {
-      // Resolve version
-      const tag = await this.resolveVersion(fetcher, ideVersion);
-      if (!tag) {
-        this.addError(lock, 'No matching version found');
-        return false;
+      tag = await this.resolveVersion(fetcher, ideVersion);
+    } catch (error: any) {
+      this.logger?.error(`${repoPath}: ${error.message}`);
+      if (this.version) {
+        this.addFetchError(lock, `Unable to find a release for ${repoPath} on GitHub satisfying version ${this.version}`, error);
+      } else {
+        this.addFetchError(lock, `Unable to find a release for ${repoPath} on GitHub`, error);
       }
+      lock.found = false;
+      return false;
+    }
 
-      lock.tag = tag;
-      const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(tag));
-      const project = await this.getPackage(dependencyLocation);
-
-      // Check if already in cache
-      const exists = project != null;
-
-      if (exists && !update) {
-        const dependencyPath = cacheManager.getDependencyFolder(this, tag);
-        lock.path = dependencyPath;
-        lock.found = true;
-
-        // Read sub-dependencies
-        const subDeps = await project.getListDependencies();
-        if (subDeps?.dependencies) {
-          lock.dependencies = subDeps.dependencies;
-        }
-
-        return false; // Already cached, nothing fetched
+    if (!tag) {
+      this.logger?.warn(`${repoPath}: no matching version found`);
+      if (this.version) {
+        this.addError(lock, `Unable to find a release for ${repoPath} on GitHub satisfying version ${this.version}`);
+      } else {
+        this.addError(lock, `Unable to find a release for ${repoPath} on GitHub`);
       }
+      lock.found = false;
+      return false;
+    }
 
-      // Download archive
-      const archiveBuffer = await fetcher.downloadReleaseAsset(
-        owner,
-        repo,
-        tag,
-      );
+    this.logger?.debug(`${repoPath}: resolved to tag ${tag}`);
+    lock.tag = tag;
+    const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(tag));
+    const project = await this.getPackage(dependencyLocation);
 
-      lock.archiveSize = archiveBuffer.byteLength;
-      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dep-'));
-      const temp_file = path.join(tempDir, 'archive.zip');
-      await fs.writeFile(temp_file, Buffer.from(archiveBuffer));
+    // Check if already in cache
+    const exists = project != null;
 
-      // Extract to cache
-      const dependencyPath = await cacheManager.extractArchive(
-        temp_file,
-        this,
-        tag
-      );
-
-      // Clean up temp directory
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-
+    if (exists && !update) {
+      this.logger?.debug(`${repoPath}@${tag}: found in cache`);
+      const dependencyPath = cacheManager.getDependencyFolder(this, tag);
       lock.path = dependencyPath;
       lock.found = true;
 
-      // Build URLs
-      const htmlURL = env.github.htmlURL || 'https://github.com';
-      lock.htmlURL = `${htmlURL}/${owner}/${repo}/releases/tag/${tag}`;
-      lock.archiveURL = `${htmlURL}/${owner}/${repo}/releases/download/${tag}/${repo}.zip`;
-
-      // Read sub-dependencies from freshly extracted package
-      const extractedProject = await this.getPackage(dependencyPath);
-      const subDeps = await extractedProject?.getListDependencies();
+      // Read sub-dependencies
+      const subDeps = await project.getListDependencies();
       if (subDeps?.dependencies) {
         lock.dependencies = subDeps.dependencies;
       }
 
-      // Save metadata
-      await cacheManager.saveMetadata(this, tag, {
-        name: this.name,
-        github: this.github_url ?? '',
-        tag,
-        fetchedAt: new Date().toISOString(),
-        archiveSize: archiveBuffer.byteLength
-      });
+      return false; // Already cached, nothing fetched
+    }
 
-      return true; // Successfully fetched
-    } catch (error : any) {
-      this.addError(lock, error.message);
+    // Phase 2: Download archive
+    let archiveBuffer: ArrayBuffer;
+    try {
+      this.logger?.debug(`${repoPath}@${tag}: downloading archive...`);
+      archiveBuffer = await fetcher.downloadReleaseAsset(
+        owner,
+        repo,
+        tag,
+      );
+    } catch (error: any) {
+      this.logger?.error(`${repoPath}: ${error.message}`);
+      this.addFetchError(lock, `Unable to download release asset for ${repoPath} tag ${tag} on GitHub`, error);
       lock.found = false;
       return false;
+    }
+
+    lock.archiveSize = archiveBuffer.byteLength;
+
+    // Phase 3: Write temp file and extract archive
+    let dependencyPath: string;
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dep-'));
+    try {
+      const temp_file = path.join(tempDir, 'archive.zip');
+      await fs.writeFile(temp_file, Buffer.from(archiveBuffer));
+
+      dependencyPath = await cacheManager.extractArchive(
+        temp_file,
+        this,
+        tag
+      );
+    } catch (error: any) {
+      this.logger?.error(`${repoPath}: ${error.message}`);
+      this.addError(lock, `Cannot unzip downloaded file for ${repoPath} tag ${tag}`);
+      this.addFetchError(lock, error.message, error);
+      lock.found = false;
+      return false;
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+
+    lock.path = dependencyPath;
+    lock.found = true;
+
+    // Build URLs
+    const htmlURL = env.github.htmlURL || 'https://github.com';
+    lock.htmlURL = `${htmlURL}/${owner}/${repo}/releases/tag/${tag}`;
+    lock.archiveURL = `${htmlURL}/${owner}/${repo}/releases/download/${tag}/${repo}.zip`;
+
+    // Read sub-dependencies from freshly extracted package
+    const extractedProject = await this.getPackage(dependencyPath);
+    const subDeps = await extractedProject?.getListDependencies();
+    if (subDeps?.dependencies) {
+      lock.dependencies = subDeps.dependencies;
+    }
+
+    // Save metadata
+    await cacheManager.saveMetadata(this, tag, {
+      name: this.name,
+      github: this.github_url ?? '',
+      tag,
+      fetchedAt: new Date().toISOString(),
+      archiveSize: archiveBuffer.byteLength
+    });
+
+    return true; // Successfully fetched
+  }
+
+  /**
+   * Add error from a FetchError (with status/url) or plain Error
+   */
+  private addFetchError(lock: LockEntry, message: string, error: any): void {
+    if (error instanceof FetchError) {
+      this.addError(lock, message, { status: error.status, url: error.url });
+    } else {
+      this.addError(lock, message);
     }
   }
 
@@ -184,9 +230,6 @@ export class GitHubDependency extends Dependency {
         }
       }
     } catch (error: any) {
-      if (!lock.update) {
-        lock.update = {};
-      }
       this.addError(lock, error.message);
     }
   }

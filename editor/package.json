@@ -176,6 +176,13 @@
 					"default": "Workspace",
 					"order": 6,
 					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
+				},
+				"4D-Analyzer.dependencies.debug": {
+					"type": "boolean",
+					"scope": "machine",
+					"default": false,
+					"order": 7,
+					"markdownDescription": "Show debug logs for dependency fetching in the **4D-Dependencies** output channel."
 				}
 			}
 		},

@@ -1,6 +1,6 @@
 # @4dsas/package-manager
 
-A package manager for 4D projects that fetches dependencies from GitHub repositories.
+A package manager for 4D projects that fetches dependencies from GitHub or Gitlab repositories.
 
 ## Features
 
@@ -60,5 +60,30 @@ Located at `Project/Sources/dependencies.json`:
   }
 }
 ```
+
+## Version Resolution
+
+### Common rules
+
+| Field | Behaviour |
+|-------|-----------|
+| `"tag": "<value>"` | Use that **exact** tag — no resolution is performed. |
+| `"version": "<range>"` | Treated as a **semver range** (e.g. `^1.0.0`, `>=2.0.0 <3.0.0`). The highest release whose tag satisfies the range is selected. |
+| `"version": "4d"` | Match the current IDE version. |
+
+### GitHub
+
+| Spec | Behaviour |
+|------|-----------|
+| `"version": "latest"` | Uses the release **pinned as "Latest"** on the GitHub repository (GitHub API `getLatestRelease`). |
+| *(nothing specified)* | Same as `"latest"` — the release pinned as Latest on GitHub. |
+
+### GitLab
+
+| Spec | Behaviour |
+|------|-----------|
+| `"version": "highest"` | Collects **all** release tags, keeps only those that are a valid semantic version (or `v` + semantic version, the `v` prefix is stripped), then picks the **maximum** version. |
+| `"version": "latest"` | Uses the **most recent** release returned by the GitLab API (sorted by creation date). |
+| *(nothing specified)* | Same as `"highest"`. |
 
 
