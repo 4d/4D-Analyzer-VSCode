@@ -1,6 +1,7 @@
 import * as ext from "./lsp_ext";
 import { Ctx } from "./ctx";
 import * as vscode from "vscode";
+import { Logger } from "./logger";
 import { WorkspaceFullDocumentDiagnosticReport } from "vscode-languageclient";
 import { LabeledVersion } from "./labeledVersion";
 import * as fs from "fs";
@@ -116,30 +117,37 @@ export function checkWorkspaceSyntax(ctx: Ctx): Cmd {
             title: "Workspace syntax check running",
             cancellable: false
         }, async (progress, token) => {
+            try {
+                const client = ctx.client;
+                const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
+                    vscode.window.activeTextEditor.document
+                );
 
-            const client = ctx.client;
-            const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
-                vscode.window.activeTextEditor.document
-            );
-
-            const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
-            const diagnosticCollection = ctx.client.diagnostics;
-            diagnosticCollection.clear();
-            response.items.forEach(diagWorkspace => {
-                const diagnostics: vscode.Diagnostic[] = [];
-                const currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
-                const currentDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri));
-                for (const diag of currentItem.items) {
-                    const range: vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);
-                    const diagnostic = new vscode.Diagnostic(range, diag.message, diag.severity - 1);
-                    if (!currentDiagnostics.find((cdiagnostic => {
-                        return cdiagnostic.range.isEqual(diagnostic.range) && cdiagnostic.message === diagnostic.message;
-                    }))) {
-                        diagnostics.push(diagnostic);
-                    }
+                const response = await client.sendRequest(ext.checkWorkspaceSyntax, params);
+                if (!response?.items) {
+                    Logger.log("checkWorkspaceSyntax: response has no items", response);
+                    return;
                 }
-                diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
-            });
+                const diagnosticCollection = ctx.client.diagnostics;
+                diagnosticCollection.clear();
+                response.items.forEach(diagWorkspace => {
+                    const diagnostics: vscode.Diagnostic[] = [];
+                    const currentItem = diagWorkspace as WorkspaceFullDocumentDiagnosticReport;
+                    const currentDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.parse(currentItem.uri));
+                    for (const diag of currentItem.items) {
+                        const range: vscode.Range = new vscode.Range(diag.range.start.line, diag.range.start.character, diag.range.end.line, diag.range.end.character);
+                        const diagnostic = new vscode.Diagnostic(range, diag.message, diag.severity - 1);
+                        if (!currentDiagnostics.find((cdiagnostic => {
+                            return cdiagnostic.range.isEqual(diagnostic.range) && cdiagnostic.message === diagnostic.message;
+                        }))) {
+                            diagnostics.push(diagnostic);
+                        }
+                    }
+                    diagnosticCollection.set(vscode.Uri.parse(currentItem.uri), diagnostics);
+                });
+            } catch (error) {
+                Logger.log("checkWorkspaceSyntax failed:", error);
+            }
         });
     };
 }
