@@ -300,6 +300,18 @@ export abstract class Dependency {
     }
 
     /**
+     * Format the IDE version for the lock file when version="4d".
+     * LTS → "4D:20", "4D:21"
+     * R-release → "4D:21R2", "4D:20R10"
+     */
+    protected format4DLockVersion(ideVersion: Version): string {
+        if (ideVersion.isR) {
+            return `4D:${ideVersion.major}R${ideVersion.minor}`;
+        }
+        return `4D:${ideVersion.major}`;
+    }
+
+    /**
      * Encode tag for filesystem (replace / with _)
      */
     private encodeTag(tag: string): string {
@@ -327,7 +339,14 @@ export abstract class Dependency {
 
     abstract reconcileWithEnv(envSpec: string | DependencySpec): void;
 
-    abstract reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean): void;
+    abstract reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean, ideVersion?: Version): void;
+
+    /**
+     * Compute the effective version string to persist in the lock file.
+     * Subclasses override to map empty/alias versions to canonical keywords
+     * (e.g. "latest", "highest") and expand "4d" to "4D:<ideVersion>".
+     */
+    abstract getEffectiveLockVersion(ideVersion?: Version): string;
 
     abstract checkOutdated(
         fetcher: Fetcher,

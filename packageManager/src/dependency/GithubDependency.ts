@@ -78,6 +78,7 @@ export class GitHubDependency extends Dependency {
 
     this.logger?.debug(`${repoPath}: resolved to tag ${tag}`);
     lock.tag = tag;
+    lock.version = this.getEffectiveLockVersion(ideVersion);
     const dependencyLocation = path.join(cacheManager.getCacheRoot(), this.getCacheFolderPath(tag));
     const project = await this.getPackage(dependencyLocation);
 
@@ -262,11 +263,34 @@ export class GitHubDependency extends Dependency {
   /**
    * Reconcile with lock file
    */
-  reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean): void {
+  reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean, ideVersion?: Version): void {
     if (!lockEntry || update) {
       return;
     }
 
+    // Compare effective version with lock to detect changes
+    const effectiveVersion = this.getEffectiveLockVersion(ideVersion);
+    const lockedVersion = lockEntry.version || "";
+    if (effectiveVersion !== lockedVersion) {
+      return;
+    }
+
     this.restoreFromLock(lockEntry.tag);
+  }
+
+  /**
+   * Compute the effective version string for the lock file.
+   * - no version / "latest" → "latest"
+   * - "4d" → "4D:<ideVersion>" (or "4d" if ideVersion unavailable)
+   * - anything else → as-is
+   */
+  getEffectiveLockVersion(ideVersion?: Version): string {
+    if (!this.version || this.version === 'latest') {
+      return 'latest';
+    }
+    if (this.version.toLowerCase() === '4d') {
+      return ideVersion ? this.format4DLockVersion(ideVersion) : '4d';
+    }
+    return this.version;
   }
 }

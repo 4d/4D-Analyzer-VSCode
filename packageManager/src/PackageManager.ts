@@ -136,7 +136,7 @@ export class PackageManager {
             // Restore from lock file when not updating
             const lockEntry = this.lock.dependencies[name];
             if (lockEntry && !update) {
-                dep.reconcileWithLock(lockEntry, update);
+                dep.reconcileWithLock(lockEntry, update, this.ideVersion);
             }
 
             this.reconciled.set(name, dep);
@@ -172,10 +172,14 @@ export class PackageManager {
             const dep = this.reconciled.get(name)!;
             const lockEntry = this.lock.dependencies[name];
 
+            // Clear previous errors and warnings so they don't accumulate across fetches
+            delete lockEntry.errors;
+            delete lockEntry.warnings;
+
             // Copy spec to lock
             lockEntry.github = dep instanceof GitHubDependency ? dep.ID : undefined;
             lockEntry.gitlab = dep instanceof GitLabDependency ? dep.ID : undefined;
-            lockEntry.version = dep.version;
+            lockEntry.version = dep.getEffectiveLockVersion(this.ideVersion);
             lockEntry.isPrimary = dep.isPrimary;
         }
 
