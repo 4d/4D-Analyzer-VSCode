@@ -6,21 +6,36 @@ import * as ext from "../lsp_ext";
 import { Logger } from "../logger";
 import { LabeledVersion } from '../labeledVersion';
 import { PackageManager } from "@4dsas/package-manager";
+import type { Logger as PMLogger } from "@4dsas/package-manager";
 import { DependencyOverlay } from './DependencyOverlay';
 
 export class DependencyManager {
 
     private _listWatcher: vscode.Disposable[] = [];
     private _statusBarItem: vscode.StatusBarItem;
+    private _depChannel: vscode.OutputChannel;
 
     constructor(
         private _extensionContext: vscode.ExtensionContext,
         private _4DVersion: LabeledVersion
     ) {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+        this._depChannel = vscode.window.createOutputChannel("4D-Dependencies");
 
-        this._extensionContext.subscriptions.push(this._statusBarItem);
+        this._extensionContext.subscriptions.push(this._statusBarItem, this._depChannel);
         new DependencyOverlay(this._extensionContext);
+    }
+
+    private createLogger(): PMLogger {
+        const channel = this._depChannel;
+        const debugEnabled = vscode.workspace.getConfiguration("4D-Analyzer").get<boolean>("dependencies.debug", false);
+        const stamp = () => `[${new Date().toLocaleString()}]`;
+        return {
+            info(message: string)  { channel.appendLine(`${stamp()} [INFO]  ${message}`); },
+            debug(message: string) { if (debugEnabled) { channel.appendLine(`${stamp()} [DEBUG] ${message}`); } },
+            warn(message: string)  { channel.appendLine(`${stamp()} [WARN]  ${message}`); },
+            error(message: string) { channel.appendLine(`${stamp()} [ERROR] ${message}`); },
+        };
     }
 
     private async getGitHubSession(): Promise<vscode.AuthenticationSession | undefined> {
@@ -60,11 +75,29 @@ export class DependencyManager {
                 ? vscode.Uri.parse(params.preferences_uri).fsPath
                 : undefined;
 
+            // Attempt to get a GitLab token (best-effort, silent).
+            // 1. Try the official GitLab VS Code extension's auth provider.
+            //    Uses { silent: true } because 3rd-party extensions cannot create sessions.
+            // 2. Falls back to GITLAB_TOKEN env var (handled by ConfigReader internally).
+            let gitlabAuthToken: string | undefined;
+            try {
+                const gitlabSession = await vscode.authentication.getSession(
+                    'gitlab', ['api'], { silent: true }
+                );
+                if (gitlabSession) {
+                    gitlabAuthToken = gitlabSession.accessToken;
+                }
+            } catch {
+                // GitLab extension not installed or no session — continue without
+            }
+
             try {
                 const packageManager = await PackageManager.create(packageFolder, {
                     ideVersion: this._4DVersion.toString(false),
-                    authToken: session.accessToken,
+                    githubAuthToken: session.accessToken,
+                    gitlabAuthToken,
                     preferencesFolder,
+                    logger: this.createLogger(),
                     callback: (dependencyName) => {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
                     }

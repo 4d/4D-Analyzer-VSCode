@@ -1,4 +1,5 @@
-import { DependencySpec, LockEntry } from "../types";
+import { DependencySpec, Environment, Logger, LockEntry, ErrorMessage } from "../types";
+import { CacheManager } from "../cache/CacheManager";
 import { Fetcher } from "./Fetcher";
 import { Range } from "../version/Range";
 import { Package } from "./Package";
@@ -11,6 +12,7 @@ export abstract class Dependency {
     private _version: string | undefined;
     private _tag: string | undefined;
     private _isPrimary: boolean;
+    private _logger?: Logger;
     constructor(owner: string, name: string, version: string, tag: string, isPrimary: boolean) {
         this._isPrimary = isPrimary;
         this._version = version;
@@ -26,6 +28,8 @@ export abstract class Dependency {
     get tag(): string | undefined { return this._tag; }
     get version(): string | undefined { return this._version; }
     get isPrimary(): boolean { return this._isPrimary; }
+    protected get logger(): Logger | undefined { return this._logger; }
+    set log(logger: Logger | undefined) { this._logger = logger; }
     // Getters for spec properties
     get ID(): string | undefined {
         return this._owner && this._name ? `${this._owner}/${this._name}` : undefined;
@@ -101,27 +105,22 @@ export abstract class Dependency {
     /**
      * Add error to lock entry
      */
-    protected addError(lock: LockEntry, message: string): void {
-        if (!lock.update) {
-            lock.update = {};
+    protected addError(lock: LockEntry, message: string, extra?: Partial<ErrorMessage>): void {
+        if (!lock.errors) {
+            lock.errors = [];
         }
-        if (!lock.update.errors) {
-            lock.update.errors = [];
-        }
-        lock.update.errors.push({ message });
+        const error: ErrorMessage = { message, ...extra };
+        lock.errors.push(error);
     }
 
     /**
      * Add warning to lock entry
      */
     protected addWarning(lock: LockEntry, message: string): void {
-        if (!lock.update) {
-            lock.update = {};
+        if (!lock.warnings) {
+            lock.warnings = [];
         }
-        if (!lock.update.warnings) {
-            lock.update.warnings = [];
-        }
-        lock.update.warnings.push({ message });
+        lock.warnings.push({ message });
     }
 
     /**
@@ -316,6 +315,26 @@ export abstract class Dependency {
      * Get the relative metadata file path
      */
     abstract getMetadataFilePath(tag: string): string;
+
+    abstract fetch(
+        ideVersion: Version,
+        env: Environment,
+        lock: LockEntry,
+        fetcher: Fetcher,
+        cacheManager: CacheManager,
+        update?: boolean
+    ): Promise<boolean>;
+
+    abstract reconcileWithEnv(envSpec: string | DependencySpec): void;
+
+    abstract reconcileWithLock(lockEntry: LockEntry | undefined, update: boolean): void;
+
+    abstract checkOutdated(
+        fetcher: Fetcher,
+        ideVersion: Version,
+        lock: LockEntry,
+        cacheManager: CacheManager
+    ): Promise<void>;
 
     async getPackage(root: string): Promise<Package | null> {
         return Package.Create(root)
