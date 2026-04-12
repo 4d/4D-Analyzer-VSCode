@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as os from 'os';
 import { parseTree, parse, getNodeValue } from 'jsonc-parser';
@@ -147,7 +148,7 @@ export class DependencyOverlay {
         editor.setDecorations(this._envDecorationType, decorations);
     }
 
-    private buildEnvHints(dependenciesText: string, envText: string): EnvOverlayHint[] {
+    buildEnvHints(dependenciesText: string, envText: string): EnvOverlayHint[] {
         const dependenciesRoot = parseTree(dependenciesText);
         const environmentObject = parse(envText);
 
@@ -396,6 +397,24 @@ export class DependencyOverlay {
                 await fsPromises.access(envFile);
                 return envFile;
             } catch {
+            }
+
+            if (currentDir === root) {
+                return undefined;
+            }
+
+            currentDir = path.dirname(currentDir);
+        }
+    }
+
+    findNearestEnvironmentFileSync(startDir: string): string | undefined {
+        let currentDir = startDir;
+        const root = path.parse(currentDir).root;
+
+        while (true) {
+            const envFile = path.join(currentDir, 'environment4d.json');
+            if (fs.existsSync(envFile)) {
+                return envFile;
             }
 
             if (currentDir === root) {
