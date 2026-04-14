@@ -38,6 +38,17 @@ export class DependencyManager {
         };
     }
 
+    private projectHasGitLabDependencies(packageFolder: string): boolean {
+        try {
+            const depsFilePath = path.join(packageFolder, 'Project', 'Sources', 'dependencies.json');
+            const content = fs.readFileSync(depsFilePath, 'utf-8');
+            const parsed = JSON.parse(content);
+            return Object.values(parsed.dependencies ?? {}).some((dep: any) => !!dep.gitlab);
+        } catch {
+            return false;
+        }
+    }
+
     private async getGitHubSession(): Promise<vscode.AuthenticationSession | undefined> {
         // The GitHub Authentication Provider accepts the scopes described here:
         // https://developer.github.com/apps/building-oauth-apps/understanding-scopes-for-oauth-apps/
@@ -81,26 +92,50 @@ export class DependencyManager {
             try {
                 const accounts = await vscode.authentication.getAccounts('gitlab');
                 logger.debug(`[GitLab] Found ${accounts.length} account(s)`);
-                for (const account of accounts) {
-                    logger.debug(`[GitLab] Getting session for account: ${account.id} (${account.label})`);
-                    // Use createIfNone to show a modal consent dialog if the
-                    // extension hasn't been granted access yet.  Without it VS Code
-                    // only adds a silent badge on the Accounts icon.
-                    const gitlabSession = await vscode.authentication.getSession(
-                        'gitlab', ['api'], { account, createIfNone: true }
-                    );
-                    if (gitlabSession) {
-                        // account.id = "instanceUrl|userId" (see makeAccountId in gitlab_account.ts)
-                        const pipeIndex = account.id.lastIndexOf('|');
-                        const instanceUrl = pipeIndex > 0
-                            ? account.id.substring(0, pipeIndex).replace(/\/+$/, '')
-                            : 'https://gitlab.com';
-                        gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
-                        logger.debug(`[GitLab] Got token for ${instanceUrl} (session account: ${gitlabSession.account.id})`);
-                    } else {
-                        logger.debug(`[GitLab] No session returned for account: ${account.id}`);
+
+                if (accounts.length === 0 && this.projectHasGitLabDependencies(packageFolder)) {
+                    // No known accounts but project has GitLab dependencies — prompt sign-in.
+                    logger.debug('[GitLab] No accounts found but project has GitLab dependencies, prompting sign-in');
+                    try {
+                        const gitlabSession = await vscode.authentication.getSession(
+                            'gitlab', ['api'], { createIfNone: true }
+                        );
+                        if (gitlabSession) {
+                            const pipeIndex = gitlabSession.account.id.lastIndexOf('|');
+                            const instanceUrl = pipeIndex > 0
+                                ? gitlabSession.account.id.substring(0, pipeIndex).replace(/\/+$/, '')
+                                : 'https://gitlab.com';
+                            gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
+                            logger.debug(`[GitLab] Got token for ${instanceUrl} after prompt`);
+                        }
+                    } catch {
+                        vscode.window.showErrorMessage(
+                            'GitLab authentication is required to fetch GitLab components. Please install the GitLab Workflow extension and sign in.'
+                        );
+                    }
+                } else {
+                    for (const account of accounts) {
+                        logger.debug(`[GitLab] Getting session for account: ${account.id} (${account.label})`);
+                        // Use createIfNone to show a modal consent dialog if the
+                        // extension hasn't been granted access yet.  Without it VS Code
+                        // only adds a silent badge on the Accounts icon.
+                        const gitlabSession = await vscode.authentication.getSession(
+                            'gitlab', ['api'], { account, createIfNone: true }
+                        );
+                        if (gitlabSession) {
+                            // account.id = "instanceUrl|userId" (see makeAccountId in gitlab_account.ts)
+                            const pipeIndex = account.id.lastIndexOf('|');
+                            const instanceUrl = pipeIndex > 0
+                                ? account.id.substring(0, pipeIndex).replace(/\/+$/, '')
+                                : 'https://gitlab.com';
+                            gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
+                            logger.debug(`[GitLab] Got token for ${instanceUrl} (session account: ${gitlabSession.account.id})`);
+                        } else {
+                            logger.debug(`[GitLab] No session returned for account: ${account.id}`);
+                        }
                     }
                 }
+
                 const hostList = Object.keys(gitlabAuthTokens);
                 logger.debug(`[GitLab] Token map has ${hostList.length} host(s): ${hostList.join(', ')}`);
                 for (const [host, token] of Object.entries(gitlabAuthTokens)) {
