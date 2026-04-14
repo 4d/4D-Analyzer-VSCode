@@ -71,29 +71,53 @@ export class DependencyManager {
                 ? vscode.Uri.parse(params.preferences_uri).fsPath
                 : undefined;
 
-            // Attempt to get a GitLab token (best-effort, silent).
-            // 1. Try the official GitLab VS Code extension's auth provider.
-            //    Uses { silent: true } because 3rd-party extensions cannot create sessions.
-            // 2. Falls back to GITLAB_TOKEN env var (handled by ConfigReader internally).
-            let gitlabAuthToken: string | undefined;
+            // Attempt to get GitLab tokens (best-effort, silent).
+            // The GitLab Workflow extension exposes all accounts (across instances)
+            // via its auth provider. Each session's account.id is "instanceUrl|userId".
+            // We use getAccounts() (VS Code ≥1.93) to enumerate all instances and
+            // build a host→token map so each host gets its own token.
+            const logger = this.createLogger();
+            const gitlabAuthTokens: Record<string, string> = {};
             try {
-                const gitlabSession = await vscode.authentication.getSession(
-                    'gitlab', ['api'], { silent: true }
-                );
-                if (gitlabSession) {
-                    gitlabAuthToken = gitlabSession.accessToken;
+                const accounts = await vscode.authentication.getAccounts('gitlab');
+                logger.debug(`[GitLab] Found ${accounts.length} account(s)`);
+                for (const account of accounts) {
+                    logger.debug(`[GitLab] Getting session for account: ${account.id} (${account.label})`);
+                    // Use createIfNone to show a modal consent dialog if the
+                    // extension hasn't been granted access yet.  Without it VS Code
+                    // only adds a silent badge on the Accounts icon.
+                    const gitlabSession = await vscode.authentication.getSession(
+                        'gitlab', ['api'], { account, createIfNone: true }
+                    );
+                    if (gitlabSession) {
+                        // account.id = "instanceUrl|userId" (see makeAccountId in gitlab_account.ts)
+                        const pipeIndex = account.id.lastIndexOf('|');
+                        const instanceUrl = pipeIndex > 0
+                            ? account.id.substring(0, pipeIndex).replace(/\/+$/, '')
+                            : 'https://gitlab.com';
+                        gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
+                        logger.debug(`[GitLab] Got token for ${instanceUrl} (session account: ${gitlabSession.account.id})`);
+                    } else {
+                        logger.debug(`[GitLab] No session returned for account: ${account.id}`);
+                    }
                 }
-            } catch {
-                // GitLab extension not installed or no session — continue without
+                const hostList = Object.keys(gitlabAuthTokens);
+                logger.debug(`[GitLab] Token map has ${hostList.length} host(s): ${hostList.join(', ')}`);
+                for (const [host, token] of Object.entries(gitlabAuthTokens)) {
+                    logger.debug(`[GitLab]   ${host} => token length=${token.length}, starts=${token.substring(0, 8)}...`);
+                }
+            } catch (e) {
+                logger.debug(`[GitLab] Failed to get accounts: ${e}`);
+                // GitLab extension not installed or no accounts — continue without
             }
 
             try {
                 const packageManager = await PackageManager.create(packageFolder, {
                     ideVersion: this._4DVersion.toString(false),
                     githubAuthToken: session.accessToken,
-                    gitlabAuthToken,
+                    gitlabAuthTokens,
                     preferencesFolder,
-                    logger: this.createLogger(),
+                    logger,
                     callback: (dependencyName) => {
                         this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
                     }

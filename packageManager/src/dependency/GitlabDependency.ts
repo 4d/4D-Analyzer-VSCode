@@ -45,6 +45,11 @@ export class GitLabDependency extends Dependency {
   /** The host URL for this dependency (undefined means default gitlab.com) */
   get host(): string | undefined { return this._host; }
 
+  /** Label for error messages: "GitLab" or "GitLab (host)" */
+  private get gitlabLabel(): string {
+    return this._host ? `GitLab (${this._host})` : 'GitLab';
+  }
+
   /**
    * Fetch this dependency.
    */
@@ -72,9 +77,9 @@ export class GitLabDependency extends Dependency {
     } catch (error: any) {
       this.logger?.error(`${repoPath}: ${error.message}`);
       if (this.version) {
-        this.addFetchError(lock, `Unable to find a release for ${repoPath} on GitLab satisfying version ${this.version}`, error);
+        this.addFetchError(lock, `Unable to find a release for ${repoPath} on ${this.gitlabLabel} satisfying version ${this.version}`, error);
       } else {
-        this.addFetchError(lock, `Unable to find a release for ${repoPath} on GitLab`, error);
+        this.addFetchError(lock, `Unable to find a release for ${repoPath} on ${this.gitlabLabel}`, error);
       }
       lock.found = false;
       return false;
@@ -83,9 +88,9 @@ export class GitLabDependency extends Dependency {
     if (!tag) {
       this.logger?.warn(`${repoPath}: no matching version found`);
       if (this.version) {
-        this.addError(lock, `Unable to find a release for ${repoPath} on GitLab satisfying version ${this.version}`);
+        this.addError(lock, `Unable to find a release for ${repoPath} on ${this.gitlabLabel} satisfying version ${this.version}`);
       } else {
-        this.addError(lock, `Unable to find a release for ${repoPath} on GitLab`);
+        this.addError(lock, `Unable to find a release for ${repoPath} on ${this.gitlabLabel}`);
       }
       lock.found = false;
       return false;
@@ -125,7 +130,7 @@ export class GitLabDependency extends Dependency {
       );
     } catch (error: any) {
       this.logger?.error(`${repoPath}: ${error.message}`);
-      this.addFetchError(lock, `Unable to download release asset for ${repoPath} tag ${tag} on GitLab`, error);
+      this.addFetchError(lock, `Unable to download release asset for ${repoPath} tag ${tag} on ${this.gitlabLabel}`, error);
       lock.found = false;
       return false;
     }
