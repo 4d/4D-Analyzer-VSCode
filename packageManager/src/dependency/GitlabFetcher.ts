@@ -110,8 +110,9 @@ export class GitlabFetcher implements Fetcher {
             `/projects/${encoded}/releases?per_page=1`
         );
         if (!releases || releases.length === 0) {
+            const label = this.host !== 'https://gitlab.com' ? `GitLab (${this.host})` : 'GitLab';
             throw new FetchError(
-                `Unable to find the latest release for ${owner}/${repo} on GitLab`,
+                `Unable to find the latest release for ${owner}/${repo} on ${label}`,
                 { url: `${this.apiURL}/projects/${encoded}/releases` }
             );
         }
