@@ -30,7 +30,7 @@ export class PackageManager {
     private cacheManager: CacheManager;
     private fetcher: Fetcher;
     private gitlabFetcher: Fetcher | null = null;
-    private gitlabAuthToken?: string;
+    private gitlabAuthTokens: Record<string, string>;
     private environment: Environment | null = null; // set in initialize()
     private dependencies: DependenciesFile | null = null;
     private lock: LockFile | null = null;
@@ -59,7 +59,7 @@ export class PackageManager {
         this.configReader = new ConfigReader(projectPath, opts.preferencesFolder);
         this.cacheManager = new CacheManager(opts.cacheFolder);
         this.fetcher = opts.fetcher ?? new GithubFetcher(opts.githubAuthToken);
-        this.gitlabAuthToken = opts.gitlabAuthToken;
+        this.gitlabAuthTokens = opts.gitlabAuthTokens ?? {};
         this.ideVersion = new Version(opts.ideVersion);
         this.callback = opts.callback;
         this.logger = opts.logger;
@@ -491,17 +491,18 @@ export class PackageManager {
     /**
      * Lazily create a GitlabFetcher, resolving the token from:
      *  1. Per-host override from environment4d.json gitlab.hosts[host].token
-     *  2. gitlabAuthToken option (e.g. from VS Code GitLab extension)
+     *  2. Per-host token from gitlabAuthTokens map (e.g. from VS Code GitLab extension)
      *  3. environment4d.json gitlab.token / GITLAB_TOKEN env var (already merged by ConfigReader)
      */
     private getGitlabFetcher(depHost?: string): Fetcher {
         // Determine host: dependency-specific host overrides environment default
         const host = depHost || this.environment?.gitlab.host;
 
-        // Resolve token: per-host override → VS Code extension token → global token
+        // Resolve token with per-host priority
         const hostKey = host?.replace(/\/+$/, '');
-        const perHostToken = hostKey ? this.environment?.gitlab.hosts?.[hostKey]?.token : undefined;
-        const token = perHostToken || this.gitlabAuthToken || this.environment?.gitlab.token;
+        const perHostConfigToken = hostKey ? this.environment?.gitlab.hosts?.[hostKey]?.token : undefined;
+        const perHostExtToken = hostKey ? this.gitlabAuthTokens[hostKey] : undefined;
+        const token = perHostConfigToken || perHostExtToken || this.environment?.gitlab.token;
 
         // For now, create a per-call fetcher when host differs.
         // Common case: single host, reuse cached fetcher.

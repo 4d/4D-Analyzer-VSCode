@@ -63,8 +63,8 @@ export interface PackageManagerOptions {
   callback?: (message: string) => void;
   /** Custom fetcher implementation. Defaults to GithubFetcher */
   fetcher?: Fetcher;
-  /** GitLab personal access token for authentication */
-  gitlabAuthToken?: string;
+  /** GitLab tokens keyed by host URL (e.g. { "https://gitlab.com": "glpat-..." }) */
+  gitlabAuthTokens?: Record<string, string>;
   /** Optional logger for diagnostic output */
   logger?: Logger;
 }
