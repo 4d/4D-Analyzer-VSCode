@@ -83,7 +83,7 @@ export class DependencyManager {
                 : undefined;
 
             // Attempt to get GitLab tokens (best-effort, silent).
-            // The GitLab Workflow extension exposes all accounts (across instances)
+            // The GitLab extension exposes all accounts (across instances)
             // via its auth provider. Each session's account.id is "instanceUrl|userId".
             // We use getAccounts() (VS Code ≥1.93) to enumerate all instances and
             // build a host→token map so each host gets its own token.
@@ -96,22 +96,25 @@ export class DependencyManager {
                 if (accounts.length === 0 && this.projectHasGitLabDependencies(packageFolder)) {
                     // No known accounts but project has GitLab dependencies — prompt sign-in.
                     logger.debug('[GitLab] No accounts found but project has GitLab dependencies, prompting sign-in');
-                    try {
-                        const gitlabSession = await vscode.authentication.getSession(
-                            'gitlab', ['api'], { createIfNone: true }
-                        );
-                        if (gitlabSession) {
-                            const pipeIndex = gitlabSession.account.id.lastIndexOf('|');
-                            const instanceUrl = pipeIndex > 0
-                                ? gitlabSession.account.id.substring(0, pipeIndex).replace(/\/+$/, '')
-                                : 'https://gitlab.com';
-                            gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
-                            logger.debug(`[GitLab] Got token for ${instanceUrl} after prompt`);
-                        }
-                    } catch {
+                    const gitlabExtInstalled = !!vscode.extensions.getExtension('GitLab.gitlab-workflow');
+                    if (gitlabExtInstalled) {
                         vscode.window.showErrorMessage(
-                            'GitLab authentication is required to fetch GitLab components. Please install the GitLab Workflow extension and sign in.'
-                        );
+                            'GitLab authentication is required to fetch GitLab components.',
+                            'Authenticate with GitLab'
+                        ).then(selection => {
+                            if (selection === 'Authenticate with GitLab') {
+                                vscode.commands.executeCommand('gl.authenticate');
+                            }
+                        });
+                    } else {
+                        vscode.window.showErrorMessage(
+                            'GitLab authentication is required to fetch GitLab components. Please install the GitLab extension and authenticate.',
+                            'GitLab Extension'
+                        ).then(selection => {
+                            if (selection === 'GitLab Extension') {
+                                vscode.env.openExternal(vscode.Uri.parse('https://docs.gitlab.com/editor_extensions/visual_studio_code/setup/'));
+                            }
+                        });
                     }
                 } else {
                     for (const account of accounts) {
