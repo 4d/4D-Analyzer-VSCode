@@ -307,12 +307,33 @@ export class GitLabDependency extends Dependency {
 
   // ── Cache paths ────────────────────────────────────────────────
 
+  /**
+   * Normalize a host URL to a safe filesystem path segment.
+   * Strips the protocol prefix and replaces special characters with underscores.
+   * e.g. "https://srv-gitlab.example.com" → "srv-gitlab.example.com"
+   */
+  private normalizeHostToPath(host: string): string {
+    let normalized = host;
+    const protocolEnd = normalized.indexOf('://');
+    if (protocolEnd >= 0) {
+      normalized = normalized.substring(protocolEnd + 3);
+    }
+    return normalized.replace(/[/:?#[\]@!$&'()*+,;=]/g, '_').replace(/_+$/g, '');
+  }
+
+  private get gitlabCachePrefix(): string {
+    if (this._host) {
+      return `.gitlab/${this.normalizeHostToPath(this._host)}`;
+    }
+    return '.gitlab';
+  }
+
   getCacheFolderPath(tag: string): string {
-    return `.gitlab/${this.getCachePath(tag)}`;
+    return `${this.gitlabCachePrefix}/${this.getCachePath(tag)}`;
   }
 
   getMetadataFilePath(tag: string): string {
-    return `.gitlab/${this.getCachePath(tag)}.json`;
+    return `${this.gitlabCachePrefix}/${this.getCachePath(tag)}.json`;
   }
 
   // ── Reconciliation ─────────────────────────────────────────────
