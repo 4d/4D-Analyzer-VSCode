@@ -167,6 +167,13 @@
 					"default": "Workspace",
 					"order": 6,
 					"markdownDescription": "Precise the scope of the diagnostics. If 'workspace' is selected, every methods will be checked. If 'Document' is selected, only the current document will be checked"
+				},
+				"4D-Analyzer.hideCommandTokens": {
+					"type": "boolean",
+					"scope": "window",
+					"default": true,
+					"order": 7,
+					"markdownDescription": "Visually hide tokenized command suffixes (`:C11`, `:C1525`, ...) in 4D code. The file on disk is not modified; LSP offsets are preserved."
 				}
 			}
 		},

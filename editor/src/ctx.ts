@@ -15,6 +15,7 @@ import * as net from 'net';
 import { Logger } from "./logger";
 import { existsSync, readdirSync, rmdirSync, rm } from "fs";
 import * as path from "path";
+import { TokenHider } from "./tokenHider";
 
 export type CommandCallback = {
     call: (ctx: Ctx) => Commands.Cmd;
@@ -25,12 +26,14 @@ export class Ctx {
     private _extensionContext: vscode.ExtensionContext;
     private _commands: Record<string, CommandCallback>;
     private _config: Config;
+    private _tokenHider: TokenHider | null;
 
     constructor(ctx: vscode.ExtensionContext) {
         this._client = null;
         this._extensionContext = ctx;
         this._commands = {};
         this._config = null;
+        this._tokenHider = null;
     }
 
     public get config(): Config {
@@ -228,6 +231,11 @@ export class Ctx {
         );
 
         this._client.start();
+
+        if (!this._tokenHider) {
+            this._tokenHider = new TokenHider();
+            this._extensionContext.subscriptions.push(this._tokenHider);
+        }
     }
 
     public start() {
