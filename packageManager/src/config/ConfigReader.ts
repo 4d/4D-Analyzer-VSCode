@@ -39,7 +39,7 @@ export class ConfigReader {
             
             return parsed;
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (error instanceof Error && (error as Error & { code?: string }).code === 'ENOENT') {
                 return null;
             }
             throw new Error(`Failed to read dependencies.json: ${error instanceof Error ? error.message : String(error)}`);
@@ -95,7 +95,7 @@ export class ConfigReader {
             
             return parsed;
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (error instanceof Error && (error as Error & { code?: string }).code === 'ENOENT') {
                 return null;
             }
             throw new Error(`Failed to read lock file: ${error instanceof Error ? error.message : String(error)}`);
@@ -121,7 +121,7 @@ export class ConfigReader {
             const content = await fs.readFile(prefFile, 'utf-8');
             return JSON.parse(content);
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (error instanceof Error && (error as Error & { code?: string }).code === 'ENOENT') {
                 return {};
             }
             throw new Error(`Failed to read user preferences: ${error instanceof Error ? error.message : String(error)}`);
