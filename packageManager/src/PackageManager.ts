@@ -71,8 +71,8 @@ export class PackageManager {
     async initialize(): Promise<void> {
         // Read configuration files
         this.dependencies = await this.configReader.readDependencies();
-        if (!this.dependencies) {
-            throw new Error('Failed to read dependencies.json - file may not exist or is invalid');
+        if (!this.dependencies) {   
+             throw new Error('Failed to read dependencies.json - file may not exist or is invalid inside project path '+this.configReader.getProjectPath());
         }
 
         this.environment = await this.configReader.buildEnvironment(
