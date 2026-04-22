@@ -39,6 +39,10 @@ export class DependencyManager {
 
     public registerNotificationHandlers(client: LanguageClient, onRestartNeeded: () => void): void {
         client.onNotification(ext.notif_needFetchNotification, async (params) => {
+            if (!params?.project_uri) {
+                Logger.log(`ERROR: Fetch Notification received without project_uri: ${JSON.stringify(params)}`);
+                return;
+            }
             Logger.log("Fetch...", params.project_uri);
             this._statusBarItem.text = "$(sync~spin) Fetch components ...";
             this._statusBarItem.show();
