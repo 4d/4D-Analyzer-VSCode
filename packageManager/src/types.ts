@@ -195,6 +195,7 @@ export interface ErrorMessage {
 export interface LockEntry {
   github?: string;
   gitlab?: string;
+  host?: string;
   tag?: string;
   version?: string;
   path?: string;

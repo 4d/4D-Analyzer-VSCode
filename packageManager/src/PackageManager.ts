@@ -179,6 +179,7 @@ export class PackageManager {
             // Copy spec to lock
             lockEntry.github = dep instanceof GitHubDependency ? dep.ID : undefined;
             lockEntry.gitlab = dep instanceof GitLabDependency ? dep.ID : undefined;
+            lockEntry.host = dep instanceof GitLabDependency ? dep.host : undefined;
             lockEntry.version = dep.getEffectiveLockVersion(this.ideVersion);
             lockEntry.isPrimary = dep.isPrimary;
         }
@@ -340,9 +341,12 @@ export class PackageManager {
 
                 // Initialize lock entry
                 if (!this.lock.dependencies[subName]) {
+                    const rawHost = typedSubSpec.gitlab ? (typedSubSpec as any).host : undefined;
+                    const subHost = (rawHost && rawHost !== 'null') ? rawHost : undefined;
                     this.lock.dependencies[subName] = {
                         github: typedSubSpec.github,
                         gitlab: typedSubSpec.gitlab,
+                        host: subHost,
                         version: typedSubSpec.version,
                         isPrimary: false
                     };
