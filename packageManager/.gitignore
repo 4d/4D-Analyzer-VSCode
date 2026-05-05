@@ -36,6 +36,7 @@ yarn-error.log*
 coverage/
 .nyc_output/
 test/OUTPUT/
+test/live/live-services.config.local.json
 
 # Temporary files
 tmp/

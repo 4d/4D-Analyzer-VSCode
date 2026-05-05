@@ -1,0 +1,23 @@
+{
+  "github": {
+    "dependencyName": "SampleTestProject",
+    "repository": "e-marchand/SampleTestProject",
+    "version": "latest",
+    "tokenEnv": "GITHUB_TOKEN"
+  },
+  "gitlab": {
+    "dependencyName": "SampleTestProject",
+    "repository": "e-marchand/SampleTestProject",
+    "version": "latest",
+    "tokenEnv": "GITLAB_TOKEN"
+  },
+  "privateGitlab": {
+    "dependencyName": "SampleTestProject",
+    "repository": "e-marchand/SampleTestProject",
+    "version": "latest",
+    "host": "https://gitlab.example.com",
+    "hostEnv": "PRIVATE_GITLAB_URL",
+    "tokenEnv": "PRIVATE_GITLAB_TOKEN",
+    "requireToken": true
+  }
+}
