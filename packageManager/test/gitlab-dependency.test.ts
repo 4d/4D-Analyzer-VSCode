@@ -309,6 +309,23 @@ describe('GitLabDependency', () => {
       expect(lock.errors?.[0].message).toBe('Unable to find a release for group/project on GitLab satisfying version ^99.0.0');
     });
 
+    it('should preserve the original fetch error cause when release resolution throws', async () => {
+      const spec: DependencySpec = { gitlab: 'group/project', version: 'highest' };
+      const dep = new GitLabDependency(spec, true);
+
+      const tlsError = new Error('unable to verify the first certificate');
+      const fetchError = new TypeError('fetch failed', { cause: tlsError });
+      mockFetcher.getReleases = vi.fn().mockRejectedValue(fetchError);
+
+      const result = await dep.fetch(
+        new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager,
+      );
+
+      expect(result).toBe(false);
+      expect(lock.errors?.[0].message).toBe('Unable to find a release for group/project on GitLab satisfying version highest');
+      expect(lock.errors?.[1].message).toBe('fetch failed: unable to verify the first certificate');
+    });
+
     it('should skip fetch when dependency is already cached', async () => {
       const spec: DependencySpec = { gitlab: 'group/project', version: '^1.0.0' };
       const dep = new GitLabDependency(spec, true);
