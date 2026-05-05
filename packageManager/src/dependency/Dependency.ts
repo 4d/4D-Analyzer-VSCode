@@ -131,10 +131,11 @@ export abstract class Dependency {
             return undefined;
         }
 
-        const nestedCause = error.cause instanceof Error
-            ? error.cause.message
-            : typeof error.cause === 'string'
-                ? error.cause
+        const cause = (error as Error & { cause?: unknown }).cause;
+        const nestedCause = cause instanceof Error
+            ? cause.message
+            : typeof cause === 'string'
+                ? cause
                 : undefined;
 
         if (nestedCause && nestedCause !== error.message) {
