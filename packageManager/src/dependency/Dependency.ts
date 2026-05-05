@@ -124,6 +124,38 @@ export abstract class Dependency {
     }
 
     /**
+     * Extract a concise nested error cause for persistence in lock entries.
+     */
+    protected getErrorCause(error: unknown): string | undefined {
+        if (!(error instanceof Error)) {
+            return undefined;
+        }
+
+        const nestedCause = error.cause instanceof Error
+            ? error.cause.message
+            : typeof error.cause === 'string'
+                ? error.cause
+                : undefined;
+
+        if (nestedCause && nestedCause !== error.message) {
+            return `${error.message}: ${nestedCause}`;
+        }
+
+        return error.message || undefined;
+    }
+
+    /**
+     * Persist the underlying error as a second lock entry when it adds detail.
+     */
+    protected addOriginalError(lock: LockEntry, summaryMessage: string, error: unknown): void {
+        const originalMessage = this.getErrorCause(error);
+        if (!originalMessage || originalMessage === summaryMessage) {
+            return;
+        }
+        this.addError(lock, originalMessage);
+    }
+
+    /**
      * Resolve version/tag to download
      */
     protected async resolveVersion(

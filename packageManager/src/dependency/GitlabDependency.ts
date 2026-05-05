@@ -195,6 +195,7 @@ export class GitLabDependency extends Dependency {
     } else {
       this.addError(lock, message);
     }
+    this.addOriginalError(lock, message, error);
   }
 
   /**

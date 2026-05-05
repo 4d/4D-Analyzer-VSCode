@@ -176,6 +176,7 @@ export class GitHubDependency extends Dependency {
     } else {
       this.addError(lock, message);
     }
+    this.addOriginalError(lock, message, error);
   }
 
 
