@@ -99,7 +99,7 @@ More information on this kind of installation in this [4D Blog post](https://blo
 To display 4D code with the default 4D stylesheets, insert this property in the VSCode User settings.json file:
 ```json
 "editor.semanticTokenColorCustomizations": {
-    "[Default Light+]": {
+    "[Light+]": {
         "enabled": true,
         "rules": {
             "*:4d": {
@@ -172,7 +172,7 @@ To display 4D code with the default 4D stylesheets, insert this property in the 
             }
         }
     },
-    "[Default Dark+]": {
+    "[Dark+]": {
         "enabled": true,
         "rules": {
             "*:4d": {
