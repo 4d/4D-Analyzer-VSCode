@@ -86,4 +86,41 @@ Located at `Project/Sources/dependencies.json`:
 | `"version": "latest"` | Uses the **most recent** release returned by the GitLab API (sorted by creation date). |
 | *(nothing specified)* | Same as `"highest"`. |
 
+## Manual Live Tests
+
+The default `npm test` suite stays fully mocked and safe for CI. A separate live suite can exercise real GitHub, `gitlab.com`, and an optional private GitLab host when you provide a local config file and tokens.
+
+### Setup
+
+1. Copy `test/live/live-services.config.example.json` to `test/live/live-services.config.local.json`.
+2. Update the repository paths if needed.
+3. Export the tokens required by the targets you want to run.
+
+Example:
+
+```bash
+cd packageManager
+cp test/live/live-services.config.example.json test/live/live-services.config.local.json
+export GITHUB_TOKEN="ghp_..."
+export GITLAB_TOKEN="glpat_..."
+export PRIVATE_GITLAB_URL="https://gitlab.example.com"
+export PRIVATE_GITLAB_TOKEN="glpat-private-..."
+npm run test:live
+```
+
+You can also point to a different config file:
+
+```bash
+cd packageManager
+LIVE_SERVICES_CONFIG=/absolute/path/to/live-services.config.local.json npm run test:live
+```
+
+### Notes
+
+- The live config file is ignored by git.
+- Tokens stay in environment variables only.
+- GitHub live tests require a real release asset on the target repository because GitHub downloads the first attached release asset.
+- GitLab live tests can succeed with either a release asset or the repository archive for a release tag.
+- The private GitLab slice is skipped automatically unless both the host and token are available.
+
 

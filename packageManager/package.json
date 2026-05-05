@@ -20,6 +20,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build"
