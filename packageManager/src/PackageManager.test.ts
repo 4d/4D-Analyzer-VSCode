@@ -4,7 +4,9 @@ import { PackageManager } from './PackageManager';
 import { ConfigReader } from './config/ConfigReader';
 import { CacheManager } from './cache/CacheManager';
 import { GithubFetcher } from './dependency/GithubFetcher';
+import { GitlabFetcher } from './dependency/GitlabFetcher';
 import { GitHubDependency } from './dependency/GithubDependency';
+import { GitLabDependency } from './dependency/GitlabDependency';
 
 // Cross-platform test paths
 const TEST_PROJECT_PATH = path.resolve('/tmp/test-project');
@@ -14,7 +16,9 @@ const TEST_IDE_VERSION = "21.2.0";
 vi.mock('./config/ConfigReader');
 vi.mock('./cache/CacheManager');
 vi.mock('./dependency/GithubFetcher');
+vi.mock('./dependency/GitlabFetcher');
 vi.mock('./dependency/GithubDependency');
+vi.mock('./dependency/GitlabDependency');
 
 describe('PackageManager', () => {
     let packageManager: PackageManager;
@@ -56,6 +60,13 @@ describe('PackageManager', () => {
 
         // Setup GithubFetcher mock
         vi.mocked(GithubFetcher).mockImplementation(() => ({}) as unknown as GithubFetcher);
+
+        // Setup GitlabFetcher mock
+        vi.mocked(GitlabFetcher).mockImplementation((token?: string, host?: string) => ({
+            getHost: vi.fn().mockReturnValue((host || 'https://gitlab.com').replace(/\/+$/, '')),
+            token,
+            host
+        }) as unknown as GitlabFetcher);
 
         // Setup GitHubDependency mock
         vi.mocked(GitHubDependency).mockImplementation((spec, isPrimary) => ({
@@ -346,6 +357,257 @@ describe('PackageManager', () => {
             expect(result.fetchedCount).toBe(1);
             expect(fetchedDeps).toContain('dep1');
             expect(fetchedDeps).not.toContain('dep2');
+        });
+
+        it('should invoke the callback with the GitLab dependency name before fetching', async () => {
+            const callback = vi.fn();
+            const gitlabFetch = vi.fn().mockResolvedValue(true);
+
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'GitLab Component': { gitlab: 'group/project', version: 'latest' }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue({
+                    ...mockEnvironment,
+                    gitlab: {
+                        host: 'https://gitlab.com',
+                        hosts: {}
+                    }
+                }),
+                readLock: vi.fn().mockResolvedValue({ version: 2120, dependencies: {} }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            vi.mocked(GitLabDependency).mockImplementation((spec, isPrimary) => {
+                const dep = {
+                    ID: spec.gitlab,
+                    name: 'project',
+                    version: spec.version,
+                    isPrimary,
+                    host: undefined,
+                    reconcileWithEnv: vi.fn(),
+                    reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
+                    fetch: gitlabFetch,
+                    compare: vi.fn(),
+                    checkOutdated: vi.fn()
+                };
+                Object.setPrototypeOf(dep, GitLabDependency.prototype);
+                return dep as unknown as GitLabDependency;
+            });
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, {
+                ideVersion: TEST_IDE_VERSION,
+                callback
+            });
+
+            await packageManager.initialize();
+            await packageManager.fetch();
+
+            expect(callback).toHaveBeenCalledWith('GitLab Component');
+            expect(gitlabFetch).toHaveBeenCalledOnce();
+        });
+
+        it('should write GitLab host information to the lock for primary dependencies', async () => {
+            const gitlabFetch = vi.fn().mockResolvedValue(true);
+
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'Private GitLab Component': {
+                            gitlab: 'group/private-component',
+                            version: 'highest',
+                            host: 'https://private.gitlab.example.com'
+                        }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue({
+                    ...mockEnvironment,
+                    gitlab: {
+                        host: 'https://gitlab.com',
+                        token: 'default-token',
+                        hosts: {
+                            'https://private.gitlab.example.com': { token: 'config-private-token' }
+                        }
+                    }
+                }),
+                readLock: vi.fn().mockResolvedValue({ version: 2120, dependencies: {} }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            vi.mocked(GitLabDependency).mockImplementation((spec, isPrimary) => {
+                const dep = {
+                    ID: spec.gitlab,
+                    name: spec.gitlab?.split('/').slice(-1)[0] || 'unknown',
+                    version: spec.version,
+                    isPrimary,
+                    host: spec.host,
+                    reconcileWithEnv: vi.fn(),
+                    reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'highest'),
+                    fetch: gitlabFetch,
+                    compare: vi.fn(),
+                    checkOutdated: vi.fn()
+                };
+                Object.setPrototypeOf(dep, GitLabDependency.prototype);
+                return dep as unknown as GitLabDependency;
+            });
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, {
+                ideVersion: TEST_IDE_VERSION,
+                gitlabAuthTokens: {
+                    'https://private.gitlab.example.com': 'extension-private-token'
+                }
+            });
+
+            await packageManager.initialize();
+            const result = await packageManager.fetch();
+
+            expect(result.lock.dependencies['Private GitLab Component']).toEqual(expect.objectContaining({
+                gitlab: 'group/private-component',
+                host: 'https://private.gitlab.example.com',
+                version: 'highest',
+                isPrimary: true
+            }));
+            expect(GitlabFetcher).toHaveBeenCalledWith('config-private-token', 'https://private.gitlab.example.com');
+            expect(gitlabFetch).toHaveBeenCalledOnce();
+        });
+
+        it('should preserve GitLab private host information in sub-dependency lock entries', async () => {
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'dep1': { github: 'owner/dep1', version: '^1.0.0' }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue({
+                    ...mockEnvironment,
+                    gitlab: {
+                        host: 'https://gitlab.com',
+                        hosts: {}
+                    }
+                }),
+                readLock: vi.fn().mockResolvedValue({ version: 2120, dependencies: {} }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            vi.mocked(GitHubDependency).mockImplementation((spec, isPrimary) => ({
+                ID: spec.github,
+                name: spec.github?.split('/')[1] || 'unknown',
+                version: spec.version,
+                isPrimary,
+                reconcileWithEnv: vi.fn(),
+                reconcileWithLock: vi.fn(),
+                getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'latest'),
+                fetch: vi.fn().mockImplementation(async (_ideVersion, _env, lockEntry) => {
+                    lockEntry.dependencies = {
+                        'Private GitLab Subdep': {
+                            gitlab: 'group/private-subdep',
+                            version: 'latest',
+                            host: 'https://private.gitlab.example.com'
+                        }
+                    };
+                    return true;
+                }),
+                compare: vi.fn(),
+                checkOutdated: vi.fn()
+            }) as unknown as GitHubDependency);
+
+            vi.mocked(GitLabDependency).mockImplementation((spec, isPrimary) => {
+                const dep = {
+                    ID: spec.gitlab,
+                    name: spec.gitlab?.split('/').slice(-1)[0] || 'unknown',
+                    version: spec.version,
+                    isPrimary,
+                    host: spec.host,
+                    reconcileWithEnv: vi.fn(),
+                    reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'highest'),
+                    fetch: vi.fn().mockResolvedValue(true),
+                    compare: vi.fn(),
+                    checkOutdated: vi.fn()
+                };
+                Object.setPrototypeOf(dep, GitLabDependency.prototype);
+                return dep as unknown as GitLabDependency;
+            });
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, {
+                ideVersion: TEST_IDE_VERSION,
+                gitlabAuthTokens: {
+                    'https://private.gitlab.example.com': 'extension-private-token'
+                }
+            });
+
+            await packageManager.initialize();
+            const result = await packageManager.fetch();
+
+            expect(result.lock.dependencies['Private GitLab Subdep']).toEqual(expect.objectContaining({
+                gitlab: 'group/private-subdep',
+                host: 'https://private.gitlab.example.com',
+                version: 'latest',
+                isPrimary: false
+            }));
+            expect(GitlabFetcher).toHaveBeenCalledWith('extension-private-token', 'https://private.gitlab.example.com');
+        });
+
+        it('should create separate GitLab fetchers when dependencies use different hosts', async () => {
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'Public GitLab Component': {
+                            gitlab: 'group/public-component',
+                            version: 'latest'
+                        },
+                        'Private GitLab Component': {
+                            gitlab: 'group/private-component',
+                            version: 'latest',
+                            host: 'https://private.gitlab.example.com'
+                        }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue({
+                    ...mockEnvironment,
+                    gitlab: {
+                        host: 'https://gitlab.com',
+                        token: 'default-token'
+                    }
+                }),
+                readLock: vi.fn().mockResolvedValue({ version: 2120, dependencies: {} }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            vi.mocked(GitLabDependency).mockImplementation((spec, isPrimary) => {
+                const dep = {
+                    ID: spec.gitlab,
+                    name: spec.gitlab?.split('/').slice(-1)[0] || 'unknown',
+                    version: spec.version,
+                    isPrimary,
+                    host: spec.host,
+                    reconcileWithEnv: vi.fn(),
+                    reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'highest'),
+                    fetch: vi.fn().mockResolvedValue(true),
+                    compare: vi.fn(),
+                    checkOutdated: vi.fn()
+                };
+                Object.setPrototypeOf(dep, GitLabDependency.prototype);
+                return dep as unknown as GitLabDependency;
+            });
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, {
+                ideVersion: TEST_IDE_VERSION,
+                gitlabAuthTokens: {
+                    'https://private.gitlab.example.com': 'extension-private-token'
+                }
+            });
+
+            await packageManager.initialize();
+            await packageManager.fetch();
+
+            expect(GitlabFetcher).toHaveBeenNthCalledWith(1, 'default-token', 'https://gitlab.com');
+            expect(GitlabFetcher).toHaveBeenNthCalledWith(2, 'extension-private-token', 'https://private.gitlab.example.com');
         });
 
         it('should not re-process already processed dependencies', async () => {
