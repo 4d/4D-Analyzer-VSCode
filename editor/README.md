@@ -34,7 +34,8 @@ See the VSCode manual for more information on specific configurations.
 
 More precision on automatic **tool4d** download and use in [this 4D blog post](https://blog.4d.com/auto-tool4d-download-in-4d-analyzer-extension-for-vs-code).
 
-If 4D dependencies need to be downloaded from GitHub, the extension will prompt you to sign in to GitHub if you are not already signed in. More information [here](https://blog.4d.com/seamless-dependencies-management-is-coming-to-vs-code/).
+If 4D dependencies need to be downloaded from **GitHub**, the extension will prompt you to sign in to GitHub if you are not already signed in. More information [here](https://blog.4d.com/seamless-dependencies-management-is-coming-to-vs-code/).
+If 4D dependencies need to be downloaded from **GitLab**, the [official GitLab extention](https://marketplace.visualstudio.com/items?itemName=GitLab.gitlab-workflow) needs to be installed, and you need to be signed in to corresponding GitLab servers.
 
 ### Extension Settings
 
