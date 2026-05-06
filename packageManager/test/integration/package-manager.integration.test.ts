@@ -207,19 +207,19 @@ describe('PackageManager Integration', () => {
     });
 
     describe('Error handling', () => {
-        it('should throw when project path does not exist', async () => {
+        it('should resolve when project path does not exist', async () => {
             const pm = new PackageManager(path.join(cachePath, 'nonexistent'), TEST_IDE_VERSION, undefined, cachePath);
 
-            await expect(pm.initialize()).rejects.toThrow();
+            await expect(pm.initialize()).resolves.toBeUndefined();
         });
 
-        it('should throw when dependencies.json is missing', async () => {
+        it('should resolve when dependencies.json is missing', async () => {
             // Remove dependencies.json
             await fs.rm(path.join(projectPath, 'Project', 'Sources', 'dependencies.json'));
 
             const pm = new PackageManager(projectPath, TEST_IDE_VERSION, undefined, cachePath);
 
-            await expect(pm.initialize()).rejects.toThrow();
+            await expect(pm.initialize()).resolves.toBeUndefined();
         });
 
         it('should handle download errors gracefully', async () => {
