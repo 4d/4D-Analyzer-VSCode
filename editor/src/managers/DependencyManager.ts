@@ -38,14 +38,28 @@ export class DependencyManager {
         };
     }
 
-    private projectHasGitLabDependencies(packageFolder: string): boolean {
+    private normalizeGitLabHost(host?: string): string {
+        const trimmed = (host || 'https://gitlab.com').trim();
+        return trimmed.replace(/\/+$/, '');
+    }
+
+    private getGitLabDependencyHosts(packageFolder: string): string[] {
         try {
             const depsFilePath = path.join(packageFolder, 'Project', 'Sources', 'dependencies.json');
             const content = fs.readFileSync(depsFilePath, 'utf-8');
             const parsed = JSON.parse(content);
-            return Object.values(parsed.dependencies ?? {}).some((dep: any) => !!dep.gitlab);
+            const hosts = new Set<string>();
+
+            for (const dep of Object.values(parsed.dependencies ?? {}) as any[]) {
+                if (!dep?.gitlab) {
+                    continue;
+                }
+                hosts.add(this.normalizeGitLabHost(dep.host));
+            }
+
+            return Array.from(hosts);
         } catch {
-            return false;
+            return [];
         }
     }
 
@@ -79,6 +93,8 @@ export class DependencyManager {
         const preferencesFolder = preferencesUri
             ? vscode.Uri.parse(preferencesUri).fsPath
             : undefined;
+        const gitlabDependencyHosts = this.getGitLabDependencyHosts(packageFolder);
+        const hasGitLabDependencies = gitlabDependencyHosts.length > 0;
 
         // Attempt to get GitLab tokens (best-effort, silent).
         // The GitLab extension exposes all accounts (across instances)
@@ -91,7 +107,7 @@ export class DependencyManager {
             const accounts = await vscode.authentication.getAccounts('gitlab');
             logger.debug(`[GitLab] Found ${accounts.length} account(s)`);
 
-            if (accounts.length === 0 && this.projectHasGitLabDependencies(packageFolder)) {
+            if (accounts.length === 0 && hasGitLabDependencies) {
                 // No known accounts but project has GitLab dependencies — prompt sign-in.
                 logger.debug('[GitLab] No accounts found but project has GitLab dependencies, prompting sign-in');
                 const gitlabExtInstalled = !!vscode.extensions.getExtension('GitLab.gitlab-workflow');
@@ -142,9 +158,47 @@ export class DependencyManager {
             for (const [host, token] of Object.entries(gitlabAuthTokens)) {
                 logger.debug(`[GitLab]   ${host} => token length=${token.length}, starts=${token.substring(0, 8)}...`);
             }
+
+            if (hasGitLabDependencies) {
+                const missingHosts = gitlabDependencyHosts.filter(host => !gitlabAuthTokens[host]);
+                if (missingHosts.length > 0) {
+                    logger.warn(`[GitLab] Missing authentication for host(s): ${missingHosts.join(', ')}`);
+                    const message = `Some GitLab dependencies cannot be fetched because no token is configured for: ${missingHosts.join(', ')}`;
+
+                    vscode.window.showWarningMessage(
+                        message,
+                        'Authenticate with GitLab'
+                    ).then(selection => {
+                        if (selection === 'Authenticate with GitLab') {
+                            vscode.commands.executeCommand('gl.authenticate');
+                        }
+                    });
+                }
+            }
         } catch (e) {
             logger.debug(`[GitLab] Failed to get accounts: ${e}`);
-            // GitLab extension not installed or no accounts — continue without
+            if (hasGitLabDependencies) {
+                const gitlabExtInstalled = !!vscode.extensions.getExtension('GitLab.gitlab-workflow');
+                if (gitlabExtInstalled) {
+                    vscode.window.showErrorMessage(
+                        'GitLab authentication is required to fetch GitLab components.',
+                        'Authenticate with GitLab'
+                    ).then(selection => {
+                        if (selection === 'Authenticate with GitLab') {
+                            vscode.commands.executeCommand('gl.authenticate');
+                        }
+                    });
+                } else {
+                    vscode.window.showErrorMessage(
+                        'GitLab dependencies were found, but the GitLab extension is not installed. Install it to authenticate and fetch GitLab components.',
+                        'GitLab Extension'
+                    ).then(selection => {
+                        if (selection === 'GitLab Extension') {
+                            vscode.env.openExternal(vscode.Uri.parse('https://docs.gitlab.com/editor_extensions/visual_studio_code/setup/'));
+                        }
+                    });
+                }
+            }
         }
 
         try {
