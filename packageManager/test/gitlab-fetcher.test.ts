@@ -303,6 +303,118 @@ describe('GitlabFetcher', () => {
       expect(callCount).toBe(2);
     });
 
+    describe('upload URL rewriting', () => {
+      function makeReleaseWithUploadUrl(directAssetUrl: string) {
+        return {
+          tag_name: 'v1.0.0', name: '', description: '',
+          created_at: '', released_at: '',
+          upcoming_release: false,
+          assets: {
+            links: [{
+              name: 'project.zip',
+              url: 'https://gitlab.com/group/project/-/releases/v1.0.0/downloads/project.zip',
+              direct_asset_url: directAssetUrl,
+              link_type: 'package',
+            }],
+          },
+        };
+      }
+
+      it('should rewrite web-UI upload URL to API v4 endpoint', async () => {
+        let downloadUrl = '';
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation((url: string) => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(makeReleaseWithUploadUrl(
+                'https://gitlab.com/-/project/81303415/uploads/f2cef7a6a7a15cdad5da13fe7d600baf/project.zip'
+              )),
+            });
+          }
+          downloadUrl = url;
+          return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(256)) });
+        });
+
+        const fetcher = new GitlabFetcher('token', 'https://gitlab.com');
+        await fetcher.downloadReleaseAsset('group', 'project', 'v1.0.0');
+
+        expect(downloadUrl).toBe('https://gitlab.com/api/v4/projects/81303415/uploads/f2cef7a6a7a15cdad5da13fe7d600baf/project.zip');
+      });
+
+      it('should send PRIVATE-TOKEN when downloading rewritten upload URL', async () => {
+        let downloadHeaders: Record<string, string> | undefined;
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation((url: string, opts: any) => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(makeReleaseWithUploadUrl(
+                'https://gitlab.com/-/project/81303415/uploads/abc123/project.zip'
+              )),
+            });
+          }
+          downloadHeaders = opts?.headers;
+          return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(256)) });
+        });
+
+        const fetcher = new GitlabFetcher('glpat-secret', 'https://gitlab.com');
+        await fetcher.downloadReleaseAsset('group', 'project', 'v1.0.0');
+
+        expect(downloadHeaders?.['PRIVATE-TOKEN']).toBe('glpat-secret');
+      });
+
+      it('should not rewrite upload URL from a different host', async () => {
+        let downloadUrl = '';
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation((url: string) => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(makeReleaseWithUploadUrl(
+                'https://other.gitlab.com/-/project/99/uploads/abc123/project.zip'
+              )),
+            });
+          }
+          downloadUrl = url;
+          return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(256)) });
+        });
+
+        // fetcher is configured for gitlab.com, link points to other.gitlab.com
+        const fetcher = new GitlabFetcher('token', 'https://gitlab.com');
+        await fetcher.downloadReleaseAsset('group', 'project', 'v1.0.0');
+
+        // URL must be left unchanged
+        expect(downloadUrl).toBe('https://other.gitlab.com/-/project/99/uploads/abc123/project.zip');
+      });
+
+      it('should rewrite upload URL on a private host', async () => {
+        let downloadUrl = '';
+        let callCount = 0;
+        global.fetch = vi.fn().mockImplementation((url: string) => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(makeReleaseWithUploadUrl(
+                'https://mygitlab.company.com/-/project/42/uploads/deadbeef/project.zip'
+              )),
+            });
+          }
+          downloadUrl = url;
+          return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(256)) });
+        });
+
+        const fetcher = new GitlabFetcher('token', 'https://mygitlab.company.com');
+        await fetcher.downloadReleaseAsset('group', 'project', 'v1.0.0');
+
+        expect(downloadUrl).toBe('https://mygitlab.company.com/api/v4/projects/42/uploads/deadbeef/project.zip');
+      });
+    });
+
     it('should prefer zip link containing project name', async () => {
       let downloadUrl = '';
       let callCount = 0;

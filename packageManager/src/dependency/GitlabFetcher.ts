@@ -52,6 +52,25 @@ export class GitlabFetcher implements Fetcher {
     }
 
     /**
+     * Rewrite a web-UI upload URL to its API v4 equivalent.
+     *
+     * GitLab's /-/project/{id}/uploads/... URLs are only accessible via browser
+     * session cookies. The API v4 path accepts a PRIVATE-TOKEN header instead.
+     *
+     * Example:
+     *   https://gitlab.com/-/project/81303415/uploads/{hash}/file.zip
+     *   → https://gitlab.com/api/v4/projects/81303415/uploads/{hash}/file.zip
+     */
+    private rewriteUploadUrl(url: string): string {
+        const escaped = this.host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const m = url.match(new RegExp(`^(${escaped})\\/-\\/project\\/(\\d+)\\/uploads\\/(.+)$`));
+        if (m) {
+            return `${m[1]}/api/v4/projects/${m[2]}/uploads/${m[3]}`;
+        }
+        return url;
+    }
+
+    /**
      * Perform a GET request against the GitLab API.
      */
     private async apiGet<T>(endpoint: string): Promise<T> {
@@ -166,7 +185,7 @@ export class GitlabFetcher implements Fetcher {
 
         let downloadURL: string;
         if (zipLink) {
-            downloadURL = zipLink;
+            downloadURL = this.rewriteUploadUrl(zipLink);
         } else {
             // Fall back to source archive
             downloadURL = `${this.apiURL}/projects/${encoded}/repository/archive.zip?sha=${encodeURIComponent(tag)}`;
