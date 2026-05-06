@@ -184,3 +184,9 @@ export function createNewProject(ctx: Ctx): Cmd {
 export const restartLanguageServer = (ctx: Ctx) => async () => {
     await ctx.restart();
 };
+
+export function fetchDependencies(ctx: Ctx): Cmd {
+    return async () => {
+        await ctx.fetchDependencies();
+    };
+}

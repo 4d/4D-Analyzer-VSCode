@@ -60,6 +60,10 @@ export class Ctx {
         return this._dependencyManager.prepare_database(this._lspManager.client, DBID, callback);
     }
 
+    public async fetchDependencies(): Promise<void> {
+        return this._dependencyManager.fetchProjectForCommand(this._lspManager.client);
+    }
+
     private _initManagers() {
         this._tool4DManager = new Tool4DManager(
             this._config,
@@ -98,6 +102,7 @@ export class Ctx {
         this._config = new Config(this._extensionContext);
         this._initManagers();
         this._config.init(this);
+        this._dependencyManager.registerDependenciesCodeLens();
 
         if (this._config.IsTool4DEnabled()) {
             this._tool4DManager.prepareTool4D(this._config.tool4DWanted(), this._config.tool4DLocation(), this._config.tool4DDownloadChannel())
@@ -128,6 +133,7 @@ export class Ctx {
             checkWorkspaceSyntax: { call: Commands.checkWorkspaceSyntax },
             createNewProject: { call: Commands.createNewProject },
             restartLanguageServer: { call: Commands.restartLanguageServer },
+            fetchDependencies: { call: Commands.fetchDependencies },
         };
 
         for (const [name, command] of Object.entries(this._commands)) {

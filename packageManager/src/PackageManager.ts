@@ -82,7 +82,8 @@ export class PackageManager {
         this.logger?.info('Reading configuration files...');
         this.dependencies = await this.configReader.readDependencies();
         if (!this.dependencies) {
-            throw new Error('Failed to read dependencies.json - file may not exist or is invalid');
+            this.logger?.warn('No dependencies.json file found - nothing to fetch');
+            return;
         }
 
         this.environment = await this.configReader.buildEnvironment(
@@ -147,6 +148,9 @@ export class PackageManager {
      * Fetch dependencies
      */
     async fetch(options: FetchOptions = {}): Promise<FetchResult> {
+        if (!this.dependencies) {
+            return { success: true, lock: { version: 2120, dependencies: {} }, errors: [], warnings: [], fetchedCount: 0, skippedCount: 0 };
+        }
         if (!this.environment || !this.lock) {
             throw new Error('Not initialized. Call initialize() first.');
         }

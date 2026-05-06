@@ -63,6 +63,112 @@ export class DependencyManager {
         }
     }
 
+    private async _performFetch(client: LanguageClient, projectUri: string, preferencesUri?: string): Promise<void> {
+        this._statusBarItem.text = "$(sync~spin) Fetch components ...";
+        this._statusBarItem.show();
+
+        const session = await this.getGitHubSession();
+        if (!session) {
+            vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
+            client.sendNotification(ext.notif_installComponents, { uri: projectUri });
+            return;
+        }
+
+        const parsed = vscode.Uri.parse(projectUri).fsPath;
+        const packageFolder = path.dirname(path.dirname(parsed));
+        const preferencesFolder = preferencesUri
+            ? vscode.Uri.parse(preferencesUri).fsPath
+            : undefined;
+
+        // Attempt to get GitLab tokens (best-effort, silent).
+        // The GitLab extension exposes all accounts (across instances)
+        // via its auth provider. Each session's account.id is "instanceUrl|userId".
+        // We use getAccounts() (VS Code ≥1.93) to enumerate all instances and
+        // build a host→token map so each host gets its own token.
+        const logger = this.createLogger();
+        const gitlabAuthTokens: Record<string, string> = {};
+        try {
+            const accounts = await vscode.authentication.getAccounts('gitlab');
+            logger.debug(`[GitLab] Found ${accounts.length} account(s)`);
+
+            if (accounts.length === 0 && this.projectHasGitLabDependencies(packageFolder)) {
+                // No known accounts but project has GitLab dependencies — prompt sign-in.
+                logger.debug('[GitLab] No accounts found but project has GitLab dependencies, prompting sign-in');
+                const gitlabExtInstalled = !!vscode.extensions.getExtension('GitLab.gitlab-workflow');
+                if (gitlabExtInstalled) {
+                    vscode.window.showErrorMessage(
+                        'GitLab authentication is required to fetch GitLab components.',
+                        'Authenticate with GitLab'
+                    ).then(selection => {
+                        if (selection === 'Authenticate with GitLab') {
+                            vscode.commands.executeCommand('gl.authenticate');
+                        }
+                    });
+                } else {
+                    vscode.window.showErrorMessage(
+                        'GitLab authentication is required to fetch GitLab components. Please install the GitLab extension and authenticate.',
+                        'GitLab Extension'
+                    ).then(selection => {
+                        if (selection === 'GitLab Extension') {
+                            vscode.env.openExternal(vscode.Uri.parse('https://docs.gitlab.com/editor_extensions/visual_studio_code/setup/'));
+                        }
+                    });
+                }
+            } else {
+                for (const account of accounts) {
+                    logger.debug(`[GitLab] Getting session for account: ${account.id} (${account.label})`);
+                    // Use createIfNone to show a modal consent dialog if the
+                    // extension hasn't been granted access yet.  Without it VS Code
+                    // only adds a silent badge on the Accounts icon.
+                    const gitlabSession = await vscode.authentication.getSession(
+                        'gitlab', ['api'], { account, createIfNone: true }
+                    );
+                    if (gitlabSession) {
+                        // account.id = "instanceUrl|userId" (see makeAccountId in gitlab_account.ts)
+                        const pipeIndex = account.id.lastIndexOf('|');
+                        const instanceUrl = pipeIndex > 0
+                            ? account.id.substring(0, pipeIndex).replace(/\/+$/, '')
+                            : 'https://gitlab.com';
+                        gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
+                        logger.debug(`[GitLab] Got token for ${instanceUrl} (session account: ${gitlabSession.account.id})`);
+                    } else {
+                        logger.debug(`[GitLab] No session returned for account: ${account.id}`);
+                    }
+                }
+            }
+
+            const hostList = Object.keys(gitlabAuthTokens);
+            logger.debug(`[GitLab] Token map has ${hostList.length} host(s): ${hostList.join(', ')}`);
+            for (const [host, token] of Object.entries(gitlabAuthTokens)) {
+                logger.debug(`[GitLab]   ${host} => token length=${token.length}, starts=${token.substring(0, 8)}...`);
+            }
+        } catch (e) {
+            logger.debug(`[GitLab] Failed to get accounts: ${e}`);
+            // GitLab extension not installed or no accounts — continue without
+        }
+
+        try {
+            const packageManager = await PackageManager.create(packageFolder, {
+                ideVersion: this._4DVersion.toString(false),
+                githubAuthToken: session.accessToken,
+                gitlabAuthTokens,
+                preferencesFolder,
+                logger,
+                callback: (dependencyName) => {
+                    this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
+                }
+            });
+            await packageManager.fetch({});
+            this._statusBarItem.text = "$(sync~spin) Install components...";
+            client.sendNotification(ext.notif_installComponents, { uri: projectUri });
+        } catch (error) {
+            this._statusBarItem.hide();
+            Logger.log(error);
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(message);
+        }
+    }
+
     public registerNotificationHandlers(client: LanguageClient, onRestartNeeded: () => void): void {
         client.onNotification(ext.notif_needFetchNotification, async (params) => {
             if (!params?.project_uri) {
@@ -70,109 +176,7 @@ export class DependencyManager {
                 return;
             }
             Logger.log("Fetch...", params.project_uri);
-            this._statusBarItem.text = "$(sync~spin) Fetch components ...";
-            this._statusBarItem.show();
-
-            const session = await this.getGitHubSession();
-            if (!session) {
-                vscode.window.showErrorMessage("GitHub authentication is required to fetch 4D components. Please sign in to GitHub.");
-                client.sendNotification(ext.notif_installComponents, { uri: params.project_uri });
-                return;
-            }
-
-            const parsed = vscode.Uri.parse(params.project_uri).fsPath;
-            const packageFolder = path.dirname(path.dirname(parsed));
-            const preferencesFolder = params.preferences_uri
-                ? vscode.Uri.parse(params.preferences_uri).fsPath
-                : undefined;
-
-            // Attempt to get GitLab tokens (best-effort, silent).
-            // The GitLab extension exposes all accounts (across instances)
-            // via its auth provider. Each session's account.id is "instanceUrl|userId".
-            // We use getAccounts() (VS Code ≥1.93) to enumerate all instances and
-            // build a host→token map so each host gets its own token.
-            const logger = this.createLogger();
-            const gitlabAuthTokens: Record<string, string> = {};
-            try {
-                const accounts = await vscode.authentication.getAccounts('gitlab');
-                logger.debug(`[GitLab] Found ${accounts.length} account(s)`);
-
-                if (accounts.length === 0 && this.projectHasGitLabDependencies(packageFolder)) {
-                    // No known accounts but project has GitLab dependencies — prompt sign-in.
-                    logger.debug('[GitLab] No accounts found but project has GitLab dependencies, prompting sign-in');
-                    const gitlabExtInstalled = !!vscode.extensions.getExtension('GitLab.gitlab-workflow');
-                    if (gitlabExtInstalled) {
-                        vscode.window.showErrorMessage(
-                            'GitLab authentication is required to fetch GitLab components.',
-                            'Authenticate with GitLab'
-                        ).then(selection => {
-                            if (selection === 'Authenticate with GitLab') {
-                                vscode.commands.executeCommand('gl.authenticate');
-                            }
-                        });
-                    } else {
-                        vscode.window.showErrorMessage(
-                            'GitLab authentication is required to fetch GitLab components. Please install the GitLab extension and authenticate.',
-                            'GitLab Extension'
-                        ).then(selection => {
-                            if (selection === 'GitLab Extension') {
-                                vscode.env.openExternal(vscode.Uri.parse('https://docs.gitlab.com/editor_extensions/visual_studio_code/setup/'));
-                            }
-                        });
-                    }
-                } else {
-                    for (const account of accounts) {
-                        logger.debug(`[GitLab] Getting session for account: ${account.id} (${account.label})`);
-                        // Use createIfNone to show a modal consent dialog if the
-                        // extension hasn't been granted access yet.  Without it VS Code
-                        // only adds a silent badge on the Accounts icon.
-                        const gitlabSession = await vscode.authentication.getSession(
-                            'gitlab', ['api'], { account, createIfNone: true }
-                        );
-                        if (gitlabSession) {
-                            // account.id = "instanceUrl|userId" (see makeAccountId in gitlab_account.ts)
-                            const pipeIndex = account.id.lastIndexOf('|');
-                            const instanceUrl = pipeIndex > 0
-                                ? account.id.substring(0, pipeIndex).replace(/\/+$/, '')
-                                : 'https://gitlab.com';
-                            gitlabAuthTokens[instanceUrl] = gitlabSession.accessToken;
-                            logger.debug(`[GitLab] Got token for ${instanceUrl} (session account: ${gitlabSession.account.id})`);
-                        } else {
-                            logger.debug(`[GitLab] No session returned for account: ${account.id}`);
-                        }
-                    }
-                }
-
-                const hostList = Object.keys(gitlabAuthTokens);
-                logger.debug(`[GitLab] Token map has ${hostList.length} host(s): ${hostList.join(', ')}`);
-                for (const [host, token] of Object.entries(gitlabAuthTokens)) {
-                    logger.debug(`[GitLab]   ${host} => token length=${token.length}, starts=${token.substring(0, 8)}...`);
-                }
-            } catch (e) {
-                logger.debug(`[GitLab] Failed to get accounts: ${e}`);
-                // GitLab extension not installed or no accounts — continue without
-            }
-
-            try {
-                const packageManager = await PackageManager.create(packageFolder, {
-                    ideVersion: this._4DVersion.toString(false),
-                    githubAuthToken: session.accessToken,
-                    gitlabAuthTokens,
-                    preferencesFolder,
-                    logger,
-                    callback: (dependencyName) => {
-                        this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
-                    }
-                });
-                await packageManager.fetch({});
-                this._statusBarItem.text = "$(sync~spin) Install components...";
-                client.sendNotification(ext.notif_installComponents, { uri: params.project_uri });
-            } catch (error) {
-                this._statusBarItem.hide();
-                Logger.log(error);
-                const message = error instanceof Error ? error.message : String(error);
-                vscode.window.showErrorMessage(message);
-            }
+            await this._performFetch(client, params.project_uri, params.preferences_uri);
         });
 
         client.onNotification(ext.notif_installComponents_before, async (params) => {
@@ -190,6 +194,32 @@ export class DependencyManager {
             this._statusBarItem.hide();
             return true;
         });
+    }
+
+    public registerDependenciesCodeLens(): void {
+        const provider: vscode.CodeLensProvider = {
+            provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+                const range = new vscode.Range(0, 0, 0, 0);
+                return [new vscode.CodeLens(range, {
+                    title: '$(sync) Fetch dependencies',
+                    command: '4d-analyzer.fetchDependencies',
+                })];
+            }
+        };
+        const disposable = vscode.languages.registerCodeLensProvider(
+            { pattern: '**/Project/Sources/dependencies.json' },
+            provider
+        );
+        this._extensionContext.subscriptions.push(disposable);
+    }
+
+    public async fetchProjectForCommand(client: LanguageClient): Promise<void> {
+        const files = await vscode.workspace.findFiles('Project/*.4DProject', null, 1);
+        if (files.length === 0) {
+            vscode.window.showErrorMessage("No 4D project found in the workspace.");
+            return;
+        }
+        await this._performFetch(client, files[0].toString());
     }
 
     public disposeWatchers(): void {
