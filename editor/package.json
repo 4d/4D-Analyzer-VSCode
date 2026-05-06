@@ -210,6 +210,10 @@
 			{
 				"command": "4d-analyzer.restartLanguageServer",
 				"title": "4D Analyzer: Restart language server"
+			},
+			{
+				"command": "4d-analyzer.fetchDependencies",
+				"title": "4D Analyzer: Fetch dependencies"
 			}
 		]
 	},
