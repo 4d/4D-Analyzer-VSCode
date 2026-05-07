@@ -253,6 +253,14 @@ export class GitHubDependency extends Dependency {
     return `.github/${this.getCachePath(tag)}.json`;
   }
 
+  getSourceType(): 'github' {
+    return 'github';
+  }
+
+  getSourceSpec(): string | undefined {
+    return this.github_url;
+  }
+
 
   /**
    * Reconcile with environment configuration

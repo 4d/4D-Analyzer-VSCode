@@ -21,25 +21,70 @@ import { Version } from '../version/Version';
  */
 export class GitLabDependency extends Dependency {
   private gitlab_path: string | undefined;
+  private original_gitlab_path: string | undefined;
   private _host: string | undefined;
+  private hostInferredFromGitlabUrl: boolean;
+
+  private static normalizeSpec(spec: DependencySpec): {
+    gitlabPath: string | undefined;
+    host: string | undefined;
+    hostInferredFromGitlabUrl: boolean;
+  } {
+    const rawGitlab = spec.gitlab;
+    if (!rawGitlab) {
+      return {
+        gitlabPath: undefined,
+        host: spec.host,
+        hostInferredFromGitlabUrl: false,
+      };
+    }
+
+    if (!/^https?:\/\//i.test(rawGitlab)) {
+      return {
+        gitlabPath: rawGitlab,
+        host: spec.host,
+        hostInferredFromGitlabUrl: false,
+      };
+    }
+
+    try {
+      const parsedUrl = new URL(rawGitlab);
+      return {
+        gitlabPath: parsedUrl.pathname.replace(/^\/+|\/+$/g, ''),
+        host: spec.host ?? parsedUrl.origin,
+        hostInferredFromGitlabUrl: spec.host === undefined,
+      };
+    } catch {
+      return {
+        gitlabPath: rawGitlab,
+        host: spec.host,
+        hostInferredFromGitlabUrl: false,
+      };
+    }
+  }
 
   constructor(spec: DependencySpec, isPrimary: boolean) {
+    const normalizedSpec = GitLabDependency.normalizeSpec(spec);
+    const gitlabPath = normalizedSpec.gitlabPath;
+
     // Split gitlab path on the *last* slash to support multi-level namespaces:
     //   "group/project"           → namespace="group",         project="project"
     //   "group/subgroup/project"  → namespace="group/subgroup", project="project"
     let namespace = '';
     let project = '';
-    if (spec.gitlab) {
-      const lastSlash = spec.gitlab.lastIndexOf('/');
+    if (gitlabPath) {
+      const lastSlash = gitlabPath.lastIndexOf('/');
       if (lastSlash > 0) {
-        namespace = spec.gitlab.substring(0, lastSlash);
-        project = spec.gitlab.substring(lastSlash + 1);
+        namespace = gitlabPath.substring(0, lastSlash);
+        project = gitlabPath.substring(lastSlash + 1);
       }
     }
 
     super(namespace, project, spec.version ?? '', spec.tag ?? '', isPrimary);
-    this.gitlab_path = spec.gitlab;
-    this._host = spec.host;
+    this.gitlab_path = gitlabPath;
+    this.original_gitlab_path = spec.gitlab;
+    this._host = normalizedSpec.host;
+    this.hostInferredFromGitlabUrl = normalizedSpec.hostInferredFromGitlabUrl;
   }
 
   /** The host URL for this dependency (undefined means default gitlab.com) */
@@ -61,7 +106,18 @@ export class GitLabDependency extends Dependency {
     cacheManager: CacheManager,
     update: boolean = false
   ): Promise<boolean> {
+    if (this.hostInferredFromGitlabUrl && this.original_gitlab_path && this._host && this.gitlab_path) {
+      this.logger?.warn(
+        `GitLab dependency "${this.original_gitlab_path}" uses a full URL in "gitlab". Interpreting it as host="${this._host}" and path="${this.gitlab_path}".`
+      );
+    }
+
     if (!(this.owner && this.repo)) {
+      this.addError(
+        lock,
+        `Invalid GitLab dependency path "${this.original_gitlab_path || this.getSourceSpec() || ''}". Expected "<group>/<project>" or "<group>/<subgroup>/<project>"`
+      );
+      lock.found = false;
       return false;
     }
 
@@ -335,6 +391,14 @@ export class GitLabDependency extends Dependency {
 
   getMetadataFilePath(tag: string): string {
     return `${this.gitlabCachePrefix}/${this.getCachePath(tag)}.json`;
+  }
+
+  getSourceType(): 'gitlab' {
+    return 'gitlab';
+  }
+
+  getSourceSpec(): string | undefined {
+    return this.gitlab_path;
   }
 
   // ── Reconciliation ─────────────────────────────────────────────

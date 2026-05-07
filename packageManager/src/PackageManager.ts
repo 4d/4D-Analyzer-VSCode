@@ -160,6 +160,7 @@ export class PackageManager {
 
         // Re-reconcile with lock awareness based on update flag
         this.reconcile(update);
+        this.pruneRemovedPrimaryLockEntries();
 
         // Determine which dependencies to fetch
         let toFetch = Array.from(this.reconciled.keys());
@@ -167,6 +168,12 @@ export class PackageManager {
             toFetch = toFetch.filter(name => filter.includes(name));
         }
         this.logger?.info(`Fetching ${toFetch.length} dependencies: ${toFetch.join(', ')}`);
+        for (const name of toFetch) {
+            const dep = this.reconciled.get(name);
+            if (dep) {
+                this.logger?.debug(`  ${this.describeDependency(name, dep)}`);
+            }
+        }
         // Initialize lock entries
         for (const name of toFetch) {
             if (!this.lock.dependencies[name]) {
@@ -223,6 +230,18 @@ export class PackageManager {
             fetchedCount,
             skippedCount
         };
+    }
+
+    private pruneRemovedPrimaryLockEntries(): void {
+        if (!this.lock) {
+            return;
+        }
+
+        for (const [name, entry] of Object.entries(this.lock.dependencies)) {
+            if (entry.isPrimary === true && !this.reconciled.has(name)) {
+                delete this.lock.dependencies[name];
+            }
+        }
     }
 
     /**
@@ -377,8 +396,9 @@ export class PackageManager {
             for (let j = i + 1; j < deps.length; j++) {
                 const dep1 = deps[i];
                 const dep2 = deps[j];
+                const dep1ID = dep1.ID;
 
-                if (dep1.ID === dep2.ID) {
+                if (dep1ID && dep1ID === dep2.ID) {
                     const lockEntry1 = this.lock.dependencies[dep1.name];
                     const lockEntry2 = this.lock.dependencies[dep2.name];
 
@@ -483,6 +503,18 @@ export class PackageManager {
             dep.log = this.logger;
         }
         return dep;
+    }
+
+    private describeDependency(name: string, dep: Dependency): string {
+        const sourceType = dep.getSourceType();
+        const sourceSpec = dep.getSourceSpec() || '(missing)';
+        const resolvedID = dep.ID || '(unresolved)';
+        const host = dep instanceof GitLabDependency ? dep.host || '(default)' : 'n/a';
+        const version = dep.version || '(default)';
+        const tag = dep.tag || '(none)';
+        const malformedSource = dep.getSourceSpec() && !dep.ID ? ' malformed-source=true' : '';
+
+        return `${name}: type=${sourceType} source=${sourceSpec} resolved=${resolvedID} version=${version} tag=${tag} host=${host} primary=${dep.isPrimary}${malformedSource}`;
     }
 
     /**

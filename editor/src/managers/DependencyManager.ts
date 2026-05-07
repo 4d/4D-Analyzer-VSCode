@@ -212,13 +212,14 @@ export class DependencyManager {
                     this._statusBarItem.text = `$(sync~spin) Fetch components... (${dependencyName})`;
                 }
             });
+            logger.debug(`[PackageManager] Starting fetch for project: ${projectUri}`);
             await packageManager.fetch({});
             this._statusBarItem.text = "$(sync~spin) Install components...";
             client.sendNotification(ext.notif_installComponents, { uri: projectUri });
         } catch (error) {
             this._statusBarItem.hide();
-            Logger.log(error);
             const message = error instanceof Error ? error.message : String(error);
+            logger.error(message);
             vscode.window.showErrorMessage(message);
         }
     }
@@ -316,7 +317,8 @@ export class DependencyManager {
             JSON.parse(Buffer.from(content).toString('utf-8'));
             return true;
         } catch (error) {
-            vscode.window.showErrorMessage(`Invalid JSON in ${uri.fsPath}: ${error.message}`);
+            const message = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Invalid JSON in ${uri.fsPath}: ${message}`);
             return false;
         }
     }
