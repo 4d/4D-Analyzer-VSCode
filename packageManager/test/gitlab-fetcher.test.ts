@@ -95,7 +95,7 @@ describe('GitlabFetcher', () => {
       await expect(fetcher.getLatestRelease('group', 'project')).rejects.toThrow('Unable to find the latest release for group/project on GitLab');
     });
 
-    it('should include PRIVATE-TOKEN header when token is set', async () => {
+    it('should include Authorization bearer header when token is set', async () => {
       mockFetchJson([{
         tag_name: 'v1.0.0', name: '', description: '',
         created_at: '', released_at: '',
@@ -106,10 +106,10 @@ describe('GitlabFetcher', () => {
       await fetcher.getLatestRelease('group', 'project');
 
       const fetchCall = (global.fetch as any).mock.calls[0];
-      expect(fetchCall[1].headers['PRIVATE-TOKEN']).toBe('glpat-my-secret');
+      expect(fetchCall[1].headers['Authorization']).toBe('Bearer glpat-my-secret');
     });
 
-    it('should not include PRIVATE-TOKEN header when no token', async () => {
+    it('should not include Authorization header when no token', async () => {
       mockFetchJson([{
         tag_name: 'v1.0.0', name: '', description: '',
         created_at: '', released_at: '',
@@ -120,7 +120,7 @@ describe('GitlabFetcher', () => {
       await fetcher.getLatestRelease('group', 'project');
 
       const fetchCall = (global.fetch as any).mock.calls[0];
-      expect(fetchCall[1].headers['PRIVATE-TOKEN']).toBeUndefined();
+      expect(fetchCall[1].headers['Authorization']).toBeUndefined();
     });
   });
 
@@ -290,7 +290,7 @@ describe('GitlabFetcher', () => {
           });
         }
         // Verify the download request doesn't include the token
-        expect(opts.headers?.['PRIVATE-TOKEN']).toBeUndefined();
+        expect(opts.headers?.['Authorization']).toBeUndefined();
         return Promise.resolve({
           ok: true,
           arrayBuffer: () => Promise.resolve(new ArrayBuffer(512)),
@@ -343,7 +343,7 @@ describe('GitlabFetcher', () => {
         expect(downloadUrl).toBe('https://gitlab.com/api/v4/projects/81303415/uploads/f2cef7a6a7a15cdad5da13fe7d600baf/project.zip');
       });
 
-      it('should send PRIVATE-TOKEN when downloading rewritten upload URL', async () => {
+      it('should send Authorization bearer header when downloading rewritten upload URL', async () => {
         let downloadHeaders: Record<string, string> | undefined;
         let callCount = 0;
         global.fetch = vi.fn().mockImplementation((url: string, opts: any) => {
@@ -363,7 +363,7 @@ describe('GitlabFetcher', () => {
         const fetcher = new GitlabFetcher('glpat-secret', 'https://gitlab.com');
         await fetcher.downloadReleaseAsset('group', 'project', 'v1.0.0');
 
-        expect(downloadHeaders?.['PRIVATE-TOKEN']).toBe('glpat-secret');
+        expect(downloadHeaders?.['Authorization']).toBe('Bearer glpat-secret');
       });
 
       it('should not rewrite upload URL from a different host', async () => {
