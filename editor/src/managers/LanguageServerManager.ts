@@ -9,12 +9,33 @@ import { workspace } from 'vscode';
 import { Config } from "../config";
 import { Logger } from "../logger";
 
+class ManagedLanguageClient extends LanguageClient {
+    constructor(
+        id: string,
+        name: string,
+        serverOptions: () => Promise<child_process.ChildProcess | StreamInfo>,
+        clientOptions: LanguageClientOptions,
+        private readonly shouldSuppressCloseHandling: () => boolean
+    ) {
+        super(id, name, serverOptions, clientOptions);
+    }
+
+    protected async handleConnectionClosed(): Promise<void> {
+        if (this.shouldSuppressCloseHandling()) {
+            return;
+        }
+
+        await super.handleConnectionClosed();
+    }
+}
+
 export class LanguageServerManager {
 
     private _client: LanguageClient = null;
     private _transportServer: net.Server | null = null;
     private _languageServerProcess: child_process.ChildProcess | null = null;
     private _isRestarting = false;
+    private _isIntentionalShutdown = false;
 
     constructor(
         private _config: Config
@@ -164,11 +185,12 @@ export class LanguageServerManager {
             diagnosticCollectionName: "4d",
         };
         // Create the language client and start the client.
-        this._client = new LanguageClient(
+        this._client = new ManagedLanguageClient(
             '4D-Analyzer',
             '4D-LSP',
             serverOptions,
-            clientOptions
+            clientOptions,
+            () => this._isIntentionalShutdown
         );
 
         onClientCreated?.(this._client);
@@ -180,7 +202,10 @@ export class LanguageServerManager {
             return undefined;
         }
 
-        return this._client.stop();
+        this._isIntentionalShutdown = true;
+        return this._client.stop().finally(() => {
+            this._isIntentionalShutdown = false;
+        });
     }
 
     public async restart(onBeforeRestart?: () => void, onClientCreated?: (client: LanguageClient) => void): Promise<void> {
@@ -189,6 +214,7 @@ export class LanguageServerManager {
             return;
         }
         this._isRestarting = true;
+        this._isIntentionalShutdown = true;
 
         try {
             if (this._client) {
@@ -228,6 +254,7 @@ export class LanguageServerManager {
 
             this.launch(onClientCreated);
         } finally {
+            this._isIntentionalShutdown = false;
             this._isRestarting = false;
         }
     }
