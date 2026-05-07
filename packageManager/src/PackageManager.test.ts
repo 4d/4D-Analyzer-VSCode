@@ -202,6 +202,56 @@ describe('PackageManager', () => {
     });
 
     describe('fetchRecursively', () => {
+        it('should prune removed primary lock entries but keep recursive ones', async () => {
+            const writeLock = vi.fn().mockResolvedValue(undefined);
+
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'dep2': { github: 'owner/dep2', version: '^2.0.0' }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue(mockEnvironment),
+                readLock: vi.fn().mockResolvedValue({
+                    version: 2120,
+                    dependencies: {
+                        'dep1': {
+                            github: 'owner/dep1',
+                            version: '^1.0.0',
+                            isPrimary: true,
+                            errors: [{ message: 'stale primary error' }]
+                        },
+                        'dep2': {
+                            github: 'owner/dep2',
+                            version: '^2.0.0',
+                            isPrimary: true
+                        },
+                        'subDep1': {
+                            github: 'owner/subDep1',
+                            version: '^1.0.0',
+                            isPrimary: false,
+                            errors: [{ message: 'recursive error' }]
+                        }
+                    }
+                }),
+                writeLock
+            }) as unknown as ConfigReader);
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, TEST_IDE_VERSION);
+            await packageManager.initialize();
+            const result = await packageManager.fetch();
+
+            expect(result.lock.dependencies['dep1']).toBeUndefined();
+            expect(result.lock.dependencies['dep2']).toBeDefined();
+            expect(result.lock.dependencies['subDep1']).toBeDefined();
+            expect(result.errors.map(e => e.dependency)).not.toContain('dep1');
+            expect(writeLock).toHaveBeenCalledWith(expect.objectContaining({
+                dependencies: expect.not.objectContaining({
+                    dep1: expect.anything()
+                })
+            }));
+        });
+
         it('should fetch all primary dependencies concurrently', async () => {
             await packageManager.initialize();
             const result = await packageManager.fetch();

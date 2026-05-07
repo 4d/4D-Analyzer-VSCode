@@ -283,7 +283,7 @@ export abstract class Dependency {
         const thisGithub = this.ID;
         const otherGithub = other.ID;
 
-        if (thisGithub !== otherGithub) {
+        if (!thisGithub || !otherGithub || thisGithub !== otherGithub) {
             return null;
         }
 
@@ -360,6 +360,10 @@ export abstract class Dependency {
      * Get the relative metadata file path
      */
     abstract getMetadataFilePath(tag: string): string;
+
+    abstract getSourceType(): 'github' | 'gitlab';
+
+    abstract getSourceSpec(): string | undefined;
 
     abstract fetch(
         ideVersion: Version,

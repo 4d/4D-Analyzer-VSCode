@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GitHubDependency } from '../src/dependency/GithubDependency';
+import { GitLabDependency } from '../src/dependency/GitlabDependency';
 import type { LockEntry, DependencySpec } from '../src/types';
 
 /**
@@ -126,6 +127,17 @@ describe('Conflict Detection', () => {
             dep1.compare(dep2, lock);
 
             expect(lock.conflict).toBeUndefined();
+        });
+
+        it('should ignore malformed dependencies with unresolved IDs', () => {
+            const dep1 = new GitLabDependency({ gitlab: 'SampleTestProject', version: 'highest' }, true);
+            const dep2 = new GitLabDependency({ gitlab: 'SampleTestProject', version: 'highest' }, false);
+            const lock: LockEntry = {};
+
+            expect(() => dep1.compare(dep2, lock)).not.toThrow();
+            expect(lock.conflict).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
         });
 
         it('should store tags in lock when tag-vs-tag conflict', () => {

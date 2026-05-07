@@ -47,6 +47,20 @@ describe('GitLabDependency', () => {
       expect(dep.host).toBe('https://private.gitlab.com');
     });
 
+    it('should normalize a full GitLab URL into host and project path', () => {
+      const spec: DependencySpec = {
+        gitlab: 'https://private.gitlab.com/e-marchand/SampleTestProject',
+        version: 'highest',
+      };
+      const dep = new GitLabDependency(spec, true);
+
+      expect(dep.host).toBe('https://private.gitlab.com');
+      expect(dep.owner).toBe('e-marchand');
+      expect(dep.repo).toBe('SampleTestProject');
+      expect(dep.ID).toBe('e-marchand/SampleTestProject');
+      expect(dep.getSourceSpec()).toBe('e-marchand/SampleTestProject');
+    });
+
     it('should handle missing gitlab path', () => {
       const spec: DependencySpec = { version: '^1.0.0' };
       const dep = new GitLabDependency(spec, true);
@@ -289,6 +303,8 @@ describe('GitLabDependency', () => {
       );
 
       expect(result).toBe(false);
+      expect(lock.found).toBe(false);
+      expect(lock.errors?.[0].message).toBe('Invalid GitLab dependency path "invalid". Expected "<group>/<project>" or "<group>/<subgroup>/<project>"');
       expect(mockFetcher.downloadReleaseAsset).not.toHaveBeenCalled();
     });
 
@@ -360,6 +376,34 @@ describe('GitLabDependency', () => {
       expect(lock.found).toBe(true);
       expect(lock.tag).toBe('v1.1.0');
       expect(lock.archiveSize).toBe(1024);
+    });
+
+    it('should infer host from a full GitLab URL and warn gently', async () => {
+      const spec: DependencySpec = {
+        gitlab: 'https://private.gitlab.com/group/project',
+        version: '^1.0.0',
+      };
+      const dep = new GitLabDependency(spec, true);
+      const logger = {
+        info: vi.fn(),
+        debug: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      };
+      dep.log = logger;
+
+      vi.spyOn(dep, 'getPackage' as any).mockResolvedValue(null);
+
+      const result = await dep.fetch(
+        new Version('20.0.0'), mockEnv, lock, mockFetcher, mockCacheManager,
+      );
+
+      expect(result).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'GitLab dependency "https://private.gitlab.com/group/project" uses a full URL in "gitlab". Interpreting it as host="https://private.gitlab.com" and path="group/project".'
+      );
+      expect(lock.htmlURL).toContain('https://private.gitlab.com/group/project');
+      expect(lock.archiveURL).toContain('https://private.gitlab.com/group/project');
     });
 
     it('should force download when update is true even if cached', async () => {
