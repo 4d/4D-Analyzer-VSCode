@@ -390,19 +390,19 @@ export class PackageManager {
             return;
         }
 
-        const deps = Array.from(this.reconciled.values());
+        const deps = Array.from(this.reconciled.entries());
 
         for (let i = 0; i < deps.length; i++) {
             for (let j = i + 1; j < deps.length; j++) {
-                const dep1 = deps[i];
-                const dep2 = deps[j];
-                const dep1ID = dep1.ID;
+                const [name1, dep1] = deps[i];
+                const [name2, dep2] = deps[j];
+                const lockEntry1 = this.lock.dependencies[name1];
+                const lockEntry2 = this.lock.dependencies[name2];
 
-                if (dep1ID && dep1ID === dep2.ID) {
-                    const lockEntry1 = this.lock.dependencies[dep1.name];
-                    const lockEntry2 = this.lock.dependencies[dep2.name];
-
+                if (lockEntry1) {
                     dep1.compare(dep2, lockEntry1);
+                }
+                if (lockEntry2) {
                     dep2.compare(dep1, lockEntry2);
                 }
             }

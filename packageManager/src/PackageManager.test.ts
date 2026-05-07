@@ -202,6 +202,64 @@ describe('PackageManager', () => {
     });
 
     describe('fetchRecursively', () => {
+        it('should route duplicate-source conflict checks to the dependency alias lock entries', async () => {
+            const compareCalls: Array<{ alias: string; lockEntry: unknown }> = [];
+
+            vi.mocked(ConfigReader).mockImplementation(() => ({
+                readDependencies: vi.fn().mockResolvedValue({
+                    dependencies: {
+                        'depA': { gitlab: 'group/project', version: 'highest', host: 'https://gitlab.com' },
+                        'depB': { gitlab: 'group/project', version: 'newest', host: 'https://gitlab.com' }
+                    }
+                }),
+                buildEnvironment: vi.fn().mockResolvedValue({
+                    ...mockEnvironment,
+                    gitlab: {
+                        host: 'https://gitlab.com',
+                        hosts: {}
+                    }
+                }),
+                readLock: vi.fn().mockResolvedValue({ version: 2120, dependencies: {} }),
+                writeLock: vi.fn().mockResolvedValue(undefined)
+            }) as unknown as ConfigReader);
+
+            vi.mocked(GitLabDependency).mockImplementation((spec, isPrimary) => {
+                const alias = spec.version === 'highest' ? 'depA' : 'depB';
+                const dep = {
+                    ID: spec.gitlab,
+                    name: spec.gitlab?.split('/').slice(-1)[0] || 'unknown',
+                    version: spec.version,
+                    isPrimary,
+                    host: spec.host,
+                    reconcileWithEnv: vi.fn(),
+                    reconcileWithLock: vi.fn(),
+                    getEffectiveLockVersion: vi.fn().mockReturnValue(spec.version || 'highest'),
+                    fetch: vi.fn().mockResolvedValue(true),
+                    compare: vi.fn().mockImplementation((_other, lockEntry) => {
+                        compareCalls.push({ alias, lockEntry });
+                    }),
+                    checkOutdated: vi.fn()
+                };
+                Object.setPrototypeOf(dep, GitLabDependency.prototype);
+                return dep as unknown as GitLabDependency;
+            });
+
+            packageManager = new PackageManager(TEST_PROJECT_PATH, {
+                ideVersion: TEST_IDE_VERSION,
+                gitlabAuthTokens: {
+                    'https://gitlab.com': 'token'
+                }
+            });
+
+            await packageManager.initialize();
+            const result = await packageManager.fetch();
+
+            expect(compareCalls).toEqual([
+                { alias: 'depA', lockEntry: result.lock.dependencies['depA'] },
+                { alias: 'depB', lockEntry: result.lock.dependencies['depB'] }
+            ]);
+        });
+
         it('should prune removed primary lock entries but keep recursive ones', async () => {
             const writeLock = vi.fn().mockResolvedValue(undefined);
 

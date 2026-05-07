@@ -35,6 +35,16 @@ export abstract class Dependency {
         return this._owner && this._name ? `${this._owner}/${this._name}` : undefined;
     }
 
+    private getConflictIdentity(): string | undefined {
+        const sourceSpec = this.getSourceSpec();
+        if (!sourceSpec) {
+            return undefined;
+        }
+
+        const sourceHost = this.getSourceHost()?.replace(/\/+$/, '');
+        return `${this.getSourceType()}:${sourceHost ?? ''}:${sourceSpec}`;
+    }
+
 
     /**
      * Compare with another dependency for conflicts
@@ -51,7 +61,10 @@ export abstract class Dependency {
 
         // Handle tag vs range conflicts - need to check with Range class
         if (conflict.tagToCheck && conflict.rangeToCheck) {
-            const range = new Range(conflict.rangeToCheck);
+            const range = Range.parse(conflict.rangeToCheck);
+            if (!range) {
+                return;
+            }
             if (!range.satisfiedBy(conflict.tagToCheck)) {
                 this.handleConflict(lock, conflict.message, conflict.tags, conflict.versions);
             }
@@ -60,8 +73,17 @@ export abstract class Dependency {
 
         // Handle both version ranges - need to check intersection
         if (conflict.range1 && conflict.range2) {
-            const range1 = new Range(conflict.range1);
-            const range2 = new Range(conflict.range2);
+            if (conflict.range1 === conflict.range2) {
+                return;
+            }
+
+            const range1 = Range.parse(conflict.range1);
+            const range2 = Range.parse(conflict.range2);
+
+            if (!range1 || !range2) {
+                this.handleConflict(lock, conflict.message, undefined, conflict.versions);
+                return;
+            }
 
             if (!range1.intersects(range2)) {
                 this.handleConflict(lock, conflict.message, undefined, conflict.versions);
@@ -279,11 +301,10 @@ export abstract class Dependency {
      * Returns conflict information if incompatible, null otherwise
      */
     compareWith(other: Dependency): DependencyConflict | null {
-        // Must be same GitHub repository
-        const thisGithub = this.ID;
-        const otherGithub = other.ID;
+        const thisSource = this.getConflictIdentity();
+        const otherSource = other.getConflictIdentity();
 
-        if (!thisGithub || !otherGithub || thisGithub !== otherGithub) {
+        if (!thisSource || !otherSource || thisSource !== otherSource) {
             return null;
         }
 
@@ -364,6 +385,10 @@ export abstract class Dependency {
     abstract getSourceType(): 'github' | 'gitlab';
 
     abstract getSourceSpec(): string | undefined;
+
+    protected getSourceHost(): string | undefined {
+        return undefined;
+    }
 
     abstract fetch(
         ideVersion: Version,
