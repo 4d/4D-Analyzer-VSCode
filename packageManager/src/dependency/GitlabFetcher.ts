@@ -6,8 +6,9 @@ import { Fetcher, FetchError } from './Fetcher';
  * Uses plain fetch — no external dependency.
  *
  * Supports gitlab.com and private instances via the `host` parameter.
- * Auth uses PRIVATE-TOKEN header; token is stripped when downloading
- * from a URL that does not match the host (security: prevent token leakage).
+ * Auth uses an OAuth-compliant bearer header so both PATs and OAuth access
+ * tokens work. The token is stripped when downloading from a URL that does
+ * not match the host (security: prevent token leakage).
  */
 export class GitlabFetcher implements Fetcher {
     private token?: string;
@@ -35,7 +36,7 @@ export class GitlabFetcher implements Fetcher {
      */
     private authHeaders(): Record<string, string> {
         if (this.token) {
-            return { 'PRIVATE-TOKEN': this.token };
+            return { 'Authorization': `Bearer ${this.token}` };
         }
         return {};
     }
@@ -46,7 +47,7 @@ export class GitlabFetcher implements Fetcher {
      */
     private authHeadersForURL(url: string): Record<string, string> {
         if (this.token && url.startsWith(this.host)) {
-            return { 'PRIVATE-TOKEN': this.token };
+            return { 'Authorization': `Bearer ${this.token}` };
         }
         return {};
     }
@@ -54,8 +55,8 @@ export class GitlabFetcher implements Fetcher {
     /**
      * Rewrite a web-UI upload URL to its API v4 equivalent.
      *
-     * GitLab's /-/project/{id}/uploads/... URLs are only accessible via browser
-     * session cookies. The API v4 path accepts a PRIVATE-TOKEN header instead.
+    * GitLab's /-/project/{id}/uploads/... URLs are only accessible via browser
+    * session cookies. The API v4 path accepts token-based API auth instead.
      *
      * Example:
      *   https://gitlab.com/-/project/81303415/uploads/{hash}/file.zip
