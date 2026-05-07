@@ -11,7 +11,7 @@ import { DependencyOverlay } from './DependencyOverlay';
 
 export class DependencyManager {
 
-    private _listWatcher: vscode.Disposable[] = [];
+    private _watchersByProject = new Map<string, vscode.Disposable[]>();
     private _statusBarItem: vscode.StatusBarItem;
     private _depChannel: vscode.OutputChannel;
 
@@ -231,6 +231,10 @@ export class DependencyManager {
                 return;
             }
             Logger.log("Fetch...", params.project_uri);
+            this.dependencyWatcher(
+                params.project_uri,
+                async () => onRestartNeeded()
+            );
             await this._performFetch(client, params.project_uri, params.preferences_uri);
         });
 
@@ -244,7 +248,12 @@ export class DependencyManager {
 
         client.onNotification(ext.notif_installComponents_done, async (params) => {
             Logger.log("Install components done", params.uri);
-            this.dependencyWatcher(params.uri, onRestartNeeded);
+            if (!this.hasWatcher(params.uri)) {
+                this.dependencyWatcher(
+                    params.uri,
+                    async () => onRestartNeeded()
+                );
+            }
 
             this._statusBarItem.hide();
             return true;
@@ -274,14 +283,21 @@ export class DependencyManager {
             vscode.window.showErrorMessage("No 4D project found in the workspace.");
             return;
         }
-        await this._performFetch(client, files[0].toString());
+        const projectUri = files[0].toString();
+        this.dependencyWatcher(
+            projectUri,
+            async () => vscode.commands.executeCommand('4d-analyzer.restartLanguageServer')
+        );
+        await this._performFetch(client, projectUri);
     }
 
     public disposeWatchers(): void {
-        for (const dispose of this._listWatcher) {
-            dispose.dispose();
+        for (const watchers of this._watchersByProject.values()) {
+            for (const watcher of watchers) {
+                watcher.dispose();
+            }
         }
-        this._listWatcher = [];
+        this._watchersByProject.clear();
     }
 
     public async prepare_database(client: LanguageClient, DBID: string, callback: (success: boolean) => void): Promise<void> {
@@ -323,20 +339,20 @@ export class DependencyManager {
         }
     }
 
-    public async dependencyChange(uri: vscode.Uri, onRestartNeeded: () => void): Promise<void> {
+    public async dependencyChange(uri: vscode.Uri, onRestartNeeded: () => Promise<void>): Promise<void> {
         if (await this.validateJsonDocument(uri)) {
             const userResponse = await vscode.window.showInformationMessage(
-                `The dependency have been changed, do you want to reload?`,
-                "Reload now"
+                'The dependency have been changed, do you want to reload?',
+                'Reload now'
             );
 
-            if (userResponse === "Reload now") {
-                onRestartNeeded();
+            if (userResponse === 'Reload now') {
+                await onRestartNeeded();
             }
         }
     }
 
-    public dependencyWatcher(project_id: string, onRestartNeeded: () => void): void {
+    public dependencyWatcher(project_id: string, onRestartNeeded: () => Promise<void>): void {
         const projectFolder = path.resolve(vscode.Uri.parse(project_id).fsPath, "../../");
         const dependencyFile = new vscode.RelativePattern(projectFolder, 'Project/Sources/dependencies.json');
         const watcher = vscode.workspace.createFileSystemWatcher(dependencyFile);
@@ -345,10 +361,10 @@ export class DependencyManager {
         const disposable = watcher.onDidChange(async uri => {
             Logger.log("File has changed ", uri);
 
-            this.dependencyChange(uri, onRestartNeeded);
+            await this.dependencyChange(uri, onRestartNeeded);
         });
-        this._listWatcher.push(disposable);
-        this._extensionContext.subscriptions.push(watcher, disposable);
+
+        const projectWatchers: vscode.Disposable[] = [watcher, disposable];
 
 
         const envAbs = this.findNearestEnvironmentFileSync(projectFolder);
@@ -361,13 +377,35 @@ export class DependencyManager {
             const envWatcher = vscode.workspace.createFileSystemWatcher(environmentPattern);
 
             const envDisposable = envWatcher.onDidChange(async uri => {
-                this.dependencyChange(uri, onRestartNeeded);
+                await this.dependencyChange(uri, onRestartNeeded);
 
             });
 
-            this._extensionContext.subscriptions.push(envWatcher, envDisposable);
-            this._listWatcher.push(envDisposable);
+            projectWatchers.push(envWatcher, envDisposable);
         }
+
+        this.setProjectWatchers(project_id, projectWatchers);
+    }
+
+    private hasWatcher(projectId: string): boolean {
+        return this._watchersByProject.has(this.normalizeProjectId(projectId));
+    }
+
+    private normalizeProjectId(projectId: string): string {
+        return vscode.Uri.parse(projectId).toString();
+    }
+
+    private setProjectWatchers(projectId: string, disposables: vscode.Disposable[]): void {
+        const normalizedProjectId = this.normalizeProjectId(projectId);
+        const existing = this._watchersByProject.get(normalizedProjectId);
+        if (existing) {
+            for (const disposable of existing) {
+                disposable.dispose();
+            }
+        }
+
+        this._watchersByProject.set(normalizedProjectId, disposables);
+        this._extensionContext.subscriptions.push(...disposables);
     }
 
     private findNearestEnvironmentFileSync(startDir: string): string | undefined {
