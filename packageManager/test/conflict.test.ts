@@ -116,6 +116,30 @@ describe('Conflict Detection', () => {
             expect(lock.errors).toBeUndefined();
             expect(lock.warnings).toBeUndefined();
         });
+
+        it('should not detect conflict for GitLab dependencies on different hosts', () => {
+            const dep1 = new GitLabDependency({ gitlab: 'group/project', host: 'https://gitlab.com', version: '^1.0.0' }, true);
+            const dep2 = new GitLabDependency({ gitlab: 'group/project', host: 'https://private.gitlab.example.com', version: '^2.0.0' }, false);
+            const lock: LockEntry = {};
+
+            dep1.compare(dep2, lock);
+
+            expect(lock.conflict).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
+        });
+
+        it('should not detect conflict for GitHub and GitLab dependencies with the same owner and repo path', () => {
+            const dep1 = new GitHubDependency({ github: 'owner/repo', version: '^1.0.0' }, true);
+            const dep2 = new GitLabDependency({ gitlab: 'owner/repo', version: '^2.0.0' }, false);
+            const lock: LockEntry = {};
+
+            dep1.compare(dep2, lock);
+
+            expect(lock.conflict).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
+        });
     });
 
     describe('edge cases', () => {
@@ -138,6 +162,29 @@ describe('Conflict Detection', () => {
             expect(lock.conflict).toBeUndefined();
             expect(lock.errors).toBeUndefined();
             expect(lock.warnings).toBeUndefined();
+        });
+
+        it('should not throw when identical GitLab aliases are compared', () => {
+            const dep1 = new GitLabDependency({ gitlab: 'group/project', version: 'highest' }, true);
+            const dep2 = new GitLabDependency({ gitlab: 'group/project', version: 'highest' }, false);
+            const lock: LockEntry = {};
+
+            expect(() => dep1.compare(dep2, lock)).not.toThrow();
+            expect(lock.conflict).toBeUndefined();
+            expect(lock.errors).toBeUndefined();
+            expect(lock.warnings).toBeUndefined();
+        });
+
+        it('should flag different non-semver aliases as conflicting selectors', () => {
+            const dep1 = new GitLabDependency({ gitlab: 'group/project', version: 'highest' }, false);
+            const dep2 = new GitLabDependency({ gitlab: 'group/project', version: 'newest' }, false);
+            const lock: LockEntry = {};
+
+            dep1.compare(dep2, lock);
+
+            expect(lock.conflict).toBe(true);
+            expect(lock.errors?.[0].message).toContain('highest');
+            expect(lock.errors?.[0].message).toContain('newest');
         });
 
         it('should store tags in lock when tag-vs-tag conflict', () => {

@@ -401,6 +401,10 @@ export class GitLabDependency extends Dependency {
     return this.gitlab_path;
   }
 
+  protected getSourceHost(): string | undefined {
+    return this._host;
+  }
+
   // ── Reconciliation ─────────────────────────────────────────────
 
   reconcileWithEnv(envSpec: string | DependencySpec): void {
