@@ -5,7 +5,7 @@
 	"license": "4D",
 	"publisher": "4D",
 	"icon": "images/4D-icon.png",
-	"version": "0.2.7",
+	"version": "0.2.9",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/4d/4D-Analyzer-VSCode"
@@ -218,7 +218,7 @@
 		]
 	},
 	"scripts": {
-		"pack": "vsce package --out ../dist/4d-analyzer.vsix",
+		"pack": "npx mkdirp ../dist && vsce package --out ../dist/4d-analyzer.vsix",
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
 		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --main-fields=module,main",
 		"esbuild": "npm run esbuild-base -- --sourcemap",
